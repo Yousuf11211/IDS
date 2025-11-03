@@ -1,0 +1,59 @@
+@page
+@model IDS.Pages.Admin.UserListModel
+@{
+ ViewData["Title"] = "Manage users";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+ <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<table class="table table-sm">
+ <thead>
+ <tr>
+ <th>Email</th>
+ <th>Roles</th>
+ <th>Add role</th>
+ </tr>
+ </thead>
+ <tbody>
+ @foreach (var u in Model.Users)
+ {
+ <tr>
+ <td>@u.Email</td>
+ <td>
+ @foreach (var r in u.Roles)
+ {
+ <span class="badge bg-secondary me-1">@r</span>
+ }
+ </td>
+ <td>
+ <form method="post" asp-page-handler="AddRole">
+ <input type="hidden" name="userId" value="@u.Id" />
+ <div class="input-group">
+ <select name="role" class="form-select">
+ <option value="">(select)</option>
+ @foreach (var r in Model.AllRoles)
+ {
+ <option value="@r">@r</option>
+ }
+ </select>
+ <button class="btn btn-sm btn-primary" type="submit">Add</button>
+ </div>
+ </form>
+ </td>
+ </tr>
+ }
+ </tbody>
+</table>
+
+<h3>Create role</h3>
+<form method="post" asp-page-handler="AddRole">
+ <div class="input-group mb-3">
+ <input name="role" class="form-control" placeholder="Role name" />
+ <button class="btn btn-primary" type="submit">Create</button>
+ </div>
+</form>

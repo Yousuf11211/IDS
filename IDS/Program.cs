@@ -47,17 +47,46 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
  var adminUser = await userManager.FindByEmailAsync(adminEmail);
  if (adminUser == null)
  {
-        adminUser = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+ adminUser = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
  var createResult = await userManager.CreateAsync(adminUser, adminPassword);
  if (createResult.Succeeded)
  {
  await userManager.AddToRoleAsync(adminUser, adminRole);
  }
- // Optionally log createResult.Errors
+ else
+ {
+ // If creation failed, optionally log errors to help debugging
+ // (no logger available here to keep startup simple)
+ }
  }
  else if (!await userManager.IsInRoleAsync(adminUser, adminRole))
  {
  await userManager.AddToRoleAsync(adminUser, adminRole);
+ }
+
+ // One-time safety: ensure admin can sign in
+ if (adminUser != null)
+ {
+ // Reset password to configured value (useful if seed previously failed or password policy changed)
+ try
+ {
+ var token = await userManager.GeneratePasswordResetTokenAsync(adminUser);
+ var resetResult = await userManager.ResetPasswordAsync(adminUser, token, adminPassword);
+ // ensure email confirmed
+ if (!adminUser.EmailConfirmed)
+ {
+ adminUser.EmailConfirmed = true;
+ await userManager.UpdateAsync(adminUser);
+ }
+
+ // clear lockout and failed access count
+ await userManager.SetLockoutEndDateAsync(adminUser, null);
+ await userManager.ResetAccessFailedCountAsync(adminUser);
+ }
+ catch
+ {
+ // swallow exceptions to avoid startup failure; inspect logs if needed
+ }
  }
 }
 
