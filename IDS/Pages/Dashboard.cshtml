@@ -5,6 +5,49 @@
 }
 <h1>@ViewData["Title"]</h1>
 
+@* Admin-only controls *@
+@using Microsoft.AspNetCore.Identity
+@if (User.IsInRole("Admin"))
+{
+    <div class="mb-3">
+        <h2>Admin</h2>
+        <p>
+            <a class="btn btn-secondary" asp-page="/Admin/UserList">Manage users</a>
+        </p>
+
+        <h3>Create user</h3>
+        @if (!string.IsNullOrEmpty(Model.CreateUserStatusMessage))
+        {
+            <div class="alert alert-success">@Model.CreateUserStatusMessage</div>
+        }
+
+        <form method="post" asp-page-handler="CreateUser">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input asp-for="CreateInput.Email" class="form-control" placeholder="Email" />
+                    <span asp-validation-for="CreateInput.Email" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <input asp-for="CreateInput.Password" class="form-control" placeholder="Password" />
+                    <span asp-validation-for="CreateInput.Password" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <select asp-for="CreateInput.Role" class="form-select">
+                        <option value="">(none)</option>
+                        @foreach (var r in Model.AvailableRoles)
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </form>
+    </div>
+}
+
 <div>
     <h2>Summary</h2>
     <p>Total logs: @Model.TotalLogs</p>
@@ -41,3 +84,7 @@
         </tbody>
     </table>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
