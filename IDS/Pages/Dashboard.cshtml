@@ -5,4 +5,39 @@
 }
 <h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail Dashboard.</p>
+<div>
+    <h2>Summary</h2>
+    <p>Total logs: @Model.TotalLogs</p>
+    <h3>By Level</h3>
+    <ul>
+    @foreach (var kv in Model.LevelCounts)
+    {
+        <li>@kv.Key: @kv.Value</li>
+    }
+    </ul>
+</div>
+
+<div>
+    <h2>Recent Logs</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Time (UTC)</th>
+                <th>Level</th>
+                <th>Message</th>
+                <th>User</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var log in Model.RecentLogs)
+        {
+            <tr>
+                <td>@log.Timestamp.ToString("u")</td>
+                <td>@log.Level</td>
+                <td>@log.Message</td>
+                <td>@log.UserId</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
