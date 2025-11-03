@@ -53,3 +53,16 @@ body {
  from { opacity:0; transform: translateY(6px); }
  to { opacity:1; transform: none; }
 }
+
+/* Admin menu visual tweaks */
+.admin-menu .list-group-item {
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.admin-menu .list-group-item:hover {
+  background-color: #f8f9fa;
+}
+.admin-menu .list-group-item.ps-4 {
+  background: linear-gradient(90deg, rgba(0,0,0,0.01), transparent);
+}

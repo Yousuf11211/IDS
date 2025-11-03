@@ -1,0 +1,30 @@
+﻿@* Admin menu partial: shows only for authenticated Admin users *@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+
+@if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+{
+    <nav class="admin-menu">
+        <div class="list-group">
+            <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#usersSub" role="button" aria-expanded="false" aria-controls="usersSub">
+                User Management
+            </a>
+            <div class="collapse" id="usersSub">
+                <a class="list-group-item list-group-item-action ps-4" asp-page="/Admin/CreateUser">Create User</a>
+                <a class="list-group-item list-group-item-action ps-4" asp-page="/Admin/UserList">Manage Users</a>
+            </div>
+
+            <a class="list-group-item list-group-item-action" data-bs-toggle="collapse" href="#logsSub" role="button" aria-expanded="false" aria-controls="logsSub">
+                Logs Management
+            </a>
+            <div class="collapse" id="logsSub">
+                <a class="list-group-item list-group-item-action ps-4" asp-page="/Dashboard">Recent Logs</a>
+                @* Add additional links here if you create dedicated logs pages *@
+            </div>
+        </div>
+    </nav>
+}
+else
+{
+    <div class="text-muted">Admin menu (visible to Admin users only)</div>
+}
