@@ -20,3 +20,36 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Login page styles */
+.login-page {
+ min-height:70vh;
+}
+
+.login-card {
+ width:420px;
+ background: linear-gradient(135deg, #ffffff0%, #f8f9fa100%);
+ border-radius:12px;
+}
+
+.login-card h1 {
+ font-weight:600;
+ margin-bottom:1rem;
+}
+
+#login-submit {
+ transition: transform150ms ease, box-shadow150ms ease;
+}
+#login-submit:hover {
+ transform: translateY(-3px);
+ box-shadow:06px18px rgba(0,0,0,0.12);
+}
+
+/* subtle page fade-in */
+body {
+ animation: fadeIn350ms ease-in;
+}
+@keyframes fadeIn {
+ from { opacity:0; transform: translateY(6px); }
+ to { opacity:1; transform: none; }
+}
