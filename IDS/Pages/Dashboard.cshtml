@@ -2,18 +2,16 @@
 @model IDS.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
-    // NOTE: The main layout (header/footer) is inherited from _Layout.cshtml.
-    // This design effectively creates its own full-page layout inside the main container.
+    ViewData["FullWidthLayout"] = true; @* <-- Signals _Layout.cshtml to remove padding/container *@
 }
 
-@* The user's design requires the Font Awesome library *@
 @section HeadContent {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 }
 
 <div class="dashboard-container">
     @* ===============================================
-       CUSTOM SIDEBAR (Replacing standard side column)
+       CUSTOM SIDEBAR
        =============================================== *@
     <aside class="sidebar">
         <div class="logo-area">
@@ -33,12 +31,7 @@
                 <li><a href="#"><i class="fas fa-user-cog"></i> Profile</a></li>
             </ul>
         </nav>
-        <div class="logout-section">
-            @* The Logout form uses the standard _LoginPartial handler *@
-            <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post">
-                <button type="submit" id="logout-link" class="btn btn-link"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </form>
-        </div>
+        @* The duplicate logout section has been removed here *@
     </aside>
 
     @* ===============================================
@@ -123,7 +116,7 @@
                     </thead>
                     <tbody id="alerts-table-body">
                         @* This is the default display. Content is populated by JavaScript after clicking the log link. *@
-                        <tr><td colspan="4" class="no-data">Click the Logs link to load recent system entries...</td></tr>
+                        <tr><td colspan="4" class="no-data">Click the Alerts Log link to load recent system entries...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -141,14 +134,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script>
         (function() {
-            // Since we removed the "More Options" button, we need to map the JS logic to the new sidebar links
-            // If the sidebar links are created, we can map to them. For now, the existing JS listeners are kept
-            // but will likely need adjustment if the final sidebar links don't have these IDs.
-            const menuUsers = document.getElementById('menu-users');
-            const menuLogs = document.getElementById('menu-logs');
-            const content = document.getElementById('dashboard-content'); // hidden div for script output
-
-            // The JavaScript logic for showing logs has been retained
             const logsLink = document.querySelector('a[href="#"][class*="fa-exclamation-triangle"]');
             if (logsLink) logsLink.addEventListener('click', async function(e) {
                 e.preventDefault();
@@ -168,7 +153,6 @@
 
                 let html = '';
                 for (const l of logs) {
-                    // Apply color class based on log level for visual severity
                     let levelClass = '';
                     if (l.level === 'Error') levelClass = 'severity-critical';
                     else if (l.level === 'Warning') levelClass = 'severity-medium';
@@ -183,7 +167,6 @@
                 tableBody.innerHTML = html;
             });
 
-            // Basic Chart.js initialization (Requires data to work)
             const ctx = document.getElementById('attackTypeChart');
             if (ctx) {
                 new Chart(ctx, {
@@ -194,10 +177,10 @@
                             label: 'Attacks',
                             data: [12, 3, 5, 2], // Static demo data - REPLACE WITH C# DATA
                             backgroundColor: [
-                                '#e74c3c', // danger
-                                '#f39c12', // info
-                                '#3498db', // primary
-                                '#2ecc71'  // success
+                                '#e74c3c',
+                                '#f39c12',
+                                '#3498db',
+                                '#2ecc71'
                             ],
                             borderWidth: 1
                         }]
