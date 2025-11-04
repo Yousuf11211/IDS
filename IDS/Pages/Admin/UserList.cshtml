@@ -24,12 +24,18 @@
  {
  <tr>
  <td>@u.Email</td>
- <td>
- @foreach (var r in u.Roles)
- {
- <span class="badge bg-secondary me-1">@r</span>
- }
- </td>
+                <td>
+                    @foreach (var r in u.Roles)
+                    {
+                        <form method="post" asp-page-handler="RemoveRole" style="display:inline;">
+                            <input type="hidden" name="userId" value="@u.Id" />
+                            <input type="hidden" name="role" value="@r" />
+                            <button type="submit" class="badge bg-secondary me-1 text-decoration-none border-0" title="Click to remove role @r">
+                                @r <span aria-hidden="true">&times;</span>
+                            </button>
+                        </form>
+                    }
+                </td>
  <td>
  <form method="post" asp-page-handler="AddRole">
  <input type="hidden" name="userId" value="@u.Id" />
