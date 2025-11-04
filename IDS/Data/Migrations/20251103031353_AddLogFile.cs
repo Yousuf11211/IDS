@@ -32,6 +32,20 @@ namespace IDS.Data.Migrations
                 name: "IX_LogFiles_Timestamp",
                 table: "LogFiles",
                 column: "Timestamp");
+
+            migrationBuilder.CreateTable(
+                name: "Roles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Roles", x => x.Id);
+                });
         }
 
         /// <inheritdoc />
@@ -39,6 +53,9 @@ namespace IDS.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "LogFiles");
+
+            migrationBuilder.DropTable(
+                name: "Roles");
         }
     }
 }

@@ -28,7 +28,6 @@ namespace IDS.Pages
             _roleManager = roleManager;
         }
 
-        public List<LogFile> RecentLogs { get; set; } = new();
         public int TotalLogs { get; set; }
         public Dictionary<string, int> LevelCounts { get; set; } = new();
 
@@ -69,13 +68,7 @@ namespace IDS.Pages
             _db.LogFiles.Add(log);
             await _db.SaveChangesAsync();
 
-            // Load dashboard data
-            RecentLogs = await _db.LogFiles
-                .AsNoTracking()
-                .OrderByDescending(l => l.Timestamp)
-                .Take(50)
-                .ToListAsync();
-
+            // Load summary only (do not load recent logs by default)
             TotalLogs = await _db.LogFiles.CountAsync();
 
             var counts = await _db.LogFiles
@@ -91,6 +84,25 @@ namespace IDS.Pages
                 .Select(r => r.Name ?? string.Empty)
                 .Where(n => n != string.Empty)
                 .ToListAsync();
+        }
+
+        // AJAX handler: /Dashboard?handler=GetLogs
+        public async Task<JsonResult> OnGetGetLogsAsync()
+        {
+            var logs = await _db.LogFiles
+                .AsNoTracking()
+                .OrderByDescending(l => l.Timestamp)
+                .Take(50)
+                .Select(l => new
+                {
+                    l.Timestamp,
+                    l.Level,
+                    l.Message,
+                    l.UserId
+                })
+                .ToListAsync();
+
+            return new JsonResult(logs);
         }
 
         public async Task<IActionResult> OnPostCreateUserAsync()
