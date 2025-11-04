@@ -1,16 +1,17 @@
-using System;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
-using System.ComponentModel.DataAnnotations;
+using IDS.Core.Models;
 using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace IDS.Pages
 {
@@ -20,12 +21,13 @@ namespace IDS.Pages
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-
-        public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        private readonly DetectionService _detectionService; // <-- ADDED FIELD
+        public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, DetectionService detectionService)
         {
             _db = db;
             _userManager = userManager;
             _roleManager = roleManager;
+            _detectionService = detectionService; // <-- ASSIGNED FIELD
         }
 
         public int TotalLogs { get; set; }
@@ -38,6 +40,12 @@ namespace IDS.Pages
 
         [TempData]
         public string CreateUserStatusMessage { get; set; }
+
+        [BindProperty]
+        public IFormFile TrafficCsvFile { get; set; } // <-- ADDED PROPERTY (Fixes TrafficCsvFile error)
+
+        [TempData]
+        public string AnalysisStatusMessage { get; set; } // <-- ADDED PROPERTY (Fixes AnalysisStatusMessage error)
 
         public class AdminCreateUserInput
         {
@@ -52,7 +60,49 @@ namespace IDS.Pages
             public string Role { get; set; } = string.Empty;
         }
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnPostUploadAndAnalyzeAsync()
+        {
+            if (TrafficCsvFile == null)
+            {
+                AnalysisStatusMessage = "Please select a traffic log file.";
+                return RedirectToPage();
+            }
+
+            try
+            {
+                // NOTE: You still need to create CsvParser.cs in Core/Engine/
+                var parser = new CsvParser();
+                var packetDataStream = parser.ParseCsv(TrafficCsvFile.OpenReadStream());
+
+                int totalPackets = 0;
+                int attackCount = 0;
+
+                // Process stream row-by-row
+                foreach (var resultPacket in _detectionService.AnalyzeDataStream(packetDataStream))
+                {
+                    totalPackets++;
+
+                    if (resultPacket.IsAnomaly)
+                    {
+                        attackCount++;
+                        // Future: Log the attack here 
+                    }
+                }
+
+                AnalysisStatusMessage = $"Analysis complete. Processed {totalPackets} packets. Detected {attackCount} anomalies.";
+            }
+            catch (Exception ex)
+            {
+                AnalysisStatusMessage = $"Analysis failed: {ex.Message}";
+                // Log the exception using your LogFile model
+            }
+
+            return RedirectToPage();
+        }
+    }
+}
+
+public async Task OnGetAsync()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 

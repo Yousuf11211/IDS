@@ -1,6 +1,7 @@
 using IDS.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,9 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.Sign
  .AddDefaultTokenProviders();
 
 builder.Services.AddRazorPages();
+
+// ADD THIS LINE: Register the Detection Service
+builder.Services.AddScoped<IDS.Core.Engine.DetectionService>();
 
 var app = builder.Build();
 

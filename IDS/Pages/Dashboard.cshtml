@@ -22,14 +22,26 @@
     </header>
 
     @* Analysis Control (Retained for future IDS logic) *@
+    @* Analysis Control (Updated to be an actual form) *@
     <section class="analysis-control">
         <h2>Real-Time Analysis Input</h2>
-        <div class="input-group">
-            <label for="csv-file-input">Select Trafic Log (CSV)</label>
-            <input type="file" id="csv-file-input" accept=".csv">
-            <button id="start-analysis-btn" disabled>Start Analysis</button>
-        </div>
-        <p id="analysis-status-message"></p>
+
+        @* Display Status Message (from the C# code-behind) *@
+        @if (!string.IsNullOrEmpty(Model.AnalysisStatusMessage))
+        {
+            <div class="alert alert-info">@Model.AnalysisStatusMessage</div>
+        }
+
+        @* Form to upload and run analysis *@
+        <form method="post" asp-page-handler="UploadAndAnalyze" enctype="multipart/form-data">
+            <div class="input-group">
+                @* The asp-for tag helper links the file input to the C# property in Dashboard.cshtml.cs *@
+                <label for="TrafficCsvFile">Select Traffic Log (CSV)</label>
+                <input type="file" asp-for="TrafficCsvFile" id="TrafficCsvFile" accept=".csv" required />
+                <button type="submit" id="start-analysis-btn">Start Analysis</button>
+            </div>
+        </form>
+
     </section>
 
     @* METRICS GRID: Visible only to Admin users *@
