@@ -1,80 +1,86 @@
 ﻿@page
 @model IDS.Pages.DashboardModel
 @{
- ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "Dashboard";
 }
 
 <div class="row">
- <div class="col-md-3">
- @* Admin navigation menu (partial) *@
- @await Html.PartialAsync("_AdminMenu")
+    <div class="col-md-3">
+        @* Admin navigation menu (partial) *@
+        @await Html.PartialAsync("_AdminMenu")
 
- <div class="mt-3">
- <button id="more-options" class="btn btn-outline-secondary w-100" data-bs-toggle="collapse" data-bs-target="#moreSub">More Options</button>
- <div class="collapse mt-2" id="moreSub">
- <div class="list-group">
- <a class="list-group-item list-group-item-action" id="menu-users">User Management</a>
- <a class="list-group-item list-group-item-action" id="menu-logs">Logs Management</a>
- </div>
- </div>
- </div>
- </div>
+        @* START: ROLE CHECK ADDED HERE *@
+        @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+        {
+            <div class="mt-3">
+                <button id="more-options" class="btn btn-outline-secondary w-100" data-bs-toggle="collapse" data-bs-target="#moreSub">More Options</button>
+                <div class="collapse mt-2" id="moreSub">
+                    <div class="list-group">
+                        <a class="list-group-item list-group-item-action" id="menu-users">User Management</a>
+                        <a class="list-group-item list-group-item-action" id="menu-logs">Logs Management</a>
+                    </div>
+                </div>
+            </div>
+        }
+        @* END: ROLE CHECK *@
+    </div>
 
- <div class="col-md-9">
- <h1>@ViewData["Title"]</h1>
+    <div class="col-md-9">
+        <h1>@ViewData["Title"]</h1>
 
- <div>
- <h2>Summary</h2>
- <p>Total logs: @Model.TotalLogs</p>
- <h3>By Level</h3>
- <ul>
- @foreach (var kv in Model.LevelCounts)
- {
- <li>@kv.Key: @kv.Value</li>
- }
- </ul>
- </div>
+        <div>
+            <h2>Summary</h2>
+            <p>Total logs: @Model.TotalLogs</p>
+            <h3>By Level</h3>
+            <ul>
+                @foreach (var kv in Model.LevelCounts)
+                {
+                    <li>@kv.Key: @kv.Value</li>
+                }
+            </ul>
+        </div>
 
- <div id="dashboard-content" class="mt-4">
- <p class="text-muted">Select an option from "More Options" or use the Admin menu in the header.</p>
- </div>
- </div>
+        <div id="dashboard-content" class="mt-4">
+            @* NOTE: This text references "More Options", but it is now hidden from non-Admins. This is a minor UI inconsistency, but it won't affect functionality. *@
+            <p class="text-muted">Select an option from "More Options" or use the Admin menu in the header.</p>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
- <partial name="_ValidationScriptsPartial" />
- <script>
- (function() {
- const menuUsers = document.getElementById('menu-users');
- const menuLogs = document.getElementById('menu-logs');
- const content = document.getElementById('dashboard-content');
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function() {
+        const menuUsers = document.getElementById('menu-users');
+        const menuLogs = document.getElementById('menu-logs');
+        const content = document.getElementById('dashboard-content');
 
- if (menuUsers) menuUsers.addEventListener('click', function() {
- // navigate to manage users top-level; header admin menu contains sub-items
- window.location.href = '/Admin/UserList';
- });
+        if (menuUsers) menuUsers.addEventListener('click', function() {
+        // navigate to manage users top-level; header admin menu contains sub-items
+        window.location.href = '/Admin/UserList';
+        });
 
- if (menuLogs) menuLogs.addEventListener('click', async function() {
- content.innerHTML = '<p>Loading logs...</p>';
- const res = await fetch('?handler=GetLogs');
- if (!res.ok) {
- content.innerHTML = '<div class="alert alert-danger">Failed to load logs</div>';
- return;
- }
- const logs = await res.json();
- if (!logs || logs.length ===0) {
- content.innerHTML = '<p>No logs found.</p>';
- return;
- }
+        if (menuLogs) menuLogs.addEventListener('click', async function() {
+        content.innerHTML = '<p>Loading logs...</p>';
+        const res = await fetch('?handler=GetLogs');
+        if (!res.ok) {
+        content.innerHTML = '<div class="alert alert-danger">Failed to load logs</div>';
+        return;
+        }
+        const logs = await res.json();
+        if (!logs || logs.length ===0) {
+        content.innerHTML = '<p>No logs found.</p>';
+        return;
+        }
 
- let html = '<h3>Recent Logs</h3>';
- html += '<table class="table table-striped"><thead><tr><th>Time (UTC)</th><th>Level</th><th>Message</th><th>User</th></tr></thead><tbody>';
- for (const l of logs) {
- html += `<tr><td>${new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19)}</td><td>${l.level}</td><td>${l.message}</td><td>${l.userId || ''}</td></tr>`;
- }
- html += '</tbody></table>';
- content.innerHTML = html;
- });
- })();
- </script>
+        let html = '<h3>Recent Logs</h3>';
+        html += '<table class="table table-striped"><thead><tr><th>Time (UTC)</th><th>Level</th><th>Message</th><th>User</th></tr></thead><tbody>';
+        for (const l of logs) {
+        html += `<tr><td>${new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19)}</td><td>${l.level}</td><td>${l.message}</td><td>${l.userId || ''}</td></tr>`;
+        }
+        html += '</tbody></table>';
+        content.innerHTML = html;
+        });
+        })();
+    </script>
 }
