@@ -2,85 +2,218 @@
 @model IDS.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
+    // NOTE: The main layout (header/footer) is inherited from _Layout.cshtml.
+    // This design effectively creates its own full-page layout inside the main container.
 }
 
-<div class="row">
-    <div class="col-md-3">
-        @* Admin navigation menu (partial) *@
-        @await Html.PartialAsync("_AdminMenu")
+@* The user's design requires the Font Awesome library *@
+@section HeadContent {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+}
 
-        @* START: ROLE CHECK ADDED HERE *@
+<div class="dashboard-container">
+    @* ===============================================
+       CUSTOM SIDEBAR (Replacing standard side column)
+       =============================================== *@
+    <aside class="sidebar">
+        <div class="logo-area">
+            <h2>IDS Monitor</h2>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                @* NOTE: You need to add Razor Page links (asp-page) to these if you build them *@
+                <li class="active"><a asp-page="/Dashboard"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                @* Conditional links for Admin vs. Employee *@
+                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+                {
+                    <li><a asp-page="/Admin/UserList"><i class="fas fa-user-cog"></i> Admin Users</a></li>
+                }
+                <li><a href="#"><i class="fas fa-exclamation-triangle"></i> Alerts Log</a></li>
+                <li><a href="#"><i class="fas fa-shield-alt"></i> Configuration</a></li>
+                <li><a href="#"><i class="fas fa-user-cog"></i> Profile</a></li>
+            </ul>
+        </nav>
+        <div class="logout-section">
+            @* The Logout form uses the standard _LoginPartial handler *@
+            <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post">
+                <button type="submit" id="logout-link" class="btn btn-link"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </form>
+        </div>
+    </aside>
+
+    @* ===============================================
+       MAIN CONTENT
+       =============================================== *@
+    <main class="main-content">
+        <header class="dashboard-header">
+            <h1>Overview</h1>
+            <div class="user-info">
+                @* Dynamic User Name *@
+                <span id="welcome-user">Welcome, @User.Identity.Name!</span>
+                <i class="fas fa-bell"></i>
+            </div>
+        </header>
+
+        @* Analysis Control (Retained for future IDS logic) *@
+        <section class="analysis-control">
+            <h2>Real-Time Analysis Input</h2>
+            <div class="input-group">
+                <label for="csv-file-input">Select Trafic Log (CSV)</label>
+                <input type="file" id="csv-file-input" accept=".csv">
+                <button id="start-analysis-btn" disabled>Start Analysis</button>
+            </div>
+            <p id="analysis-status-message"></p>
+        </section>
+
+        @* METRICS GRID: Visible only to Admin users based on prior request *@
         @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
         {
-            <div class="mt-3">
-                <button id="more-options" class="btn btn-outline-secondary w-100" data-bs-toggle="collapse" data-bs-target="#moreSub">More Options</button>
-                <div class="collapse mt-2" id="moreSub">
-                    <div class="list-group">
-                        <a class="list-group-item list-group-item-action" id="menu-users">User Management</a>
-                        <a class="list-group-item list-group-item-action" id="menu-logs">Logs Management</a>
-                    </div>
+            <section class="metrics-grid">
+                <div class="metric-card primary">
+                    <i class="fas fa-bug icon"></i>
+                    <p class="label">Total Logs Recorded</p>
+                    @* Dynamic Total Logs *@
+                    <p class="value" id="total-attacks">@Model.TotalLogs</p>
+                </div>
+                <div class="metric-card danger">
+                    <i class="fas fa-fire icon"></i>
+                    <p class="label">Critical Logs</p>
+                    @* Dynamic Highest Severity (Use LevelCounts for a rough count for now) *@
+                    <p class="value" id="highest-severity">@(Model.LevelCounts.TryGetValue("Error", out int criticalCount) ? criticalCount.ToString() : (Model.LevelCounts.TryGetValue("Warning", out int warningCount) ? warningCount.ToString() : "0"))</p>
+                </div>
+                <div class="metric-card info">
+                    <i class="fas fa-network-wired icon"></i>
+                    <p class="label">Information Logs</p>
+                    @* Dynamic Total Traffic (Proxy with Info Count) *@
+                    <p class="value" id="traffic-volume">@(Model.LevelCounts.TryGetValue("Information", out int infoCount) ? infoCount.ToString() : "0")</p>
+                </div>
+                <div class="metric-card success">
+                    <i class="fas fa-check-circle icon"></i>
+                    <p class="label">IDS Status</p>
+                    <p class="value" id="system-status">Operational</p>
+                </div>
+            </section>
+        }
+        else
+        {
+            <p class="text-muted">Welcome to the IDS Dashboard. System metrics are available to Administrators.</p>
+        }
+
+
+        @* VISUALIZATION AND LOGS: Use existing AJAX logic *@
+        @* The chart area requires more dynamic data than currently available, but the structure is set up. *@
+        <section class="visualization-area">
+            <div class="chart-panel chart-full">
+                <h2>Attack Types Breakdown</h2>
+                <div class="chart-container" style="position: relative; height:40vh; width:100%">
+                    <canvas id="attackTypeChart"></canvas>
                 </div>
             </div>
-        }
-        @* END: ROLE CHECK *@
-    </div>
+            <div class="chart-panel recent-alerts">
+                <h2>Recent System Logs</h2>
+                @* Log table reuses the existing logic via the Logs Management click event *@
+                <table id="alerts-table">
+                    <thead>
+                        <tr>
+                            <th>Time (UTC)</th>
+                            <th>Level</th>
+                            <th>Message</th>
+                            <th>User ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alerts-table-body">
+                        @* This is the default display. Content is populated by JavaScript after clicking the log link. *@
+                        <tr><td colspan="4" class="no-data">Click the Logs link to load recent system entries...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-    <div class="col-md-9">
-        <h1>@ViewData["Title"]</h1>
+        @* The dashboard-content div is no longer needed but we keep the ID for the JS *@
+        <div id="dashboard-content" style="display:none;"></div>
 
-        <div>
-            <h2>Summary</h2>
-            <p>Total logs: @Model.TotalLogs</p>
-            <h3>By Level</h3>
-            <ul>
-                @foreach (var kv in Model.LevelCounts)
-                {
-                    <li>@kv.Key: @kv.Value</li>
-                }
-            </ul>
-        </div>
-
-        <div id="dashboard-content" class="mt-4">
-            @* NOTE: This text references "More Options", but it is now hidden from non-Admins. This is a minor UI inconsistency, but it won't affect functionality. *@
-            <p class="text-muted">Select an option from "More Options" or use the Admin menu in the header.</p>
-        </div>
-    </div>
+    </main>
 </div>
+
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script>
         (function() {
-        const menuUsers = document.getElementById('menu-users');
-        const menuLogs = document.getElementById('menu-logs');
-        const content = document.getElementById('dashboard-content');
+            // Since we removed the "More Options" button, we need to map the JS logic to the new sidebar links
+            // If the sidebar links are created, we can map to them. For now, the existing JS listeners are kept
+            // but will likely need adjustment if the final sidebar links don't have these IDs.
+            const menuUsers = document.getElementById('menu-users');
+            const menuLogs = document.getElementById('menu-logs');
+            const content = document.getElementById('dashboard-content'); // hidden div for script output
 
-        if (menuUsers) menuUsers.addEventListener('click', function() {
-        // navigate to manage users top-level; header admin menu contains sub-items
-        window.location.href = '/Admin/UserList';
-        });
+            // The JavaScript logic for showing logs has been retained
+            const logsLink = document.querySelector('a[href="#"][class*="fa-exclamation-triangle"]');
+            if (logsLink) logsLink.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const tableBody = document.getElementById('alerts-table-body');
+                tableBody.innerHTML = '<tr><td colspan="4" class="no-data">Loading logs...</td></tr>';
 
-        if (menuLogs) menuLogs.addEventListener('click', async function() {
-        content.innerHTML = '<p>Loading logs...</p>';
-        const res = await fetch('?handler=GetLogs');
-        if (!res.ok) {
-        content.innerHTML = '<div class="alert alert-danger">Failed to load logs</div>';
-        return;
-        }
-        const logs = await res.json();
-        if (!logs || logs.length ===0) {
-        content.innerHTML = '<p>No logs found.</p>';
-        return;
-        }
+                const res = await fetch('?handler=GetLogs');
+                if (!res.ok) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data text-danger">Failed to load logs</td></tr>';
+                    return;
+                }
+                const logs = await res.json();
+                if (!logs || logs.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data">No logs found.</td></tr>';
+                    return;
+                }
 
-        let html = '<h3>Recent Logs</h3>';
-        html += '<table class="table table-striped"><thead><tr><th>Time (UTC)</th><th>Level</th><th>Message</th><th>User</th></tr></thead><tbody>';
-        for (const l of logs) {
-        html += `<tr><td>${new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19)}</td><td>${l.level}</td><td>${l.message}</td><td>${l.userId || ''}</td></tr>`;
-        }
-        html += '</tbody></table>';
-        content.innerHTML = html;
-        });
+                let html = '';
+                for (const l of logs) {
+                    // Apply color class based on log level for visual severity
+                    let levelClass = '';
+                    if (l.level === 'Error') levelClass = 'severity-critical';
+                    else if (l.level === 'Warning') levelClass = 'severity-medium';
+
+                    html += `<tr>
+                                <td>${new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19)}</td>
+                                <td class="${levelClass}">${l.level}</td>
+                                <td>${l.message}</td>
+                                <td>${l.userId || ''}</td>
+                            </tr>`;
+                }
+                tableBody.innerHTML = html;
+            });
+
+            // Basic Chart.js initialization (Requires data to work)
+            const ctx = document.getElementById('attackTypeChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Brute Force', 'SQL Injection', 'DDoS', 'XSS'],
+                        datasets: [{
+                            label: 'Attacks',
+                            data: [12, 3, 5, 2], // Static demo data - REPLACE WITH C# DATA
+                            backgroundColor: [
+                                '#e74c3c', // danger
+                                '#f39c12', // info
+                                '#3498db', // primary
+                                '#2ecc71'  // success
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
         })();
     </script>
 }
