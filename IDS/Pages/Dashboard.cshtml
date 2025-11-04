@@ -2,131 +2,98 @@
 @model IDS.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
-    ViewData["FullWidthLayout"] = true; @* <-- Signals _Layout.cshtml to remove padding/container *@
+    ViewData["FullWidthLayout"] = true; @* Keeps the page edge-to-edge *@
 }
 
 @section HeadContent {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 }
 
-<div class="dashboard-container">
-    @* ===============================================
-       CUSTOM SIDEBAR
-       =============================================== *@
-    <aside class="sidebar">
-        <div class="logo-area">
-            <h2>IDS Monitor</h2>
+@* The dashboard-container and sidebar are removed. Main content takes full width. *@
+<main class="dashboard-main-content">
+
+    <header class="dashboard-header">
+        <h1>Overview</h1>
+        <div class="user-info">
+            @* Dynamic User Name *@
+            <span id="welcome-user">Welcome, @User.Identity.Name!</span>
+            <i class="fas fa-bell"></i>
         </div>
-        <nav class="main-nav">
-            <ul>
-                @* NOTE: You need to add Razor Page links (asp-page) to these if you build them *@
-                <li class="active"><a asp-page="/Dashboard"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                @* Conditional links for Admin vs. Employee *@
-                @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
-                {
-                    <li><a asp-page="/Admin/UserList"><i class="fas fa-user-cog"></i> Admin Users</a></li>
-                }
-                <li><a href="#"><i class="fas fa-exclamation-triangle"></i> Alerts Log</a></li>
-                <li><a href="#"><i class="fas fa-shield-alt"></i> Configuration</a></li>
-                <li><a href="#"><i class="fas fa-user-cog"></i> Profile</a></li>
-            </ul>
-        </nav>
-        @* The duplicate logout section has been removed here *@
-    </aside>
+    </header>
 
-    @* ===============================================
-       MAIN CONTENT
-       =============================================== *@
-    <main class="main-content">
-        <header class="dashboard-header">
-            <h1>Overview</h1>
-            <div class="user-info">
-                @* Dynamic User Name *@
-                <span id="welcome-user">Welcome, @User.Identity.Name!</span>
-                <i class="fas fa-bell"></i>
+    @* Analysis Control (Retained for future IDS logic) *@
+    <section class="analysis-control">
+        <h2>Real-Time Analysis Input</h2>
+        <div class="input-group">
+            <label for="csv-file-input">Select Trafic Log (CSV)</label>
+            <input type="file" id="csv-file-input" accept=".csv">
+            <button id="start-analysis-btn" disabled>Start Analysis</button>
+        </div>
+        <p id="analysis-status-message"></p>
+    </section>
+
+    @* METRICS GRID: Visible only to Admin users *@
+    @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+    {
+        <section class="metrics-grid">
+            <div class="metric-card primary">
+                <i class="fas fa-bug icon"></i>
+                <p class="label">Total Logs Recorded</p>
+                <p class="value" id="total-attacks">@Model.TotalLogs</p>
             </div>
-        </header>
-
-        @* Analysis Control (Retained for future IDS logic) *@
-        <section class="analysis-control">
-            <h2>Real-Time Analysis Input</h2>
-            <div class="input-group">
-                <label for="csv-file-input">Select Trafic Log (CSV)</label>
-                <input type="file" id="csv-file-input" accept=".csv">
-                <button id="start-analysis-btn" disabled>Start Analysis</button>
+            <div class="metric-card danger">
+                <i class="fas fa-fire icon"></i>
+                <p class="label">Critical Logs</p>
+                <p class="value" id="highest-severity">@(Model.LevelCounts.TryGetValue("Error", out int criticalCount) ? criticalCount.ToString() : (Model.LevelCounts.TryGetValue("Warning", out int warningCount) ? warningCount.ToString() : "0"))</p>
             </div>
-            <p id="analysis-status-message"></p>
-        </section>
-
-        @* METRICS GRID: Visible only to Admin users based on prior request *@
-        @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
-        {
-            <section class="metrics-grid">
-                <div class="metric-card primary">
-                    <i class="fas fa-bug icon"></i>
-                    <p class="label">Total Logs Recorded</p>
-                    @* Dynamic Total Logs *@
-                    <p class="value" id="total-attacks">@Model.TotalLogs</p>
-                </div>
-                <div class="metric-card danger">
-                    <i class="fas fa-fire icon"></i>
-                    <p class="label">Critical Logs</p>
-                    @* Dynamic Highest Severity (Use LevelCounts for a rough count for now) *@
-                    <p class="value" id="highest-severity">@(Model.LevelCounts.TryGetValue("Error", out int criticalCount) ? criticalCount.ToString() : (Model.LevelCounts.TryGetValue("Warning", out int warningCount) ? warningCount.ToString() : "0"))</p>
-                </div>
-                <div class="metric-card info">
-                    <i class="fas fa-network-wired icon"></i>
-                    <p class="label">Information Logs</p>
-                    @* Dynamic Total Traffic (Proxy with Info Count) *@
-                    <p class="value" id="traffic-volume">@(Model.LevelCounts.TryGetValue("Information", out int infoCount) ? infoCount.ToString() : "0")</p>
-                </div>
-                <div class="metric-card success">
-                    <i class="fas fa-check-circle icon"></i>
-                    <p class="label">IDS Status</p>
-                    <p class="value" id="system-status">Operational</p>
-                </div>
-            </section>
-        }
-        else
-        {
-            <p class="text-muted">Welcome to the IDS Dashboard. System metrics are available to Administrators.</p>
-        }
-
-
-        @* VISUALIZATION AND LOGS: Use existing AJAX logic *@
-        @* The chart area requires more dynamic data than currently available, but the structure is set up. *@
-        <section class="visualization-area">
-            <div class="chart-panel chart-full">
-                <h2>Attack Types Breakdown</h2>
-                <div class="chart-container" style="position: relative; height:40vh; width:100%">
-                    <canvas id="attackTypeChart"></canvas>
-                </div>
+            <div class="metric-card info">
+                <i class="fas fa-network-wired icon"></i>
+                <p class="label">Information Logs</p>
+                <p class="value" id="traffic-volume">@(Model.LevelCounts.TryGetValue("Information", out int infoCount) ? infoCount.ToString() : "0")</p>
             </div>
-            <div class="chart-panel recent-alerts">
-                <h2>Recent System Logs</h2>
-                @* Log table reuses the existing logic via the Logs Management click event *@
-                <table id="alerts-table">
-                    <thead>
-                        <tr>
-                            <th>Time (UTC)</th>
-                            <th>Level</th>
-                            <th>Message</th>
-                            <th>User ID</th>
-                        </tr>
-                    </thead>
-                    <tbody id="alerts-table-body">
-                        @* This is the default display. Content is populated by JavaScript after clicking the log link. *@
-                        <tr><td colspan="4" class="no-data">Click the Alerts Log link to load recent system entries...</td></tr>
-                    </tbody>
-                </table>
+            <div class="metric-card danger">
+                @* Changed from 'success' to 'danger' to match the warning color theme *@
+                <i class="fas fa-exclamation-triangle icon"></i> @* Changed icon from check-circle to exclamation-triangle *@
+                <p class="label">IDS Status</p>
+                <p class="value" id="system-status">Non-Operational</p> @* Changed text to Non-Operational *@
             </div>
         </section>
+    }
+    else
+    {
+        <p class="text-muted">Welcome to the IDS Dashboard. System metrics are available to Administrators.</p>
+    }
 
-        @* The dashboard-content div is no longer needed but we keep the ID for the JS *@
-        <div id="dashboard-content" style="display:none;"></div>
 
-    </main>
-</div>
+    @* VISUALIZATION AND LOGS: Use existing AJAX logic *@
+    <section class="visualization-area">
+        <div class="chart-panel chart-full">
+            <h2>Attack Types Breakdown</h2>
+            <div class="chart-container" style="position: relative; height:40vh; width:100%">
+                <canvas id="attackTypeChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-panel recent-alerts">
+            <h2>Recent System Logs</h2>
+            <table id="alerts-table">
+                <thead>
+                    <tr>
+                        <th>Time (UTC)</th>
+                        <th>Level</th>
+                        <th>Message</th>
+                        <th>User ID</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-table-body">
+                    <tr><td colspan="4" class="no-data">System logs load when the corresponding header link is clicked.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div id="dashboard-content" style="display:none;"></div>
+
+</main>
 
 
 @section Scripts {
@@ -134,9 +101,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script>
         (function() {
-            const logsLink = document.querySelector('a[href="#"][class*="fa-exclamation-triangle"]');
-            if (logsLink) logsLink.addEventListener('click', async function(e) {
-                e.preventDefault();
+            // NOTE: The previous script relied on a sidebar link with a specific icon.
+            // You will need to map this function to the new 'Alerts Log' link you add in your header (_Layout.cshtml).
+            const logLoader = async function() {
                 const tableBody = document.getElementById('alerts-table-body');
                 tableBody.innerHTML = '<tr><td colspan="4" class="no-data">Loading logs...</td></tr>';
 
@@ -165,8 +132,16 @@
                             </tr>`;
                 }
                 tableBody.innerHTML = html;
-            });
+            };
 
+            // You can manually call the logLoader function here for initial data load, or map it to a button.
+            // Example: To load logs instantly for Admins:
+            // if ('@User.IsInRole("Admin")' === 'True') {
+            //     logLoader();
+            // }
+
+
+            // Basic Chart.js initialization (Still using placeholder data)
             const ctx = document.getElementById('attackTypeChart');
             if (ctx) {
                 new Chart(ctx, {
@@ -175,7 +150,7 @@
                         labels: ['Brute Force', 'SQL Injection', 'DDoS', 'XSS'],
                         datasets: [{
                             label: 'Attacks',
-                            data: [12, 3, 5, 2], // Static demo data - REPLACE WITH C# DATA
+                            data: [12, 3, 5, 2],
                             backgroundColor: [
                                 '#e74c3c',
                                 '#f39c12',
@@ -196,7 +171,6 @@
                     }
                 });
             }
-
         })();
     </script>
 }

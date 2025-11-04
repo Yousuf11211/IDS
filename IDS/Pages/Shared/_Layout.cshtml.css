@@ -1,48 +1,58 @@
-﻿/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
+﻿/* Pages/Shared/_Layout.cshtml.css (UPDATED FOR MATCHING DARK THEME) */
 
-a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
-}
-
+/* Update links to use the bright accent color */
 a {
-  color: #0077cc;
+    color: #3498db; /* Dashboard Accent Color */
 }
+
+    a.navbar-brand {
+        /* Use accent color for the brand name */
+        color: #3498db !important;
+        white-space: normal;
+        text-align: center;
+        word-break: break-all;
+    }
 
 .btn-primary {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+    /* Retain for general button consistency */
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
 }
 
 .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+    color: #fff;
+    background-color: #1b6ec2;
+    border-color: #1861ac;
 }
 
+/* Update borders to match the dark theme separator color */
 .border-top {
-  border-top: 1px solid #e5e5e5;
-}
-.border-bottom {
-  border-bottom: 1px solid #e5e5e5;
+    border-top: 1px solid #34495e; /* Dashboard Separator Color */
 }
 
+.border-bottom {
+    border-bottom: 1px solid #34495e; /* Dashboard Separator Color */
+}
+
+/* Use a darker shadow for better visibility on a dark background */
 .box-shadow {
-  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .3); /* Darker shadow */
 }
 
 button.accept-policy {
-  font-size: 1rem;
-  line-height: inherit;
+    font-size: 1rem;
+    line-height: inherit;
 }
 
+/* Style the Footer for matching but distinct theme */
 .footer {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  white-space: nowrap;
-  line-height: 60px;
+    /* Use the Dashboard Card/Panel color for contrast against the main Dashboard background */
+    background-color: #2c3e50; /* Dashboard Card/Panel Background */
+    color: #ecf0f1; /* Light text */
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    line-height: 60px;
 }
