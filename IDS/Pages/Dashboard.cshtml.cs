@@ -20,10 +20,10 @@ namespace IDS.Pages
     public class DashboardModel : PageModel
     {
         private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
 
-        public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        public DashboardModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _db = db;
             _userManager = userManager;
@@ -58,6 +58,8 @@ namespace IDS.Pages
             public string Password { get; set; } = string.Empty;
 
             public string Role { get; set; } = string.Empty;
+            public string FirstName { get; set; } = string.Empty;
+            public string LastName { get; set; } = string.Empty;
         }
 
         public async Task<IActionResult> OnPostUploadAndAnalyzeAsync()
@@ -90,7 +92,13 @@ namespace IDS.Pages
         {
             if (!User.IsInRole(AppRoles.Admin)) return Forbid();
             if (!ModelState.IsValid) { await OnGetAsync(); return Page(); }
-            var user = new IdentityUser { UserName = CreateInput.Email, Email = CreateInput.Email, EmailConfirmed = true };
+            var user = new ApplicationUser {
+                UserName = CreateInput.Email,
+                Email = CreateInput.Email,
+                EmailConfirmed = true,
+                FirstName = CreateInput.FirstName,
+                LastName = CreateInput.LastName
+            };
             var result = await _userManager.CreateAsync(user, CreateInput.Password);
             if (!result.Succeeded)
             {

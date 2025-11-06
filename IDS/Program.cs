@@ -2,7 +2,9 @@ using IDS.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
-using IDS.Security; // added
+using IDS.Security;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using IDS.Data.Models; // <-- Add this for ApplicationUser
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,15 +15,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Register Identity with role support so RoleManager<IdentityRole> is available
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = true)
  .AddEntityFrameworkStores<ApplicationDbContext>()
  .AddDefaultTokenProviders();
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages();                   
 
 // Register access control service
 builder.Services.AddScoped<AccessControlService>();
-
+builder.Services.AddTransient<IEmailSender, SendGridEmailSender>();
+builder.Services.AddRazorPages();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -34,7 +37,7 @@ using (var scope = app.Services.CreateScope())
 async Task SeedRolesAndAdminAsync(IServiceProvider services)
 {
  var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
- var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+ var userManager = services.GetRequiredService<UserManager<ApplicationUser>>(); // <-- Use ApplicationUser
  var config = services.GetRequiredService<IConfiguration>();
  var dbContext = services.GetRequiredService<IDS.Data.ApplicationDbContext>();
 
@@ -55,7 +58,7 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
  var adminUser = await userManager.FindByEmailAsync(adminEmail);
  if (adminUser == null)
  {
- adminUser = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+ adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
  var createResult = await userManager.CreateAsync(adminUser, adminPassword);
  if (createResult.Succeeded)
  {

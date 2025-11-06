@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using IDS.Data.Models;
 
 namespace IDS.Security
 {
@@ -35,7 +36,7 @@ namespace IDS.Security
  }
 
  // Enforce exactly one role from AppRoles at any given time
- public async Task SetExclusiveRoleAsync(UserManager<IdentityUser> userManager, IdentityUser user, string role)
+ public async Task SetExclusiveRoleAsync(UserManager<ApplicationUser> userManager, ApplicationUser user, string role)
  {
  if (user == null) throw new ArgumentNullException(nameof(user));
  if (string.IsNullOrWhiteSpace(role)) throw new ArgumentNullException(nameof(role));
@@ -56,7 +57,7 @@ namespace IDS.Security
  }
  }
 
- public async Task<bool> IsSuspendedAsync(UserManager<IdentityUser> userManager, IdentityUser user)
+ public async Task<bool> IsSuspendedAsync(UserManager<ApplicationUser> userManager, ApplicationUser user)
  {
  if (user == null) return false;
  return await userManager.IsInRoleAsync(user, AppRoles.Suspended);

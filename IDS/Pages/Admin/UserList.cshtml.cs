@@ -7,16 +7,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using IDS.Security;
+using IDS.Data.Models;
 
 namespace IDS.Pages.Admin
 {
     [Authorize(Roles = AppRoles.Admin)]
     public class UserListModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly AccessControlService _accessControl;
 
-        public UserListModel(UserManager<IdentityUser> userManager, AccessControlService accessControl)
+        public UserListModel(UserManager<ApplicationUser> userManager, AccessControlService accessControl)
         {
             _userManager = userManager;
             _accessControl = accessControl;
@@ -27,6 +28,8 @@ namespace IDS.Pages.Admin
             public string Id { get; set; } = string.Empty;
             public string Email { get; set; } = string.Empty;
             public string CurrentRole { get; set; } = string.Empty;
+            public string FirstName { get; set; } = string.Empty;
+            public string LastName { get; set; } = string.Empty;
         }
 
         public List<UserEntry> Users { get; set; } = new();
@@ -43,7 +46,7 @@ namespace IDS.Pages.Admin
                 var current = roles.FirstOrDefault(r => AppRoles.IsManagedRole(r)) ?? string.Empty;
                 if (string.IsNullOrEmpty(role) || string.Equals(role, current, System.StringComparison.OrdinalIgnoreCase))
                 {
-                    Users.Add(new UserEntry { Id = u.Id, Email = u.Email ?? u.UserName ?? string.Empty, CurrentRole = current });
+                    Users.Add(new UserEntry { Id = u.Id, Email = u.Email ?? u.UserName ?? string.Empty, CurrentRole = current, FirstName = u.FirstName, LastName = u.LastName });
                 }
             }
         }
@@ -64,6 +67,24 @@ namespace IDS.Pages.Admin
             await _accessControl.SetExclusiveRoleAsync(_userManager, user, role);
             StatusMessage = $"Updated role for {user.Email} to '{role}'.";
             return RedirectToPage(new { role = string.Empty });
+        }
+
+        public async Task<IActionResult> OnPostDeleteUserAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                StatusMessage = "Invalid user id.";
+                return RedirectToPage();
+            }
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                StatusMessage = "User not found.";
+                return RedirectToPage();
+            }
+            var result = await _userManager.DeleteAsync(user);
+            StatusMessage = result.Succeeded ? $"Deleted user {user.Email}." : string.Join("; ", result.Errors.Select(e => e.Description));
+            return RedirectToPage();
         }
     }
 }

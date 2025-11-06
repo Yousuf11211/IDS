@@ -5,7 +5,7 @@
 }
 
 @section HeadContent{
- <link rel="stylesheet" href="~/wwwroot/css/admin-users.css" asp-append-version="true" />
+ <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" />
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -39,6 +39,7 @@
  <th>User</th>
  <th>Role</th>
  <th style="width:340px;">Change role</th>
+ <th style="width:140px;">Actions</th>
  </tr>
  </thead>
  <tbody>
@@ -64,6 +65,12 @@
  }
  </select>
  <button class="btn btn-primary" type="submit">Update</button>
+ </form>
+ </td>
+ <td>
+ <form method="post" asp-page-handler="DeleteUser" onsubmit="return confirm('Delete this user? This cannot be undone.');">
+ <input type="hidden" name="userId" value="@u.Id" />
+ <button class="btn btn-sm btn-danger" type="submit">Delete</button>
  </form>
  </td>
  </tr>

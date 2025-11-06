@@ -8,17 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="MLModels\**" />
+    <Content Remove="MLModels\**" />
+    <EmbeddedResource Remove="MLModels\**" />
+    <None Remove="MLModels\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.21" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.21" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.21" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.7" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="MLModels\" />
+    <PackageReference Include="SendGrid" Version="9.29.3" />
   </ItemGroup>
 
 </Project>
