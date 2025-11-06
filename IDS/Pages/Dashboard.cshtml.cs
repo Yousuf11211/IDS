@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using IDS.Security;
+using System.Linq;
 
 namespace IDS.Pages
 {
@@ -68,83 +69,41 @@ namespace IDS.Pages
         public async Task OnGetAsync()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            var log = new LogFile
-            {
-                Timestamp = DateTime.UtcNow,
-                Level = "Information",
-                Message = "Dashboard page visited",
-                Exception = null,
-                UserId = userId
-            };
-
+            var log = new LogFile { Timestamp = DateTime.UtcNow, Level = "Information", Message = "Dashboard page visited", UserId = userId };
             _db.LogFiles.Add(log);
             await _db.SaveChangesAsync();
 
             TotalLogs = await _db.LogFiles.CountAsync();
-
-            var counts = await _db.LogFiles
-                .AsNoTracking()
-                .GroupBy(l => l.Level)
-                .Select(g => new { Level = g.Key, Count = g.Count() })
-                .ToListAsync();
-
+            var counts = await _db.LogFiles.AsNoTracking().GroupBy(l => l.Level).Select(g => new { Level = g.Key, Count = g.Count() }).ToListAsync();
             LevelCounts = counts.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
-
-            AvailableRoles = AppRoles.All.ToList();
         }
 
         [Authorize(Roles = AppRoles.Admin)]
         public async Task<JsonResult> OnGetGetLogsAsync()
         {
-            var logs = await _db.LogFiles
-                .AsNoTracking()
-                .OrderByDescending(l => l.Timestamp)
-                .Take(50)
-                .Select(l => new { l.Timestamp, l.Level, l.Message, l.UserId })
-                .ToListAsync();
-
+            var logs = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(50)
+                .Select(l => new { l.Timestamp, l.Level, l.Message, l.UserId }).ToListAsync();
             return new JsonResult(logs);
         }
 
         public async Task<IActionResult> OnPostCreateUserAsync()
         {
-            if (!User.IsInRole(AppRoles.Admin))
-            {
-                return Forbid();
-            }
-
-            if (!ModelState.IsValid)
-            {
-                AvailableRoles = AppRoles.All.ToList();
-                await OnGetAsync();
-                return Page();
-            }
-
+            if (!User.IsInRole(AppRoles.Admin)) return Forbid();
+            if (!ModelState.IsValid) { await OnGetAsync(); return Page(); }
             var user = new IdentityUser { UserName = CreateInput.Email, Email = CreateInput.Email, EmailConfirmed = true };
             var result = await _userManager.CreateAsync(user, CreateInput.Password);
             if (!result.Succeeded)
             {
-                foreach (var e in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, e.Description);
-                }
-                AvailableRoles = AppRoles.All.ToList();
+                foreach (var e in result.Errors) ModelState.AddModelError(string.Empty, e.Description);
                 await OnGetAsync();
                 return Page();
             }
-
             if (!string.IsNullOrWhiteSpace(CreateInput.Role))
             {
-                if (!await _roleManager.RoleExistsAsync(CreateInput.Role))
-                {
-                    await _roleManager.CreateAsync(new IdentityRole(CreateInput.Role));
-                }
+                if (!await _roleManager.RoleExistsAsync(CreateInput.Role)) await _roleManager.CreateAsync(new IdentityRole(CreateInput.Role));
                 await _userManager.AddToRoleAsync(user, CreateInput.Role);
             }
-
             CreateUserStatusMessage = $"User {CreateInput.Email} created.";
-
             return RedirectToPage();
         }
     }

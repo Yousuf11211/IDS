@@ -4,6 +4,10 @@
  ViewData["Title"] = "Manage users";
 }
 
+@section HeadContent{
+ <link rel="stylesheet" href="~/wwwroot/css/admin-users.css" asp-append-version="true" />
+}
+
 <h1>@ViewData["Title"]</h1>
 
 @if (!string.IsNullOrEmpty(Model.StatusMessage))
@@ -11,56 +15,58 @@
  <div class="alert alert-info">@Model.StatusMessage</div>
 }
 
-<table class="table table-sm">
+<section class="user-filters mb-3">
+ <form method="get" class="row g-2 align-items-end">
+ <div class="col-auto">
+ <label for="roleFilter" class="form-label mb-0">Filter by role</label>
+ <select id="roleFilter" name="role" class="form-select">
+ <option value="">All</option>
+ @foreach (var r in Model.AllRoles)
+ {
+ <option value="@r" selected="@(Request.Query["role"] == r ? "selected" : null)">@r</option>
+ }
+ </select>
+ </div>
+ <div class="col-auto">
+ <button class="btn btn-secondary" type="submit">Apply</button>
+ </div>
+ </form>
+</section>
+
+<table class="table table-striped user-table">
  <thead>
  <tr>
- <th>Email</th>
- <th>Roles</th>
- <th>Add role</th>
+ <th>User</th>
+ <th>Role</th>
+ <th style="width:340px;">Change role</th>
  </tr>
  </thead>
  <tbody>
  @foreach (var u in Model.Users)
  {
+ var roleClass = u.CurrentRole?.ToLowerInvariant() switch
+ {
+ "admin" => "role-badge role-admin",
+ "employee" => "role-badge role-employee",
+ "suspended" => "role-badge role-suspended",
+ _ => "role-badge role-unknown"
+ };
  <tr>
  <td>@u.Email</td>
-                <td>
-                    @foreach (var r in u.Roles)
-                    {
-                        <form method="post" asp-page-handler="RemoveRole" style="display:inline;">
-                            <input type="hidden" name="userId" value="@u.Id" />
-                            <input type="hidden" name="role" value="@r" />
-                            <button type="submit" class="badge bg-secondary me-1 text-decoration-none border-0" title="Click to remove role @r">
-                                @r <span aria-hidden="true">&times;</span>
-                            </button>
-                        </form>
-                    }
-                </td>
+ <td><span class="@roleClass">@(!string.IsNullOrEmpty(u.CurrentRole) ? u.CurrentRole : "None")</span></td>
  <td>
- <form method="post" asp-page-handler="AddRole">
+ <form method="post" asp-page-handler="SetRole" class="d-flex gap-2">
  <input type="hidden" name="userId" value="@u.Id" />
- <div class="input-group">
- <select name="role" class="form-select">
- <option value="">(select)</option>
+ <select name="role" class="form-select" style="max-width:220px;">
  @foreach (var r in Model.AllRoles)
  {
- <option value="@r">@r</option>
+ <option value="@r" selected="@(string.Equals(r, u.CurrentRole, System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@r</option>
  }
  </select>
- <button class="btn btn-sm btn-primary" type="submit">Add</button>
- </div>
+ <button class="btn btn-primary" type="submit">Update</button>
  </form>
  </td>
  </tr>
  }
  </tbody>
 </table>
-
-<h3>Create role</h3>
-<form method="post" asp-page-handler="CreateRole">
-    <div class="input-group mb-3">
-        <input name="role" class="form-control" placeholder="Role name" />
-        <button class="btn btn-primary" type="submit">Create</button>
-    </div>
-</form>
->
