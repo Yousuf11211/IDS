@@ -1,33 +1,35 @@
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
+using System.ComponentModel.DataAnnotations;
 using IDS.Core.Models;
 using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 
 namespace IDS.Pages
 {
-    [Authorize]                                         // Require authentication to view the dashboard
+    [Authorize] // Require authentication to view the dashboard
     public class DashboardModel : PageModel
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly DetectionService _detectionService; // <-- ADDED FIELD
+        private readonly DetectionService _detectionService;
+
         public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, DetectionService detectionService)
         {
             _db = db;
             _userManager = userManager;
             _roleManager = roleManager;
-            _detectionService = detectionService; // <-- ASSIGNED FIELD
+            _detectionService = detectionService;
         }
 
         public int TotalLogs { get; set; }
@@ -42,10 +44,10 @@ namespace IDS.Pages
         public string CreateUserStatusMessage { get; set; }
 
         [BindProperty]
-        public IFormFile TrafficCsvFile { get; set; } // <-- ADDED PROPERTY (Fixes TrafficCsvFile error)
+        public IFormFile TrafficCsvFile { get; set; }
 
         [TempData]
-        public string AnalysisStatusMessage { get; set; } // <-- ADDED PROPERTY (Fixes AnalysisStatusMessage error)
+        public string AnalysisStatusMessage { get; set; }
 
         public class AdminCreateUserInput
         {
@@ -74,8 +76,8 @@ namespace IDS.Pages
                 var parser = new CsvParser();
                 var packetDataStream = parser.ParseCsv(TrafficCsvFile.OpenReadStream());
 
-                int totalPackets = 0;
-                int attackCount = 0;
+                int totalPackets =0;
+                int attackCount =0;
 
                 // Process stream row-by-row
                 foreach (var resultPacket in _detectionService.AnalyzeDataStream(packetDataStream))
@@ -99,10 +101,8 @@ namespace IDS.Pages
 
             return RedirectToPage();
         }
-    }
-}
 
-public async Task OnGetAsync()
+        public async Task OnGetAsync()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -137,6 +137,7 @@ public async Task OnGetAsync()
         }
 
         // AJAX handler: /Dashboard?handler=GetLogs
+        [Authorize(Roles = "Admin")]
         public async Task<JsonResult> OnGetGetLogsAsync()
         {
             var logs = await _db.LogFiles
