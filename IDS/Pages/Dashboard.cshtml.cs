@@ -2,9 +2,7 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Linq;
 using System.ComponentModel.DataAnnotations;
-using IDS.Core.Models;
 using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -22,14 +20,12 @@ namespace IDS.Pages
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly DetectionService _detectionService;
 
-        public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, DetectionService detectionService)
+        public DashboardModel(ApplicationDbContext db, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             _db = db;
             _userManager = userManager;
             _roleManager = roleManager;
-            _detectionService = detectionService;
         }
 
         public int TotalLogs { get; set; }
@@ -64,41 +60,7 @@ namespace IDS.Pages
 
         public async Task<IActionResult> OnPostUploadAndAnalyzeAsync()
         {
-            if (TrafficCsvFile == null)
-            {
-                AnalysisStatusMessage = "Please select a traffic log file.";
-                return RedirectToPage();
-            }
-
-            try
-            {
-                // NOTE: You still need to create CsvParser.cs in Core/Engine/
-                var parser = new CsvParser();
-                var packetDataStream = parser.ParseCsv(TrafficCsvFile.OpenReadStream());
-
-                int totalPackets =0;
-                int attackCount =0;
-
-                // Process stream row-by-row
-                foreach (var resultPacket in _detectionService.AnalyzeDataStream(packetDataStream))
-                {
-                    totalPackets++;
-
-                    if (resultPacket.IsAnomaly)
-                    {
-                        attackCount++;
-                        // Future: Log the attack here 
-                    }
-                }
-
-                AnalysisStatusMessage = $"Analysis complete. Processed {totalPackets} packets. Detected {attackCount} anomalies.";
-            }
-            catch (Exception ex)
-            {
-                AnalysisStatusMessage = $"Analysis failed: {ex.Message}";
-                // Log the exception using your LogFile model
-            }
-
+            AnalysisStatusMessage = "Analysis feature is not available.";
             return RedirectToPage();
         }
 
@@ -118,7 +80,6 @@ namespace IDS.Pages
             _db.LogFiles.Add(log);
             await _db.SaveChangesAsync();
 
-            // Load summary only (do not load recent logs by default)
             TotalLogs = await _db.LogFiles.CountAsync();
 
             var counts = await _db.LogFiles
@@ -129,14 +90,12 @@ namespace IDS.Pages
 
             LevelCounts = counts.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
 
-            // Load available roles for admin create user form
             AvailableRoles = await _roleManager.Roles
                 .Select(r => r.Name ?? string.Empty)
                 .Where(n => n != string.Empty)
                 .ToListAsync();
         }
 
-        // AJAX handler: /Dashboard?handler=GetLogs
         [Authorize(Roles = "Admin")]
         public async Task<JsonResult> OnGetGetLogsAsync()
         {
@@ -165,7 +124,6 @@ namespace IDS.Pages
 
             if (!ModelState.IsValid)
             {
-                // reload roles for redisplay
                 AvailableRoles = await _roleManager.Roles
                     .Select(r => r.Name ?? string.Empty)
                     .Where(n => n != string.Empty)
@@ -192,7 +150,6 @@ namespace IDS.Pages
 
             if (!string.IsNullOrWhiteSpace(CreateInput.Role))
             {
-                // ensure role exists
                 if (!await _roleManager.RoleExistsAsync(CreateInput.Role))
                 {
                     await _roleManager.CreateAsync(new IdentityRole(CreateInput.Role));
