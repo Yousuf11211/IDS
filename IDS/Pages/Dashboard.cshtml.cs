@@ -11,10 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using IDS.Security;
 
 namespace IDS.Pages
 {
-    [Authorize] // Require authentication to view the dashboard
+    [Authorize]
     public class DashboardModel : PageModel
     {
         private readonly ApplicationDbContext _db;
@@ -34,7 +35,7 @@ namespace IDS.Pages
         [BindProperty]
         public AdminCreateUserInput CreateInput { get; set; } = new();
 
-        public List<string> AvailableRoles { get; set; } = new();
+        public List<string> AvailableRoles { get; set; } = AppRoles.All.ToList();
 
         [TempData]
         public string CreateUserStatusMessage { get; set; }
@@ -90,26 +91,17 @@ namespace IDS.Pages
 
             LevelCounts = counts.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
 
-            AvailableRoles = await _roleManager.Roles
-                .Select(r => r.Name ?? string.Empty)
-                .Where(n => n != string.Empty)
-                .ToListAsync();
+            AvailableRoles = AppRoles.All.ToList();
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = AppRoles.Admin)]
         public async Task<JsonResult> OnGetGetLogsAsync()
         {
             var logs = await _db.LogFiles
                 .AsNoTracking()
                 .OrderByDescending(l => l.Timestamp)
                 .Take(50)
-                .Select(l => new
-                {
-                    l.Timestamp,
-                    l.Level,
-                    l.Message,
-                    l.UserId
-                })
+                .Select(l => new { l.Timestamp, l.Level, l.Message, l.UserId })
                 .ToListAsync();
 
             return new JsonResult(logs);
@@ -117,17 +109,14 @@ namespace IDS.Pages
 
         public async Task<IActionResult> OnPostCreateUserAsync()
         {
-            if (!User.IsInRole("Admin"))
+            if (!User.IsInRole(AppRoles.Admin))
             {
                 return Forbid();
             }
 
             if (!ModelState.IsValid)
             {
-                AvailableRoles = await _roleManager.Roles
-                    .Select(r => r.Name ?? string.Empty)
-                    .Where(n => n != string.Empty)
-                    .ToListAsync();
+                AvailableRoles = AppRoles.All.ToList();
                 await OnGetAsync();
                 return Page();
             }
@@ -140,10 +129,7 @@ namespace IDS.Pages
                 {
                     ModelState.AddModelError(string.Empty, e.Description);
                 }
-                AvailableRoles = await _roleManager.Roles
-                    .Select(r => r.Name ?? string.Empty)
-                    .Where(n => n != string.Empty)
-                    .ToListAsync();
+                AvailableRoles = AppRoles.All.ToList();
                 await OnGetAsync();
                 return Page();
             }

@@ -8,6 +8,7 @@ using IDS.Data;
 using IDS.Data.Models;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using IDS.Security;
 
 namespace IDS.Pages.Admin
 {
@@ -17,18 +18,20 @@ namespace IDS.Pages.Admin
  private readonly UserManager<IdentityUser> _userManager;
  private readonly RoleManager<IdentityRole> _roleManager;
  private readonly ApplicationDbContext _db;
+ private readonly AccessControlService _accessControl;
 
- public CreateUserModel(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, ApplicationDbContext db)
+ public CreateUserModel(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, ApplicationDbContext db, AccessControlService accessControl)
  {
  _userManager = userManager;
- _roleManager = roleManager; // fix: variable name
+ _roleManager = roleManager;
  _db = db;
+ _accessControl = accessControl;
  }
 
  [BindProperty]
  public InputModel Input { get; set; }
 
- public List<string> AvailableRoles { get; set; } = new();
+ public List<string> AvailableRoles { get; set; } = AppRoles.All.ToList();
 
  public class InputModel
  {
@@ -39,7 +42,7 @@ namespace IDS.Pages.Admin
 
  public async Task OnGetAsync()
  {
- AvailableRoles = await _db.RolesList.Select(r => r.Name).ToListAsync();
+ AvailableRoles = AppRoles.All.ToList();
  }
 
  public async Task<IActionResult> OnPostAsync()
@@ -47,7 +50,7 @@ namespace IDS.Pages.Admin
  if (!ModelState.IsValid) return Page();
 
  var user = new IdentityUser { UserName = Input.Email, Email = Input.Email, EmailConfirmed = true };
- var result = await _userManager.CreateAsync(user, Input.Password); // fix: use password overload
+ var result = await _userManager.CreateAsync(user, Input.Password);
  if (!result.Succeeded)
  {
  foreach (var e in result.Errors) ModelState.AddModelError(string.Empty, e.Description);
@@ -57,34 +60,8 @@ namespace IDS.Pages.Admin
 
  if (!string.IsNullOrWhiteSpace(Input.Role))
  {
- // Ensure role exists in Identity
- if (!await _roleManager.RoleExistsAsync(Input.Role))
- {
- var roleResult = await _roleManager.CreateAsync(new IdentityRole(Input.Role));
- if (!roleResult.Succeeded)
- {
- foreach (var e in roleResult.Errors) ModelState.AddModelError(string.Empty, e.Description);
- await _userManager.DeleteAsync(user);
- await OnGetAsync();
- return Page();
- }
- }
-
- // Ensure role exists in Roles table
- if (!await _db.RolesList.AnyAsync(r => r.Name == Input.Role))
- {
- _db.RolesList.Add(new RoleEntry { Name = Input.Role });
- await _db.SaveChangesAsync();
- }
-
- var addRoleResult = await _userManager.AddToRoleAsync(user, Input.Role);
- if (!addRoleResult.Succeeded)
- {
- foreach (var e in addRoleResult.Errors) ModelState.AddModelError(string.Empty, e.Description);
- await _userManager.DeleteAsync(user);
- await OnGetAsync();
- return Page();
- }
+ await _accessControl.EnsureRoleExistsAsync(Input.Role);
+ await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
  }
 
  return RedirectToPage("/Admin/UserList");
