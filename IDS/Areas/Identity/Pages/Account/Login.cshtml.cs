@@ -113,40 +113,47 @@ namespace IDS.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                var user = await _userManager.FindByEmailAsync(Input.Email);
+                // Support login with either username or email
+                ApplicationUser user = await _userManager.FindByNameAsync(Input.Email);
+                if (user == null)
+                {
+                    user = await _userManager.FindByEmailAsync(Input.Email);
+                }
+
                 if (user != null)
                 {
-                    // Block suspended users with a clear error
+                    // Block suspended users
                     if (await _userManager.IsInRoleAsync(user, AppRoles.Suspended))
                     {
                         ModelState.AddModelError(string.Empty, "Your account is currently suspended. Contact admin for further assistance.");
-                        _logger.LogWarning("Suspended user {Email} attempted to log in.", Input.Email);
+                        _logger.LogWarning("Suspended user {EmailOrUser} attempted to log in.", Input.Email);
                         return Page();
                     }
-                }
 
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-                if (result.Succeeded)
-                {
-                    _logger.LogInformation("User logged in.");
-                    return LocalRedirect(returnUrl);
-                }
-                if (result.RequiresTwoFactor)
-                {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                }
-                if (result.IsLockedOut)
-                {
-                    _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
-                }
-                else
-                {
+                    // Use the actual username for sign-in (not the email text box value)
+                    var result = await _signInManager.PasswordSignInAsync(user.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                    if (result.Succeeded)
+                    {
+                        _logger.LogInformation("User logged in.");
+                        return LocalRedirect(returnUrl);
+                    }
+                    if (result.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    }
+                    if (result.IsLockedOut)
+                    {
+                        _logger.LogWarning("User account locked out.");
+                        return RedirectToPage("./Lockout");
+                    }
+
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                     return Page();
                 }
+
+                // No user found for provided identifier
+                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                return Page();
             }
 
             // If we got this far, something failed, redisplay form
