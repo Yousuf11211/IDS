@@ -58,7 +58,7 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
  var adminUser = await userManager.FindByEmailAsync(adminEmail);
  if (adminUser == null)
  {
- adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+ adminUser = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true, MustChangePassword = false };
  var createResult = await userManager.CreateAsync(adminUser, adminPassword);
  if (createResult.Succeeded)
  {
@@ -112,6 +112,26 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Enforce first-time setup redirect
+app.Use(async (context, next) =>
+{
+ if (context.User?.Identity?.IsAuthenticated == true)
+ {
+ var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+ var user = await userManager.GetUserAsync(context.User);
+ if (user != null && user.MustChangePassword)
+ {
+ var path = context.Request.Path.Value ?? string.Empty;
+ if (!path.Contains("/Identity/Account/FirstTimeSetup", StringComparison.OrdinalIgnoreCase) && !path.Contains("/Account/Logout", StringComparison.OrdinalIgnoreCase))
+ {
+ context.Response.Redirect("/Identity/Account/FirstTimeSetup");
+ return;
+ }
+ }
+ }
+ await next();
+});
 
 app.MapRazorPages();
 

@@ -1,0 +1,39 @@
+@page
+@model IDS.Areas.Identity.Pages.Account.FirstTimeSetupModel
+@{
+ ViewData["Title"] = "Account Setup";
+}
+<h1>Complete Your Account Setup</h1>
+<p>Please set a username and new password. First and last name are optional.</p>
+<form method="post">
+ <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+ <div class="mb-3">
+ <label asp-for="Input.UserName" class="form-label"></label>
+ <input asp-for="Input.UserName" class="form-control" />
+ <span asp-validation-for="Input.UserName" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label asp-for="Input.FirstName" class="form-label"></label>
+ <input asp-for="Input.FirstName" class="form-control" />
+ <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label asp-for="Input.LastName" class="form-label"></label>
+ <input asp-for="Input.LastName" class="form-control" />
+ <span asp-validation-for="Input.LastName" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label asp-for="Input.NewPassword" class="form-label"></label>
+ <input asp-for="Input.NewPassword" class="form-control" />
+ <span asp-validation-for="Input.NewPassword" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label asp-for="Input.ConfirmNewPassword" class="form-label"></label>
+ <input asp-for="Input.ConfirmNewPassword" class="form-control" />
+ <span asp-validation-for="Input.ConfirmNewPassword" class="text-danger"></span>
+ </div>
+ <button type="submit" class="btn btn-primary">Save and Continue</button>
+</form>
+@section Scripts {
+ <partial name="_ValidationScriptsPartial" />
+}

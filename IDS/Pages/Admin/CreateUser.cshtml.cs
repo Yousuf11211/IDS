@@ -64,7 +64,8 @@ namespace IDS.Pages.Admin
  Email = Input.Email,
  EmailConfirmed = true,
  FirstName = Input.FirstName,
- LastName = Input.LastName
+ LastName = Input.LastName,
+ MustChangePassword = true
  };
  var result = await _userManager.CreateAsync(user, Input.Password);
  if (!result.Succeeded)
