@@ -58,3 +58,12 @@ body{background:var(--surface);color:var(--text)}
 .sub-tab-btn:hover{transform:translateY(-1px)}
 .sub-tab-btn.active{background:linear-gradient(135deg, var(--brand), #8b5cf6);color:#fff}
 .logs-table-wrapper{max-height:60vh;overflow:auto}
+/* --- Dark mode log table contrast adjustments --- */
+:root.theme-dark .logs-table-wrapper table { background: #151e30; color: var(--text); }
+:root.theme-dark .logs-table-wrapper thead tr { background:#1d293d; }
+:root.theme-dark .logs-table-wrapper tbody tr { background:#162235; transition:background .15s ease; }
+:root.theme-dark .logs-table-wrapper tbody tr:hover { background:#1f314a; }
+:root.theme-dark .logs-table-wrapper tbody tr.table-danger { background:#442329 !important; color:#fca5a5; }
+:root.theme-dark .logs-table-wrapper tbody tr.table-warning { background:#433717 !important; color:#fcd34d; }
+:root.theme-dark .logs-table-wrapper tbody tr td { border-color:#243650; }
+:root.theme-dark .logs-table-wrapper thead th { border-color:#2a3e59; }
