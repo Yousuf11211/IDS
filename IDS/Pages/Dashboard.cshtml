@@ -29,33 +29,32 @@
 
  <section id="tab-overview" class="tab-section active" aria-label="Overview metrics">
  <div class="metrics-grid" aria-label="System metrics">
+ @if (User.IsInRole("Admin")) {
  <div class="metric-card pulse" data-count-target="@Model.TotalLogs">
  <div class="metric-icon bg-gradient-blue"><i class="fa-solid fa-database"></i></div>
- <div class="metric-content">
- <div class="metric-label">Total Logs</div>
- <div class="metric-value count-up" id="metricTotal">0</div>
+ <div class="metric-content"><div class="metric-label">Total Activity Logs</div><div class="metric-value count-up" id="metricActivity">0</div></div>
  </div>
+ <div class="metric-card" data-count-target="@Model.NetworkTotal">
+ <div class="metric-icon bg-gradient-cyan"><i class="fa-solid fa-network-wired"></i></div>
+ <div class="metric-content"><div class="metric-label">Total Network Logs</div><div class="metric-value count-up" id="metricNetwork">0</div></div>
  </div>
+ } else {
+ <div class="metric-card pulse" data-count-target="@Model.TotalLogs">
+ <div class="metric-icon bg-gradient-blue"><i class="fa-solid fa-database"></i></div>
+ <div class="metric-content"><div class="metric-label">Total Logs</div><div class="metric-value count-up" id="metricTotal">0</div></div>
+ </div>
+ }
  <div class="metric-card" data-count-target="@Model.NormalCount">
  <div class="metric-icon bg-gradient-green"><i class="fa-solid fa-wave-square"></i></div>
- <div class="metric-content">
- <div class="metric-label">Normal Traffic</div>
- <div class="metric-value count-up" id="metricNormal">0</div>
- </div>
+ <div class="metric-content"><div class="metric-label">Normal Traffic</div><div class="metric-value count-up" id="metricNormal">0</div></div>
  </div>
  <div class="metric-card" data-count-target="@Model.AttackCount">
  <div class="metric-icon bg-gradient-red"><i class="fa-solid fa-skull-crossbones"></i></div>
- <div class="metric-content">
- <div class="metric-label">Attacks Detected</div>
- <div class="metric-value count-up" id="metricAttacks">0</div>
- </div>
+ <div class="metric-content"><div class="metric-label">Attacks Detected</div><div class="metric-value count-up" id="metricAttacks">0</div></div>
  </div>
  <div class="metric-card" id="idsStatusCard">
  <div class="metric-icon bg-gradient-purple"><i class="fa-solid fa-heart-pulse"></i></div>
- <div class="metric-content">
- <div class="metric-label">IDS Status</div>
- <div class="metric-value status-tag @Model.IdsStatusClass" id="idsStatus" aria-live="polite">@Model.IdsStatus</div>
- </div>
+ <div class="metric-content"><div class="metric-label">IDS Status</div><div class="metric-value status-tag @Model.IdsStatusClass" id="idsStatus" aria-live="polite">@Model.IdsStatus</div></div>
  </div>
  </div>
  </section>
@@ -92,17 +91,10 @@
  (function(){
  const root=document.documentElement;const LS='ids-theme';const toggle=document.getElementById('themeToggle');function apply(t){if(t==='dark'){root.classList.add('theme-dark');toggle.innerHTML='<i class="fa-solid fa-sun"></i>';}else{root.classList.remove('theme-dark');toggle.innerHTML='<i class="fa-solid fa-moon"></i>';}}apply(localStorage.getItem(LS)||'dark');toggle?.addEventListener('click',()=>{const n=root.classList.contains('theme-dark')?'light':'dark';localStorage.setItem(LS,n);apply(n);});
  const updateClock=()=>{const el=document.getElementById('localTime');if(el){el.textContent=new Date().toLocaleString();}};updateClock();setInterval(updateClock,60000);
- // Tabs
  document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));const target=btn.dataset.tab;document.getElementById('tab-'+target).classList.add('active');}));
- // Count up
  document.querySelectorAll('.metric-card').forEach(card=>{const target=parseInt(card.getAttribute('data-count-target'))||0;const el=card.querySelector('.count-up');if(!el)return;let current=0;const d=900;const st=performance.now();(function step(ts){const p=Math.min((ts-st)/d,1);current=Math.floor(p*target);el.textContent=current;if(p<1)requestAnimationFrame(step);})(st);});
- // Logs load (admin only)
- const masterBody=document.getElementById('logsMasterBody');
- if(masterBody){
- fetch('?handler=Logs').then(r=>r.json()).then(data=>{renderLogs(data);initDatasetTabs(data);}).catch(()=>{masterBody.innerHTML='<tr><td colspan="5" class="text-danger">Failed to load logs</td></tr>';});
- }
- function renderLogs(data){masterBody.classList.remove('skeleton-group');const rows=data.map(l=>{const ts=new Date(l.timestamp).toISOString().replace('T',' ').substring(0,19);const cls=l.classification;const levelCls=l.level==='Error'?'table-danger':(l.level==='Warning'?'table-warning':'');return `<tr class="${levelCls}"><td>${ts}</td><td>${l.level}</td><td>${cls}</td><td>${escapeHtml(l.message)}</td><td>${l.userId||''}</td></tr>`;}).join('');masterBody.innerHTML=rows||'<tr><td colspan="5" class="text-muted">No data.</td></tr>';}
- function initDatasetTabs(data){document.querySelectorAll('.sub-tab-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.sub-tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const ds=b.dataset.dataset;const filtered=data.filter(l=>{if(ds==='all')return true;if(ds==='information')return l.level==='Information';if(ds==='normal')return l.classification==='Normal';if(ds==='attack')return l.classification==='Attack';return true;});renderLogs(filtered);}));}
+ const masterBody=document.getElementById('logsMasterBody');if(masterBody){fetch('?handler=Logs').then(r=>r.json()).then(data=>{renderLogs(data);initDatasetTabs(data);}).catch(()=>{masterBody.innerHTML='<tr><td colspan="5" class="text-danger">Failed to load logs</td></tr>';});}
+ function renderLogs(data){masterBody.classList.remove('skeleton-group');const rows=data.map(l=>{const ts=new Date(l.timestamp).toISOString().replace('T',' ').substring(0,19);const cls=l.classification;const levelCls=l.level==='Error'?'table-danger':(l.level==='Warning'?'table-warning':'');return `<tr class="${levelCls}"><td>${ts}</td><td>${l.level}</td><td>${cls}</td><td>${escapeHtml(l.message)}</td><td>${l.userId||''}</td></tr>`;}).join('');masterBody.innerHTML=rows||'<tr><td colspan="5" class="text-muted">No data.</td></tr>';}function initDatasetTabs(data){document.querySelectorAll('.sub-tab-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.sub-tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const ds=b.dataset.dataset;const filtered=data.filter(l=>{if(ds==='all')return true;if(ds==='information')return l.level==='Information';if(ds==='normal')return l.classification==='Normal';if(ds==='attack')return l.classification==='Attack';return true;});renderLogs(filtered);}));}
  function escapeHtml(t){return t?.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))||'';}
  })();
  </script>
