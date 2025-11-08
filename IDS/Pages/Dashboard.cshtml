@@ -1,188 +1,265 @@
 ﻿@page
 @model IDS.Pages.DashboardModel
 @{
-    ViewData["Title"] = "Dashboard";
-    ViewData["FullWidthLayout"] = true; @* Keeps the page edge-to-edge *@
+ ViewData["Title"] = "Dashboard";
+ ViewData["FullWidthLayout"] = true; // edge-to-edge
 }
 
 @section HeadContent {
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+ <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-" crossorigin="anonymous" referrerpolicy="no-referrer" />
 }
 
-@* The dashboard-container and sidebar are removed. Main content takes full width. *@
-<main class="dashboard-main-content">
+<div class="dashboard-wrapper fade-in" data-init-errors="@(Model.LevelCounts.TryGetValue("Error", out int errCt)? errCt:0)" data-init-warnings="@(Model.LevelCounts.TryGetValue("Warning", out int warnCt)? warnCt:0)">
+ <header class="dashboard-hero" role="banner">
+ <div class="hero-main">
+ <h1 class="hero-title"><i class="fa-solid fa-shield-halved"></i> Security Operations Center</h1>
+ <p class="hero-sub">Real‑time visibility into intrusion detection telemetry.</p>
+ </div>
+ <div class="hero-tools" aria-label="User quick actions">
+ <button id="themeToggle" class="circle-btn" aria-label="Toggle theme" title="Toggle light/dark"><i class="fa-solid fa-moon"></i></button>
+ <button id="btnRefreshLogs" class="circle-btn" aria-label="Refresh logs" title="Refresh logs"><i class="fa-solid fa-rotate"></i></button>
+ @if (User.IsInRole("Admin")) {
+ <button id="btnOpenCreateUser" class="circle-btn primary" aria-label="Create user" title="Create user"><i class="fa-solid fa-user-plus"></i></button>
+ }
+ <div class="hero-user">
+ <span class="welcome" aria-label="Signed in user">@User.Identity?.Name</span>
+ <span class="time" id="localTime" aria-label="Local time"></span>
+ </div>
+ </div>
+ </header>
 
-    <header class="dashboard-header">
-        <h1>Overview</h1>
-        <div class="user-info">
-            @* Dynamic User Name *@
-            <span id="welcome-user">Welcome, @User.Identity.Name!</span>
-            <i class="fas fa-bell"></i>
-        </div>
-    </header>
+ @* Analysis / Upload Panel *@
+ <section class="panel analysis-panel slide-up" aria-labelledby="trafficAnalysisTitle">
+ <div class="panel-header">
+ <h2 id="trafficAnalysisTitle"><i class="fa-solid fa-microscope"></i> Traffic Analysis</h2>
+ </div>
+ <div class="panel-body">
+ @if (!string.IsNullOrEmpty(Model.AnalysisStatusMessage))
+ {
+ <div class="alert alert-info mb-3" role="status">@Model.AnalysisStatusMessage</div>
+ }
+ <form method="post" asp-page-handler="UploadAndAnalyze" enctype="multipart/form-data" class="analysis-form" aria-describedby="analysisHint">
+ <label class="form-label fw-semibold">Upload Traffic CSV</label>
+ <div class="input-group mb-2">
+ <input type="file" asp-for="TrafficCsvFile" accept=".csv" class="form-control" required aria-required="true" />
+ <button class="btn btn-outline-primary" type="submit"><i class="fa-solid fa-play"></i> Run</button>
+ </div>
+ <small id="analysisHint" class="text-muted">Processing simulation only – feature under active development.</small>
+ </form>
+ </div>
+ </section>
 
-    @* Analysis Control (Retained for future IDS logic) *@
-    @* Analysis Control (Updated to be an actual form) *@
-    <section class="analysis-control">
-        <h2>Real-Time Analysis Input</h2>
+ @* Metrics *@
+ <section class="metrics-grid" aria-label="System metrics">
+ @if (User.IsInRole("Admin")) {
+ <div class="metric-card pulse" data-count-target="@Model.TotalLogs">
+ <div class="metric-icon bg-gradient-red"><i class="fa-solid fa-file-lines"></i></div>
+ <div class="metric-content">
+ <div class="metric-label">Total Logs</div>
+ <div class="metric-value count-up" id="metricTotal">0</div>
+ </div>
+ </div>
+ <div class="metric-card" data-count-target="@(Model.LevelCounts.TryGetValue("Error", out int eCnt) ? eCnt:0)" data-secondary-target="@(Model.LevelCounts.TryGetValue("Warning", out int wCnt) ? wCnt:0)">
+ <div class="metric-icon bg-gradient-orange"><i class="fa-solid fa-triangle-exclamation"></i></div>
+ <div class="metric-content">
+ <div class="metric-label">Errors / Warnings</div>
+ <div class="metric-value"><span class="count-up" id="metricErrors">0</span> / <span class="count-up" id="metricWarnings">0</span></div>
+ </div>
+ </div>
+ <div class="metric-card" data-count-target="@(Model.LevelCounts.TryGetValue("Information", out int iCnt) ? iCnt:0)">
+ <div class="metric-icon bg-gradient-blue"><i class="fa-solid fa-circle-info"></i></div>
+ <div class="metric-content">
+ <div class="metric-label">Information</div>
+ <div class="metric-value count-up" id="metricInfo">0</div>
+ </div>
+ </div>
+ <div class="metric-card" id="idsStatusCard">
+ <div class="metric-icon bg-gradient-purple"><i class="fa-solid fa-heart-pulse"></i></div>
+ <div class="metric-content">
+ <div class="metric-label">IDS Status</div>
+ <div class="metric-value status-tag off" id="idsStatus" aria-live="polite">Evaluating…</div>
+ </div>
+ </div>
+ } else {
+ <div class="metric-info">System metrics are available only to administrators.</div>
+ }
+ </section>
 
-        @* Display Status Message (from the C# code-behind) *@
-        @if (!string.IsNullOrEmpty(Model.AnalysisStatusMessage))
-        {
-            <div class="alert alert-info">@Model.AnalysisStatusMessage</div>
-        }
+ @* Charts & Logs Split *@
+ <section class="data-section" aria-label="Visualizations and logs">
+ <div class="data-left panel slide-up" aria-labelledby="levelChartTitle">
+ <div class="panel-header">
+ <h3 id="levelChartTitle"><i class="fa-solid fa-chart-column"></i> Log Level Distribution</h3>
+ </div>
+ <div class="panel-body chart-body">
+ <canvas id="levelChart" aria-label="Log level chart" role="img"></canvas>
+ </div>
+ </div>
+ <div class="data-right panel slide-up" id="logsPanel" aria-labelledby="recentLogsTitle">
+ <div class="panel-header">
+ <h3 id="recentLogsTitle"><i class="fa-solid fa-list"></i> Recent Logs</h3>
+ <div class="log-filters">
+ <input id="searchMessage" class="form-control form-control-sm" placeholder="Search message" aria-label="Search log messages" />
+ <select id="filterLevel" class="form-select form-select-sm" aria-label="Filter by level">
+ <option value="">All Levels</option>
+ <option value="Error">Error</option>
+ <option value="Warning">Warning</option>
+ <option value="Information">Information</option>
+ </select>
+ </div>
+ </div>
+ <div class="panel-body logs-body" aria-live="polite">
+ <table class="table table-sm table-hover align-middle" id="logsTable">
+ <thead>
+ <tr>
+ <th style="width:150px">Timestamp (UTC)</th>
+ <th style="width:110px">Level</th>
+ <th>Message</th>
+ <th style="width:130px">User</th>
+ </tr>
+ </thead>
+ <tbody id="logsTableBody" class="skeleton-group">
+ @* Skeleton placeholders *@
+ @for(int i=0;i<8;i++){<tr class="skeleton-row"><td colspan="4"><div class="skeleton-line"></div></td></tr>}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </section>
+</div>
 
-        @* Form to upload and run analysis *@
-        <form method="post" asp-page-handler="UploadAndAnalyze" enctype="multipart/form-data">
-            <div class="input-group">
-                @* The asp-for tag helper links the file input to the C# property in Dashboard.cshtml.cs *@
-                <label for="TrafficCsvFile">Select Traffic Log (CSV)</label>
-                <input type="file" asp-for="TrafficCsvFile" id="TrafficCsvFile" accept=".csv" required />
-                <button type="submit" id="start-analysis-btn">Start Analysis</button>
-            </div>
-        </form>
-
-    </section>
-
-    @* METRICS GRID: Visible only to Admin users *@
-    @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
-    {
-        <section class="metrics-grid">
-            <div class="metric-card primary">
-                <i class="fas fa-bug icon"></i>
-                <p class="label">Total Logs Recorded</p>
-                <p class="value" id="total-attacks">@Model.TotalLogs</p>
-            </div>
-            <div class="metric-card danger">
-                <i class="fas fa-fire icon"></i>
-                <p class="label">Critical Logs</p>
-                <p class="value" id="highest-severity">@(Model.LevelCounts.TryGetValue("Error", out int criticalCount) ? criticalCount.ToString() : (Model.LevelCounts.TryGetValue("Warning", out int warningCount) ? warningCount.ToString() : "0"))</p>
-            </div>
-            <div class="metric-card info">
-                <i class="fas fa-network-wired icon"></i>
-                <p class="label">Information Logs</p>
-                <p class="value" id="traffic-volume">@(Model.LevelCounts.TryGetValue("Information", out int infoCount) ? infoCount.ToString() : "0")</p>
-            </div>
-            <div class="metric-card danger">
-                @* Changed from 'success' to 'danger' to match the warning color theme *@
-                <i class="fas fa-exclamation-triangle icon"></i> @* Changed icon from check-circle to exclamation-triangle *@
-                <p class="label">IDS Status</p>
-                <p class="value" id="system-status">Non-Operational</p> @* Changed text to Non-Operational *@
-            </div>
-        </section>
-    }
-    else
-    {
-        <p class="text-muted">Welcome to the IDS Dashboard. System metrics are available to Administrators.</p>
-    }
-
-
-    @* VISUALIZATION AND LOGS: Use existing AJAX logic *@
-    <section class="visualization-area">
-        <div class="chart-panel chart-full">
-            <h2>Attack Types Breakdown</h2>
-            <div class="chart-container" style="position: relative; height:40vh; width:100%">
-                <canvas id="attackTypeChart"></canvas>
-            </div>
-        </div>
-        <div class="chart-panel recent-alerts">
-            <h2>Recent System Logs</h2>
-            <table id="alerts-table">
-                <thead>
-                    <tr>
-                        <th>Time (UTC)</th>
-                        <th>Level</th>
-                        <th>Message</th>
-                        <th>User ID</th>
-                    </tr>
-                </thead>
-                <tbody id="alerts-table-body">
-                    <tr><td colspan="4" class="no-data">System logs load when the corresponding header link is clicked.</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <div id="dashboard-content" style="display:none;"></div>
-
-</main>
-
+@* Admin Create User Modal *@
+@if (User.IsInRole("Admin")) {
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-slide modal-lg">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title"><i class="fa-solid fa-user-plus"></i> Create User</h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ @if (!string.IsNullOrEmpty(Model.CreateUserStatusMessage)) { <div class="alert alert-info">@Model.CreateUserStatusMessage</div> }
+ <form method="post" asp-page-handler="CreateUser" id="createUserForm">
+ <div class="row g-3">
+ <div class="col-md-6">
+ <label class="form-label">Email</label>
+ <input type="email" class="form-control" asp-for="CreateInput.Email" required />
+ </div>
+ <div class="col-md-6">
+ <label class="form-label">Temporary Password</label>
+ <input type="text" class="form-control" asp-for="CreateInput.Password" required />
+ </div>
+ <div class="col-md-6">
+ <label class="form-label">First Name</label>
+ <input type="text" class="form-control" asp-for="CreateInput.FirstName" />
+ </div>
+ <div class="col-md-6">
+ <label class="form-label">Last Name</label>
+ <input type="text" class="form-control" asp-for="CreateInput.LastName" />
+ </div>
+ <div class="col-md-6">
+ <label class="form-label">Role</label>
+ <select class="form-select" asp-for="CreateInput.Role">
+ <option value="">(None)</option>
+ @foreach (var r in Model.AvailableRoles) { <option value="@r">@r</option> }
+ </select>
+ </div>
+ </div>
+ <div class="mt-3 text-end">
+ <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Create</button>
+ </div>
+ </form>
+ </div>
+ </div>
+ </div>
+</div>
+}
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-    <script>
-        (function() {
-            // NOTE: The previous script relied on a sidebar link with a specific icon.
-            // You will need to map this function to the new 'Alerts Log' link you add in your header (_Layout.cshtml).
-            const logLoader = async function() {
-                const tableBody = document.getElementById('alerts-table-body');
-                tableBody.innerHTML = '<tr><td colspan="4" class="no-data">Loading logs...</td></tr>';
+ <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+ <script>
+ (function(){
+ // Theme toggle
+ const toggleBtn = document.getElementById('themeToggle');
+ const root = document.documentElement; const LS_KEY='ids-theme';
+ function applyTheme(t){ if(t==='dark'){ root.classList.add('theme-dark'); toggleBtn.innerHTML='<i class="fa-solid fa-sun"></i>'; } else { root.classList.remove('theme-dark'); toggleBtn.innerHTML='<i class="fa-solid fa-moon"></i>'; } }
+ applyTheme(localStorage.getItem(LS_KEY)||'dark');
+ toggleBtn?.addEventListener('click',()=>{ const next = root.classList.contains('theme-dark')?'light':'dark'; localStorage.setItem(LS_KEY,next); applyTheme(next); });
 
-                const res = await fetch('?handler=GetLogs');
-                if (!res.ok) {
-                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data text-danger">Failed to load logs</td></tr>';
-                    return;
-                }
-                const logs = await res.json();
-                if (!logs || logs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="4" class="no-data">No logs found.</td></tr>';
-                    return;
-                }
+ // Clock
+ const updateClock = () => { const el = document.getElementById('localTime'); if(el){ const d=new Date(); el.textContent=d.toLocaleString(); }}; updateClock(); setInterval(updateClock,60000);
 
-                let html = '';
-                for (const l of logs) {
-                    let levelClass = '';
-                    if (l.level === 'Error') levelClass = 'severity-critical';
-                    else if (l.level === 'Warning') levelClass = 'severity-medium';
+ // Count-up animation
+ const animateCounts = () => {
+ document.querySelectorAll('.metric-card').forEach(card => {
+ const primary = parseInt(card.getAttribute('data-count-target'))||0;
+ const secondary = parseInt(card.getAttribute('data-secondary-target'))||0;
+ const errorsEl = card.querySelector('#metricErrors');
+ const warningsEl = card.querySelector('#metricWarnings');
+ const valueEls = card.querySelectorAll('.count-up');
+ valueEls.forEach(el => {
+ const target = el.id==='metricErrors'?primary: el.id==='metricWarnings'?secondary: (parseInt(card.getAttribute('data-count-target'))||0);
+ let current=0; const duration=800; const start=performance.now();
+ function step(ts){ const p=Math.min((ts-start)/duration,1); current=Math.floor(p*target); el.textContent=current; if(p<1) requestAnimationFrame(step); }
+ requestAnimationFrame(step);
+ });
+ });
+ }; animateCounts();
 
-                    html += `<tr>
-                                <td>${new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19)}</td>
-                                <td class="${levelClass}">${l.level}</td>
-                                <td>${l.message}</td>
-                                <td>${l.userId || ''}</td>
-                            </tr>`;
-                }
-                tableBody.innerHTML = html;
-            };
+ // IDS status logic
+ const wrapper = document.querySelector('.dashboard-wrapper');
+ const errors = parseInt(wrapper.getAttribute('data-init-errors'))||0;
+ const warnings = parseInt(wrapper.getAttribute('data-init-warnings'))||0;
+ const statusEl = document.getElementById('idsStatus');
+ if(statusEl){
+ if(errors>0){ statusEl.textContent='Attention'; statusEl.classList.remove('off'); statusEl.classList.add('warn'); }
+ else if(warnings>0){ statusEl.textContent='Degraded'; statusEl.classList.remove('off'); statusEl.classList.add('warn'); }
+ else { statusEl.textContent='Normal'; statusEl.classList.remove('off'); statusEl.classList.add('on'); }
+ }
 
-            // You can manually call the logLoader function here for initial data load, or map it to a button.
-            // Example: To load logs instantly for Admins:
-            // if ('@User.IsInRole("Admin")' === 'True') {
-            //     logLoader();
-            // }
+ // Logs
+ const filterSelect = document.getElementById('filterLevel');
+ const searchInput = document.getElementById('searchMessage');
+ const renderLogs = (logs) => {
+ const body = document.getElementById('logsTableBody');
+ const filter = filterSelect.value; const q = searchInput.value.trim().toLowerCase();
+ let html='';
+ logs.filter(l => (!filter || l.level === filter) && (!q || l.message.toLowerCase().includes(q))).forEach(l => {
+ const ts = new Date(l.timestamp).toISOString().replace('T',' ').substr(0,19);
+ const cls = l.level === 'Error' ? 'table-danger' : (l.level === 'Warning' ? 'table-warning' : '');
+ html += `<tr class="${cls}"><td>${ts}</td><td>${l.level}</td><td>${escapeHtml(l.message)}</td><td>${l.userId||''}</td></tr>`;
+ });
+ body.classList.remove('skeleton-group');
+ body.innerHTML = html || '<tr><td colspan="4" class="text-muted">No logs match filter.</td></tr>';
+ };
+ const escapeHtml = (t) => t?.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])) || '';
+ async function loadLogs(){
+ const body = document.getElementById('logsTableBody');
+ body.classList.add('skeleton-group');
+ body.innerHTML='';
+ for(let i=0;i<8;i++){ body.insertAdjacentHTML('beforeend','<tr class="skeleton-row"><td colspan="4"><div class="skeleton-line"></div></td></tr>'); }
+ try{ const res = await fetch('?handler=GetLogs'); if(!res.ok) throw new Error(); const data = await res.json(); renderLogs(data); }
+ catch{ body.innerHTML='<tr><td colspan="4" class="text-danger">Failed to load logs</td></tr>'; }
+ }
+ filterSelect.addEventListener('change', loadLogs);
+ searchInput.addEventListener('input', loadLogs);
+ document.getElementById('btnRefreshLogs')?.addEventListener('click', loadLogs);
+ loadLogs();
 
+ // Modal trigger
+ const createBtn = document.getElementById('btnOpenCreateUser');
+ if(createBtn){ createBtn.addEventListener('click', () => { const m = new bootstrap.Modal(document.getElementById('createUserModal')); m.show(); }); }
 
-            // Basic Chart.js initialization (Still using placeholder data)
-            const ctx = document.getElementById('attackTypeChart');
-            if (ctx) {
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Brute Force', 'SQL Injection', 'DDoS', 'XSS'],
-                        datasets: [{
-                            label: 'Attacks',
-                            data: [12, 3, 5, 2],
-                            backgroundColor: [
-                                '#e74c3c',
-                                '#f39c12',
-                                '#3498db',
-                                '#2ecc71'
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-        })();
-    </script>
+ // Chart
+ const buildLevelChart = () => {
+ const ctx = document.getElementById('levelChart'); if(!ctx) return;
+ const info = @Model.LevelCounts.TryGetValue("Information", out var infVal) ? infVal :0;
+ const warn = @Model.LevelCounts.TryGetValue("Warning", out var warnVal) ? warnVal :0;
+ const err = @Model.LevelCounts.TryGetValue("Error", out var errVal) ? errVal :0;
+ new Chart(ctx,{ type:'doughnut', data:{ labels:['Information','Warning','Error'], datasets:[{ data:[info,warn,err], backgroundColor:['#3498db','#f39c12','#e74c3c'], borderWidth:1 }] }, options:{ responsive:true, plugins:{ legend:{ position:'bottom' } } } });
+ };
+ buildLevelChart();
+ })();
+ </script>
 }
