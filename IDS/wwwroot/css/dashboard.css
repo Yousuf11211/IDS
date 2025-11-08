@@ -42,6 +42,19 @@ body{background:var(--surface);color:var(--text)}
 /* Modal animation */
 .modal-dialog-slide{transform:translateY(18px);transition:transform .2s ease}
 .modal.show .modal-dialog-slide{transform:none}
-/* Responsive */
-@media (max-width:992px){.metrics-grid{grid-template-columns:repeat(2,1fr)}.data-section{grid-template-columns:1fr}}
-@media (max-width:576px){.metrics-grid{grid-template-columns:1fr}.hero-tools{flex-wrap:wrap}}
+/* Tabs */
+.section-tabs{display:flex;gap:.5rem;margin-top:.75rem}
+.tab-btn{border:0;border-radius:.6rem;background:rgba(0,0,0,.06);color:var(--text);padding:.5rem .75rem;cursor:pointer;transition:transform .1s ease, background .15s ease;box-shadow:02px6px var(--ring)}
+.tab-btn:hover{transform:translateY(-1px)}
+.tab-btn.active{background:linear-gradient(135deg, var(--brand), #8b5cf6);color:#fff}
+.tab-section{display:none;animation:dashFade .25s ease both}
+.tab-section.active{display:block}
+.translucent{background:rgba(255,255,255,.72);backdrop-filter:saturate(130%) blur(6px)}
+:root.theme-dark .translucent{background:rgba(17,24,39,.7)}
+.panel-title{margin:0;font-weight:700}
+.panel-header.between{display:flex;align-items:center;justify-content:space-between}
+.log-dataset-tabs{display:flex;gap:.35rem}
+.sub-tab-btn{border:0;border-radius:.5rem;padding:.35rem .6rem;background:rgba(0,0,0,.06);color:var(--text);cursor:pointer;transition:background .15s ease, transform .1s ease}
+.sub-tab-btn:hover{transform:translateY(-1px)}
+.sub-tab-btn.active{background:linear-gradient(135deg, var(--brand), #8b5cf6);color:#fff}
+.logs-table-wrapper{max-height:60vh;overflow:auto}

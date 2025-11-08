@@ -13,8 +13,8 @@
 <div class="dashboard-wrapper fade-in" data-init-errors="@(Model.LevelCounts.TryGetValue("Error", out int errCt)? errCt:0)" data-init-warnings="@(Model.LevelCounts.TryGetValue("Warning", out int warnCt)? warnCt:0)">
  <header class="dashboard-hero" role="banner">
  <div class="hero-main">
- <h1 class="hero-title"><i class="fa-solid fa-shield-halved"></i> Security Operations Center</h1>
- <p class="hero-sub">Real‑time visibility into intrusion detection telemetry.</p>
+ <h1 class="hero-title"><i class="fa-solid fa-gauge"></i> Dashboard</h1>
+ <p class="hero-sub">High level intrusion detection summary.</p>
  </div>
  <div class="hero-tools" aria-label="Quick actions">
  <button id="themeToggle" class="circle-btn" aria-label="Toggle theme" title="Toggle light/dark"><i class="fa-solid fa-moon"></i></button>
@@ -22,14 +22,13 @@
  </div>
  </header>
 
- @* Section tabs *@
  <nav class="section-tabs" aria-label="Sections">
- <a class="tab active" aria-current="page"><i class="fa-solid fa-gauge-high"></i> Overview</a>
- <a class="tab" asp-page="/Logs"><i class="fa-solid fa-list"></i> Logs</a>
+ <button class="tab-btn active" data-tab="overview"><span><i class="fa-solid fa-chart-pie"></i> Overview</span></button>
+ @if (User.IsInRole("Admin")) {<button class="tab-btn" data-tab="logs"><span><i class="fa-solid fa-table-list"></i> Logs</span></button>}
  </nav>
 
- @* Metrics only *@
- <section class="metrics-grid" aria-label="System metrics">
+ <section id="tab-overview" class="tab-section active" aria-label="Overview metrics">
+ <div class="metrics-grid" aria-label="System metrics">
  <div class="metric-card pulse" data-count-target="@Model.TotalLogs">
  <div class="metric-icon bg-gradient-blue"><i class="fa-solid fa-database"></i></div>
  <div class="metric-content">
@@ -58,33 +57,53 @@
  <div class="metric-value status-tag @Model.IdsStatusClass" id="idsStatus" aria-live="polite">@Model.IdsStatus</div>
  </div>
  </div>
+ </div>
  </section>
+
+ @if (User.IsInRole("Admin")) {
+ <section id="tab-logs" class="tab-section" aria-label="Log datasets">
+ <div class="panel translucent">
+ <div class="panel-header between">
+ <h2 class="panel-title"><i class="fa-solid fa-table-list"></i> Logs Explorer</h2>
+ <div class="log-dataset-tabs" role="tablist">
+ <button class="sub-tab-btn active" data-dataset="all" role="tab" aria-selected="true">All</button>
+ <button class="sub-tab-btn" data-dataset="information" role="tab">Information</button>
+ <button class="sub-tab-btn" data-dataset="normal" role="tab">Normal</button>
+ <button class="sub-tab-btn" data-dataset="attack" role="tab">Attack</button>
+ </div>
+ </div>
+ <div class="panel-body no-pad">
+ <div class="logs-table-wrapper">
+ <table class="table table-sm table-hover align-middle mb-0" id="logsMaster">
+ <thead><tr><th style="width:160px">Timestamp (UTC)</th><th style="width:110px">Level</th><th style="width:140px">Class</th><th>Message</th><th style="width:120px">User</th></tr></thead>
+ <tbody id="logsMasterBody" class="skeleton-group">
+ @for(int i=0;i<10;i++){<tr class="skeleton-row"><td colspan="5"><div class="skeleton-line"></div></td></tr>}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ </section>
+ }
 </div>
 
 @section Scripts {
  <script>
  (function(){
- // Theme toggle
- const toggleBtn = document.getElementById('themeToggle');
- const root = document.documentElement; const LS_KEY='ids-theme';
- function applyTheme(t){ if(t==='dark'){ root.classList.add('theme-dark'); toggleBtn.innerHTML='<i class="fa-solid fa-sun"></i>'; } else { root.classList.remove('theme-dark'); toggleBtn.innerHTML='<i class="fa-solid fa-moon"></i>'; } }
- applyTheme(localStorage.getItem(LS_KEY)||'dark');
- toggleBtn?.addEventListener('click',()=>{ const next = root.classList.contains('theme-dark')?'light':'dark'; localStorage.setItem(LS_KEY,next); applyTheme(next); });
-
- // Clock
- const updateClock = () => { const el = document.getElementById('localTime'); if(el){ const d=new Date(); el.textContent=d.toLocaleString(); }}; updateClock(); setInterval(updateClock,60000);
-
- // Count-up animation
- const animateCounts = () => {
- document.querySelectorAll('.metric-card').forEach(card => {
- const target = parseInt(card.getAttribute('data-count-target'))||0;
- const el = card.querySelector('.count-up'); if(!el) return;
- let current=0; const duration=900; const start=performance.now();
- function step(ts){ const p=Math.min((ts-start)/duration,1); current=Math.floor(p*target); el.textContent=current; if(p<1) requestAnimationFrame(step); }
- requestAnimationFrame(step);
- });
- };
- animateCounts();
+ const root=document.documentElement;const LS='ids-theme';const toggle=document.getElementById('themeToggle');function apply(t){if(t==='dark'){root.classList.add('theme-dark');toggle.innerHTML='<i class="fa-solid fa-sun"></i>';}else{root.classList.remove('theme-dark');toggle.innerHTML='<i class="fa-solid fa-moon"></i>';}}apply(localStorage.getItem(LS)||'dark');toggle?.addEventListener('click',()=>{const n=root.classList.contains('theme-dark')?'light':'dark';localStorage.setItem(LS,n);apply(n);});
+ const updateClock=()=>{const el=document.getElementById('localTime');if(el){el.textContent=new Date().toLocaleString();}};updateClock();setInterval(updateClock,60000);
+ // Tabs
+ document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));const target=btn.dataset.tab;document.getElementById('tab-'+target).classList.add('active');}));
+ // Count up
+ document.querySelectorAll('.metric-card').forEach(card=>{const target=parseInt(card.getAttribute('data-count-target'))||0;const el=card.querySelector('.count-up');if(!el)return;let current=0;const d=900;const st=performance.now();(function step(ts){const p=Math.min((ts-st)/d,1);current=Math.floor(p*target);el.textContent=current;if(p<1)requestAnimationFrame(step);})(st);});
+ // Logs load (admin only)
+ const masterBody=document.getElementById('logsMasterBody');
+ if(masterBody){
+ fetch('?handler=Logs').then(r=>r.json()).then(data=>{renderLogs(data);initDatasetTabs(data);}).catch(()=>{masterBody.innerHTML='<tr><td colspan="5" class="text-danger">Failed to load logs</td></tr>';});
+ }
+ function renderLogs(data){masterBody.classList.remove('skeleton-group');const rows=data.map(l=>{const ts=new Date(l.timestamp).toISOString().replace('T',' ').substring(0,19);const cls=l.classification;const levelCls=l.level==='Error'?'table-danger':(l.level==='Warning'?'table-warning':'');return `<tr class="${levelCls}"><td>${ts}</td><td>${l.level}</td><td>${cls}</td><td>${escapeHtml(l.message)}</td><td>${l.userId||''}</td></tr>`;}).join('');masterBody.innerHTML=rows||'<tr><td colspan="5" class="text-muted">No data.</td></tr>';}
+ function initDatasetTabs(data){document.querySelectorAll('.sub-tab-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.sub-tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const ds=b.dataset.dataset;const filtered=data.filter(l=>{if(ds==='all')return true;if(ds==='information')return l.level==='Information';if(ds==='normal')return l.classification==='Normal';if(ds==='attack')return l.classification==='Attack';return true;});renderLogs(filtered);}));}
+ function escapeHtml(t){return t?.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]))||'';}
  })();
  </script>
 }

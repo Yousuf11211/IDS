@@ -7,9 +7,7 @@ using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using IDS.Security;
 using System.Linq;
 
 namespace IDS.Pages
@@ -48,6 +46,20 @@ namespace IDS.Pages
             if (AttackCount >0 && (AttackCount > NormalCount /2)) { IdsStatus = "Attention"; IdsStatusClass = "warn"; }
             else if (AttackCount >0) { IdsStatus = "Degraded"; IdsStatusClass = "warn"; }
             else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
+        }
+
+        [Authorize(Roles = Security.AppRoles.Admin)]
+        public async Task<JsonResult> OnGetLogsAsync()
+        {
+            var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
+                .Select(l => new {
+                    l.Timestamp,
+                    l.Level,
+                    l.Message,
+                    l.UserId,
+                    Classification = l.Level == "Information" ? "Normal" : (l.Level == "Error" || l.Level == "Warning" ? "Attack" : "Other")
+                }).ToListAsync();
+            return new JsonResult(data);
         }
     }
 }
