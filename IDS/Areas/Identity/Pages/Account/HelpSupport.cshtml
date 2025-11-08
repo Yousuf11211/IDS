@@ -1,0 +1,42 @@
+@page
+@model IDS.Areas.Identity.Pages.Account.HelpSupportModel
+@{
+ ViewData["Title"] = "Help & Support";
+}
+
+<h2 class="mb-4">Help & Support</h2>
+<p class="text-muted">Frequently asked questions. More content coming soon.</p>
+<div class="accordion" id="faqAccordion">
+ <div class="accordion-item">
+ <h2 class="accordion-header" id="q1h">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q1" aria-expanded="false" aria-controls="q1">How do I change my password?</button>
+ </h2>
+ <div id="q1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body">Go to Profile > Security (Change Password) and enter your current password and new password.</div>
+ </div>
+ </div>
+ <div class="accordion-item">
+ <h2 class="accordion-header" id="q2h">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2" aria-expanded="false" aria-controls="q2">How do I enable two-factor authentication?</button>
+ </h2>
+ <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body">Navigate to Security > Two-factor authentication and follow the on-screen instructions to configure your authenticator app.</div>
+ </div>
+ </div>
+ <div class="accordion-item">
+ <h2 class="accordion-header" id="q3h">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3" aria-expanded="false" aria-controls="q3">How can I update my profile details?</button>
+ </h2>
+ <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body">Open the Profile page from the user menu and edit username, names, phone number, or email then click Save.</div>
+ </div>
+ </div>
+ <div class="accordion-item">
+ <h2 class="accordion-header" id="q4h">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4" aria-expanded="false" aria-controls="q4">I forgot my password.</button>
+ </h2>
+ <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body">Use the "Forgot password" link on the login screen. If you did not receive an email, contact an administrator.</div>
+ </div>
+ </div>
+</div>
