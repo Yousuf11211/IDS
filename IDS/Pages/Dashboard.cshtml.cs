@@ -2,7 +2,6 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
 using IDS.Security;
 using System.Linq;
 
@@ -20,99 +18,36 @@ namespace IDS.Pages
     public class DashboardModel : PageModel
     {
         private readonly ApplicationDbContext _db;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
 
-        public DashboardModel(ApplicationDbContext db, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public DashboardModel(ApplicationDbContext db)
         {
             _db = db;
-            _userManager = userManager;
-            _roleManager = roleManager;
         }
 
         public int TotalLogs { get; set; }
         public Dictionary<string, int> LevelCounts { get; set; } = new();
-
-        [BindProperty]
-        public AdminCreateUserInput CreateInput { get; set; } = new();
-
-        public List<string> AvailableRoles { get; set; } = AppRoles.All.ToList();
-
-        [TempData]
-        public string CreateUserStatusMessage { get; set; }
-
-        [BindProperty]
-        public IFormFile TrafficCsvFile { get; set; }
-
-        [TempData]
-        public string AnalysisStatusMessage { get; set; }
-
-        public class AdminCreateUserInput
-        {
-            [Required]
-            [EmailAddress]
-            public string Email { get; set; } = string.Empty;
-
-            [Required]
-            [DataType(DataType.Password)]
-            public string Password { get; set; } = string.Empty;
-
-            public string Role { get; set; } = string.Empty;
-            public string FirstName { get; set; } = string.Empty;
-            public string LastName { get; set; } = string.Empty;
-        }
-
-        public async Task<IActionResult> OnPostUploadAndAnalyzeAsync()
-        {
-            AnalysisStatusMessage = "Analysis feature is not available.";
-            return RedirectToPage();
-        }
+        public int NormalCount { get; set; }
+        public int AttackCount { get; set; }
+        public string IdsStatus { get; set; } = "Evaluating";
+        public string IdsStatusClass { get; set; } = "off";
 
         public async Task OnGetAsync()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var log = new LogFile { Timestamp = DateTime.UtcNow, Level = "Information", Message = "Dashboard page visited", UserId = userId };
-            _db.LogFiles.Add(log);
+            _db.LogFiles.Add(new LogFile { Timestamp = DateTime.UtcNow, Level = "Information", Message = "Dashboard page visited", UserId = userId });
             await _db.SaveChangesAsync();
 
             TotalLogs = await _db.LogFiles.CountAsync();
             var counts = await _db.LogFiles.AsNoTracking().GroupBy(l => l.Level).Select(g => new { Level = g.Key, Count = g.Count() }).ToListAsync();
             LevelCounts = counts.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
-        }
 
-        [Authorize(Roles = AppRoles.Admin)]
-        public async Task<JsonResult> OnGetGetLogsAsync()
-        {
-            var logs = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(50)
-                .Select(l => new { l.Timestamp, l.Level, l.Message, l.UserId }).ToListAsync();
-            return new JsonResult(logs);
-        }
+            // Derive traffic classification (placeholder logic):
+            NormalCount = LevelCounts.TryGetValue("Information", out var info) ? info :0;
+            AttackCount = (LevelCounts.TryGetValue("Error", out var err) ? err :0) + (LevelCounts.TryGetValue("Warning", out var warn) ? warn :0);
 
-        public async Task<IActionResult> OnPostCreateUserAsync()
-        {
-            if (!User.IsInRole(AppRoles.Admin)) return Forbid();
-            if (!ModelState.IsValid) { await OnGetAsync(); return Page(); }
-            var user = new ApplicationUser {
-                UserName = CreateInput.Email,
-                Email = CreateInput.Email,
-                EmailConfirmed = true,
-                FirstName = CreateInput.FirstName,
-                LastName = CreateInput.LastName
-            };
-            var result = await _userManager.CreateAsync(user, CreateInput.Password);
-            if (!result.Succeeded)
-            {
-                foreach (var e in result.Errors) ModelState.AddModelError(string.Empty, e.Description);
-                await OnGetAsync();
-                return Page();
-            }
-            if (!string.IsNullOrWhiteSpace(CreateInput.Role))
-            {
-                if (!await _roleManager.RoleExistsAsync(CreateInput.Role)) await _roleManager.CreateAsync(new IdentityRole(CreateInput.Role));
-                await _userManager.AddToRoleAsync(user, CreateInput.Role);
-            }
-            CreateUserStatusMessage = $"User {CreateInput.Email} created.";
-            return RedirectToPage();
+            if (AttackCount >0 && (AttackCount > NormalCount /2)) { IdsStatus = "Attention"; IdsStatusClass = "warn"; }
+            else if (AttackCount >0) { IdsStatus = "Degraded"; IdsStatusClass = "warn"; }
+            else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
         }
     }
 }
