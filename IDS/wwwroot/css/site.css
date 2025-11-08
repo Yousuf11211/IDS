@@ -87,3 +87,54 @@ body {
 .user-menu-link.disabled { opacity:.5; pointer-events:none; }
 .menu-separator hr { margin:.4rem0; border-color:#444; }
 @media (max-width:576px){ .user-menu { right:.5rem; } }
+
+/* user dropdown refined */
+.user-dropdown{position:relative;display:flex;align-items:center}
+.user-trigger{background:transparent;border:0;cursor:pointer;padding:.4rem;border-radius:.5rem;transition:background .2s ease}
+.user-trigger:hover{background:rgba(255,255,255,.08)}
+.user-trigger .bars{display:flex;flex-direction:column;gap:4px}
+.user-trigger .bars span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:transform .25s ease,opacity .25s ease}
+.user-trigger.active .bars span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.user-trigger.active .bars span:nth-child(2){opacity:0}
+.user-trigger.active .bars span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.dropdown-panel{position:absolute;top:calc(100% +8px);right:0;background:#1f2937;color:#e5e7eb;min-width:240px;padding:.5rem .6rem .75rem;border-radius:.75rem;box-shadow:010px30px rgba(0,0,0,.25);opacity:0;transform:translateY(6px) scale(.98);pointer-events:none;transition:opacity .18s ease, transform .18s ease;backdrop-filter:saturate(120%) blur(4px)}
+.dropdown-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.panel-header{padding:.5rem .75rem .25rem;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:.25rem}
+.panel-header .name{font-weight:600}
+.panel-links{display:flex;flex-direction:column;padding:.25rem}
+.panel-links a{padding:.45rem .5rem;border-radius:.45rem;color:#e5e7eb;text-decoration:none;transition:background .15s ease,color .15s ease}
+.panel-links a:hover{background:#374151;color:#fff}
+.logout-form{margin-top:.25rem;padding:.25rem}
+.logout-btn{width:100%;border:0;border-radius:.45rem;padding:.45rem .6rem;background:#dc3545;color:#fff;transition:filter .15s ease}
+.logout-btn:hover{filter:brightness(.95)}
+@media (prefers-color-scheme: light){
+ .dropdown-panel{background:#ffffff;color:#111827;box-shadow:010px30px rgba(0,0,0,.12)}
+ .panel-links a{color:#1f2937}
+ .panel-links a:hover{background:#f3f4f6;color:#111827}
+ .user-trigger:hover{background:rgba(0,0,0,.06)}
+}
+
+/* manage nav polish */
+.manage-nav .nav-link{border-radius:.5rem;margin:.1rem0;transition:background .15s ease}
+.manage-nav .nav-link:hover{background:rgba(0,0,0,.05)}
+
+/* raise navbar stacking context so dropdown can overlay page content */
+header {
+  overflow: visible !important;
+  position: relative;
+  z-index: 3000;
+}
+
+/* ensure the dropdown panel overlays all widgets */
+.navbar, .navbar .container, .navbar-collapse { overflow: visible !important; }
+.user-dropdown { position: relative; z-index:4000; }
+.dropdown-panel {
+  position: fixed !important;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  z-index: 9999;
+}
