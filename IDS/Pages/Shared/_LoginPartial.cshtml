@@ -5,49 +5,56 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    <div class="user-menu-wrapper">
-        <button id="userMenuToggle" class="hamburger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="User menu">
-            <span></span><span></span><span></span>
-        </button>
-        <div id="userMenu" class="user-menu shadow">
-            <div class="user-menu-header">
-                <div class="user-id">@User.Identity?.Name</div>
-                <small class="text-muted">Signed in</small>
-            </div>
-            <ul class="list-unstyled mb-0">
-                <li><a asp-area="Identity" asp-page="/Account/Manage/Index" class="user-menu-link">Profile</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="user-menu-link">Security</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication" class="user-menu-link">Two-Factor Auth</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/Manage/Email" class="user-menu-link">Email Settings</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/Manage/PersonalData" class="user-menu-link">Personal Data</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/Manage/ExternalLogins" class="user-menu-link">External Logins</a></li>
-                <li><a asp-area="Identity" asp-page="/Account/HelpSupport" class="user-menu-link disabled" title="Coming soon">Help / Support</a></li>
-                <li class="menu-separator"><hr /></li>
-                <li>
-                    <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
-                        <button type="submit" class="user-menu-link logout">Logout</button>
-                    </form>
-                </li>
-            </ul>
-        </div>
-    </div>
-    <script>
-    (function(){
-        const btn = document.getElementById('userMenuToggle');
-        const menu = document.getElementById('userMenu');
-        function close(){ menu.classList.remove('open'); btn.classList.remove('active'); }
-        btn.addEventListener('click', function(){
-            const isOpen = menu.classList.toggle('open');
-            btn.classList.toggle('active', isOpen);
-        });
-        document.addEventListener('click', function(e){
-            if(!menu.contains(e.target) && !btn.contains(e.target)) close();
-        });
-        document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
-    })();
-    </script>
+ <div class="user-dropdown">
+ <button id="userMenuToggle" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="User menu">
+ <div class="bars"><span></span><span></span><span></span></div>
+ </button>
+ <div id="userMenu" class="dropdown-panel" style="display:none">
+ <div class="panel-header">
+ <div class="name">@User.Identity?.Name</div>
+ <small class="text-muted">Account menu</small>
+ </div>
+ <nav class="panel-links">
+ <a asp-area="Identity" asp-page="/Account/Manage/Index">Profile</a>
+ <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword">Security</a>
+ <a asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication">Two-Factor Auth</a>
+ <a asp-area="Identity" asp-page="/Account/Manage/PersonalData">Personal Data</a>
+ <a asp-area="Identity" asp-page="/Account/HelpSupport">Help & Support</a>
+ <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" class="logout-form">
+ <button type="submit" class="logout-btn">Logout</button>
+ </form>
+ </nav>
+ </div>
+ </div>
+ <script>
+ (function(){
+ const trigger = document.getElementById('userMenuToggle');
+ const panel = document.getElementById('userMenu');
+ function positionPanel(){
+ const r = trigger.getBoundingClientRect();
+ panel.style.left = (r.right - panel.offsetWidth) + 'px';
+ panel.style.top = (r.bottom +8) + 'px';
+ }
+ function open(){
+ panel.style.display='block';
+ panel.classList.add('open');
+ trigger.classList.add('active');
+ positionPanel();
+ }
+ function close(){
+ panel.classList.remove('open');
+ panel.style.display='none';
+ trigger.classList.remove('active');
+ }
+ trigger.addEventListener('click', ()=>{ panel.style.display==='block' ? close() : open(); });
+ window.addEventListener('resize', ()=>{ if(panel.classList.contains('open')) positionPanel(); });
+ document.addEventListener('scroll', ()=>{ if(panel.classList.contains('open')) positionPanel(); }, true);
+ document.addEventListener('click', e=>{ if(!panel.contains(e.target) && !trigger.contains(e.target)) close(); });
+ document.addEventListener('keydown', e=>{ if(e.key==='Escape') close(); });
+ })();
+ </script>
 }
 else
 {
-    <ul class="navbar-nav"><li class="nav-item"><a class="nav-link text-light" asp-area="Identity" asp-page="/Account/Login">Login</a></li></ul>
+ <ul class="navbar-nav"><li class="nav-item"><a class="nav-link text-light" asp-area="Identity" asp-page="/Account/Login">Login</a></li></ul>
 }
