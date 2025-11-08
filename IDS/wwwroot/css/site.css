@@ -66,3 +66,24 @@ body {
 .admin-menu .list-group-item.ps-4 {
   background: linear-gradient(90deg, rgba(0,0,0,0.01), transparent);
 }
+
+/* User menu (hamburger) */
+.user-menu-wrapper { position: relative; display:flex; align-items:center; }
+.hamburger {
+ background: transparent; border: none; padding: .5rem; display:flex; flex-direction:column; gap:4px; cursor:pointer;
+ }
+.hamburger span { display:block; width:22px; height:3px; background:#fff; border-radius:2px; transition:transform .3s, opacity .3s; }
+.hamburger.active span:nth-child(1){ transform:translateY(7px) rotate(45deg);} 
+.hamburger.active span:nth-child(2){ opacity:0;} 
+.hamburger.active span:nth-child(3){ transform:translateY(-7px) rotate(-45deg);} 
+.user-menu { position:absolute; top:100%; right:0; background:#212529; color:#fff; min-width:220px; padding:.75rem .75rem1rem; border-radius:.5rem; opacity:0; pointer-events:none; transform:translateY(10px) scale(.95); transition:opacity .25s ease, transform .25s ease; z-index:1000; }
+.user-menu.open { opacity:1; pointer-events:auto; transform:translateY(0) scale(1); }
+.user-menu-header { margin-bottom:.5rem; }
+.user-id { font-weight:600; }
+.user-menu-link { display:block; width:100%; text-align:left; padding:.4rem .5rem; color:#f8f9fa; text-decoration:none; border-radius:.3rem; font-size:.9rem; background:transparent; border:none; }
+.user-menu-link:hover { background:#343a40; color:#fff; text-decoration:none; }
+.user-menu-link.logout { background:#dc3545; color:#fff; }
+.user-menu-link.logout:hover { background:#c82333; }
+.user-menu-link.disabled { opacity:.5; pointer-events:none; }
+.menu-separator hr { margin:.4rem0; border-color:#444; }
+@media (max-width:576px){ .user-menu { right:.5rem; } }

@@ -2,10 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using IDS.Data.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -14,62 +13,55 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
 {
     public class IndexModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
         public IndexModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager)
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public string Username { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [TempData]
         public string StatusMessage { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [BindProperty]
         public InputModel Input { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public class InputModel
         {
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
+            [Required]
+            [Display(Name = "Username")]
+            public string UserName { get; set; }
+
             [Phone]
             [Display(Name = "Phone number")]
             public string PhoneNumber { get; set; }
+
+            [EmailAddress]
+            [Display(Name = "Email")]
+            public string Email { get; set; }
+
+            [Display(Name = "First name")]
+            public string FirstName { get; set; }
+
+            [Display(Name = "Last name")]
+            public string LastName { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user)
+        private async Task LoadAsync(ApplicationUser user)
         {
-            var userName = await _userManager.GetUserNameAsync(user);
-            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
-
-            Username = userName;
-
+            Username = user.UserName;
             Input = new InputModel
             {
-                PhoneNumber = phoneNumber
+                UserName = user.UserName,
+                PhoneNumber = await _userManager.GetPhoneNumberAsync(user),
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName
             };
         }
 
@@ -80,7 +72,6 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
             {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
-
             await LoadAsync(user);
             return Page();
         }
@@ -92,22 +83,60 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
             {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
-
             if (!ModelState.IsValid)
             {
                 await LoadAsync(user);
                 return Page();
             }
 
-            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
-            if (Input.PhoneNumber != phoneNumber)
+            // Update username (with uniqueness check)
+            if (!string.Equals(user.UserName, Input.UserName, System.StringComparison.Ordinal))
             {
-                var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
-                if (!setPhoneResult.Succeeded)
+                var existing = await _userManager.FindByNameAsync(Input.UserName);
+                if (existing != null)
                 {
-                    StatusMessage = "Unexpected error when trying to set phone number.";
+                    ModelState.AddModelError(string.Empty, "Username is already taken.");
+                    await LoadAsync(user);
+                    return Page();
+                }
+                var setName = await _userManager.SetUserNameAsync(user, Input.UserName);
+                if (!setName.Succeeded)
+                {
+                    ModelState.AddModelError(string.Empty, "Could not update username.");
+                    await LoadAsync(user);
+                    return Page();
+                }
+            }
+
+            // Update phone
+            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+            if (!string.Equals(Input.PhoneNumber, phoneNumber, System.StringComparison.Ordinal))
+            {
+                var setPhone = await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
+                if (!setPhone.Succeeded)
+                {
+                    ModelState.AddModelError(string.Empty, "Unexpected error when trying to set phone number.");
                     return RedirectToPage();
                 }
+            }
+
+            // Update email (with confirmation left as-is)
+            if (!string.Equals(Input.Email, user.Email, System.StringComparison.OrdinalIgnoreCase))
+            {
+                user.Email = Input.Email;
+                user.EmailConfirmed = false; // optional: force re-confirm
+            }
+
+            // Update names
+            user.FirstName = Input.FirstName ?? string.Empty;
+            user.LastName = Input.LastName ?? string.Empty;
+
+            var update = await _userManager.UpdateAsync(user);
+            if (!update.Succeeded)
+            {
+                ModelState.AddModelError(string.Empty, "Could not update profile.");
+                await LoadAsync(user);
+                return Page();
             }
 
             await _signInManager.RefreshSignInAsync(user);
