@@ -19,7 +19,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.S
  .AddEntityFrameworkStores<ApplicationDbContext>()
  .AddDefaultTokenProviders();
 
-builder.Services.AddRazorPages();                   
+// Inactivity timeout:5 minutes (testing)
+builder.Services.ConfigureApplicationCookie(options =>
+{
+ options.ExpireTimeSpan = TimeSpan.FromMinutes(1);
+ options.SlidingExpiration = true; // extend while active, expire after inactivity
+ // optional paths keep defaults from Identity UI 
+});
+
+builder.Services.AddRazorPages(); 
 
 // Register access control service
 builder.Services.AddScoped<AccessControlService>();
@@ -112,6 +120,9 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// small ping endpoint to detect expired auth client-side
+app.MapGet("/auth/ping", () => Results.Ok()).RequireAuthorization();
 
 // Enforce first-time setup redirect
 app.Use(async (context, next) =>

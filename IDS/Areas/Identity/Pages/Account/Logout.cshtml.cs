@@ -22,6 +22,9 @@ namespace IDS.Areas.Identity.Pages.Account
             _logger = logger;
         }
 
+        [TempData]
+        public string StatusMessage { get; set; }
+
         public async Task<IActionResult> OnPost(string returnUrl = null)
         {
             await _signInManager.SignOutAsync();
@@ -31,6 +34,15 @@ namespace IDS.Areas.Identity.Pages.Account
                 return LocalRedirect(returnUrl);
             }
             return RedirectToPage("/Account/Logout"); // reload page to show logged out message
+        }
+
+        // GET handler for inactivity-triggered logout
+        public async Task<IActionResult> OnGetInactivityAsync(string returnUrl = null)
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User logged out due to inactivity.");
+            StatusMessage = "You have been logged out due to inactivity.";
+            return RedirectToPage("/Account/Login", new { area = "Identity" });
         }
     }
 }
