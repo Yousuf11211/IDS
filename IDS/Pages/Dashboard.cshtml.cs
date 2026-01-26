@@ -19,10 +19,10 @@ namespace IDS.Pages
 
         public DashboardModel(ApplicationDbContext db)
         {
-            _db = db;
+          _db = db;
         }
 
-        public int TotalLogs { get; set; } // network total for non-admin; activity+network for admin (we also expose separate totals below)
+        public int TotalLogs { get; set; }
         public Dictionary<string, int> LevelCounts { get; set; } = new();
         public int NormalCount { get; set; }
         public int AttackCount { get; set; }
@@ -37,53 +37,100 @@ namespace IDS.Pages
             _db.LogFiles.Add(new LogFile { Timestamp = DateTime.UtcNow, Level = "Information", Message = "Dashboard page visited", UserId = userId });
             await _db.SaveChangesAsync();
 
-            var totalCount = await _db.LogFiles.CountAsync();
-            var grouped = await _db.LogFiles.AsNoTracking()
-                .GroupBy(l => l.Level)
-                .Select(g => new { Level = g.Key, Count = g.Count() })
-                .ToListAsync();
-            LevelCounts = grouped.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
+         var totalCount = await _db.LogFiles.CountAsync();
+   var grouped = await _db.LogFiles.AsNoTracking()
+            .GroupBy(l => l.Level)
+         .Select(g => new { Level = g.Key, Count = g.Count() })
+      .ToListAsync();
+        LevelCounts = grouped.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
 
-            var netNormal = LevelCounts.TryGetValue("NetworkNormal", out var nn) ? nn :0;
-            var netAttack = LevelCounts.TryGetValue("NetworkAttack", out var na) ? na :0;
-            // Fallback: include traditional error/warning as attacks if specific network levels are not present
-            if (na ==0)
-            {
-                netAttack += (LevelCounts.TryGetValue("Error", out var err) ? err :0) + (LevelCounts.TryGetValue("Warning", out var warn) ? warn :0);
-            }
-            // Do not infer normal traffic from generic Information unless ML has produced NetworkNormal entries
+       var netNormal = LevelCounts.TryGetValue("NetworkNormal", out var nn) ? nn : 0;
+    var netAttack = LevelCounts.TryGetValue("NetworkAttack", out var na) ? na : 0;
+            
+         if (na == 0)
+       {
+          netAttack += (LevelCounts.TryGetValue("Error", out var err) ? err : 0) + (LevelCounts.TryGetValue("Warning", out var warn) ? warn : 0);
+          }
+      
             NormalCount = netNormal;
             AttackCount = netAttack;
-            NetworkTotal = NormalCount + AttackCount;
+  NetworkTotal = NormalCount + AttackCount;
             ActivityTotal = Math.Max(0, totalCount - NetworkTotal);
 
-            // Expose TotalLogs for view convenience
-            if (User.IsInRole(Security.AppRoles.Admin))
-            {
-                TotalLogs = totalCount; // admins: total activity logs across system
+ if (User.IsInRole(Security.AppRoles.Admin))
+  {
+  TotalLogs = totalCount;
             }
             else
             {
-                TotalLogs = NetworkTotal; // normal users: only network logs
+                TotalLogs = NetworkTotal;
             }
 
-            if (AttackCount >0 && (AttackCount > (NormalCount /2))) { IdsStatus = "Attention"; IdsStatusClass = "warn"; }
-            else if (AttackCount >0) { IdsStatus = "Degraded"; IdsStatusClass = "warn"; }
-            else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
+            if (AttackCount > 0 && (AttackCount > (NormalCount / 2))) { IdsStatus = "Attention"; IdsStatusClass = "warn"; }
+        else if (AttackCount > 0) { IdsStatus = "Degraded"; IdsStatusClass = "warn"; }
+          else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
         }
 
         [Authorize(Roles = Security.AppRoles.Admin)]
-        public async Task<JsonResult> OnGetLogsAsync()
-        {
-            var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
-                .Select(l => new {
-                    l.Timestamp,
-                    l.Level,
-                    l.Message,
-                    l.UserId,
-                    Classification = l.Level == "NetworkNormal" ? "Normal" : (l.Level == "NetworkAttack" || l.Level == "Error" || l.Level == "Warning" ? "Attack" : "Activity")
+ public async Task<JsonResult> OnGetLogsAsync()
+    {
+    var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
+          .Select(l => new {
+ l.Timestamp,
+         l.Level,
+            l.Message,
+          l.UserId,
+         Classification = l.Level == "NetworkNormal" ? "Normal" : (l.Level == "NetworkAttack" || l.Level == "Error" || l.Level == "Warning" ? "Attack" : "Activity")
                 }).ToListAsync();
             return new JsonResult(data);
+        }
+
+        public async Task<JsonResult> OnGetRecentActivityAsync()
+  {
+          // Get recent security alerts or log entries
+         var recentLogs = await _db.LogFiles.AsNoTracking()
+  .Where(l => l.Level == "Error" || l.Level == "Warning" || l.Level == "NetworkAttack")
+     .OrderByDescending(l => l.Timestamp)
+      .Take(10)
+     .Select(l => new {
+        l.Timestamp,
+       l.Message,
+    Severity = l.Level == "Error" || l.Level == "NetworkAttack" ? "high" : "medium",
+     Type = l.Level
+    }).ToListAsync();
+
+            // If user is admin, also check security alerts table
+     if (User.IsInRole(Security.AppRoles.Admin))
+        {
+     try
+        {
+    var alerts = await _db.SecurityAlerts.AsNoTracking()
+   .Where(a => !a.IsAcknowledged)
+             .OrderByDescending(a => a.Timestamp)
+              .Take(10)
+           .Select(a => new {
+        a.Timestamp,
+               a.Message,
+                 Severity = a.Severity.ToLower(),
+       Type = a.AlertType
+             }).ToListAsync();
+
+ if (alerts.Any())
+   {
+ var combined = recentLogs.Concat(alerts)
+         .OrderByDescending(x => x.Timestamp)
+  .Take(10)
+            .ToList();
+     return new JsonResult(combined);
+      }
+          }
+     catch
+ {
+        // SecurityAlerts table might not exist yet
+}
+            }
+
+            return new JsonResult(recentLogs);
         }
     }
 }

@@ -25,6 +25,8 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
         }
 
         public string Username { get; set; }
+        public bool IsEmailConfirmed { get; set; }
+        
         [TempData]
         public string StatusMessage { get; set; }
 
@@ -55,6 +57,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
         private async Task LoadAsync(ApplicationUser user)
         {
             Username = user.UserName;
+            IsEmailConfirmed = user.EmailConfirmed;
             Input = new InputModel
             {
                 UserName = user.UserName,

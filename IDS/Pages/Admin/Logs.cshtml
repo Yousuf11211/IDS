@@ -1,0 +1,194 @@
+@page
+@model IDS.Pages.Admin.LogsModel
+@{
+    ViewData["Title"] = "System Logs";
+}
+
+<div class="page-header">
+<div class="page-header-hero">
+  <h1 class="page-header-title">
+ <i class="fa-solid fa-scroll"></i>
+System Logs
+ </h1>
+        <p class="page-header-subtitle">
+     View system activity logs and audit trail for the IDS application.
+        </p>
+ </div>
+</div>
+
+<!-- Filters -->
+<div class="card-ids mb-4">
+  <div class="card-ids-body">
+        <form method="get" class="row g-3 align-items-end">
+   <div class="col-md-2">
+   <label class="form-label-ids">Log Type</label>
+ <select name="level" class="form-control-ids form-select-ids">
+    <option value="">All Levels</option>
+  <option value="Error" selected="@(Model.LevelFilter == "Error")">Error</option>
+<option value="Warning" selected="@(Model.LevelFilter == "Warning")">Warning</option>
+        <option value="Information" selected="@(Model.LevelFilter == "Information")">Information</option>
+   <option value="NetworkNormal" selected="@(Model.LevelFilter == "NetworkNormal")">Network Normal</option>
+    <option value="NetworkAttack" selected="@(Model.LevelFilter == "NetworkAttack")">Network Attack</option>
+  </select>
+     </div>
+   <div class="col-md-3">
+  <label class="form-label-ids">Search Message</label>
+       <input type="text" name="search" value="@Model.SearchQuery" class="form-control-ids" placeholder="Search...">
+            </div>
+       <div class="col-md-2">
+   <label class="form-label-ids">Date From</label>
+  <input type="date" name="dateFrom" value="@Model.DateFrom?.ToString("yyyy-MM-dd")" class="form-control-ids">
+     </div>
+ <div class="col-md-2">
+      <label class="form-label-ids">Date To</label>
+          <input type="date" name="dateTo" value="@Model.DateTo?.ToString("yyyy-MM-dd")" class="form-control-ids">
+  </div>
+   <div class="col-md-3 d-flex gap-2">
+   <button type="submit" class="btn-ids btn-ids-primary">
+     <i class="fa-solid fa-search"></i> Search
+   </button>
+          <a href="/Admin/Logs" class="btn-ids btn-ids-secondary">
+       <i class="fa-solid fa-times"></i> Clear
+     </a>
+            </div>
+     </form>
+</div>
+</div>
+
+<!-- Log Statistics Cards -->
+<div class="metrics-grid mb-4">
+    <div class="metric-card" style="--metric-accent: var(--danger);">
+ <div class="metric-icon gradient-red">
+       <i class="fa-solid fa-circle-xmark"></i>
+    </div>
+    <div class="metric-content">
+    <div class="metric-label">Errors</div>
+    <div class="metric-value">@Model.ErrorCount</div>
+     </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--warning);">
+  <div class="metric-icon gradient-yellow">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+   <div class="metric-content">
+    <div class="metric-label">Warnings</div>
+     <div class="metric-value">@Model.WarningCount</div>
+     </div>
+</div>
+ <div class="metric-card" style="--metric-accent: var(--info);">
+     <div class="metric-icon gradient-blue">
+     <i class="fa-solid fa-info-circle"></i>
+        </div>
+        <div class="metric-content">
+    <div class="metric-label">Information</div>
+  <div class="metric-value">@Model.InfoCount</div>
+    </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--success);">
+ <div class="metric-icon gradient-green">
+  <i class="fa-solid fa-network-wired"></i>
+        </div>
+      <div class="metric-content">
+  <div class="metric-label">Network Events</div>
+   <div class="metric-value">@Model.NetworkCount</div>
+     </div>
+</div>
+</div>
+
+<!-- Logs Table -->
+<div class="card-ids">
+  <div class="card-ids-header">
+      <h3 class="card-ids-title">
+ <i class="fa-solid fa-list text-info"></i>
+      Log Entries
+          <span class="badge bg-primary ms-2">@Model.TotalLogs total</span>
+        </h3>
+  <div class="d-flex gap-2">
+     <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm" onclick="location.reload()">
+   <i class="fa-solid fa-refresh"></i> Refresh
+ </button>
+        </div>
+    </div>
+   <div class="card-ids-body p-0">
+        @if (Model.Logs.Any())
+        {
+       <div style="overflow-x: auto;">
+  <table class="table-ids">
+   <thead>
+      <tr>
+  <th style="width: 180px;">Timestamp</th>
+    <th style="width: 120px;">Level</th>
+     <th>Message</th>
+ <th style="width: 200px;">User</th>
+  </tr>
+       </thead>
+        <tbody>
+        @foreach (var log in Model.Logs)
+        {
+       var levelClass = log.Level switch
+    {
+       "Error" => "severity-critical",
+    "Warning" => "severity-high",
+        "NetworkAttack" => "severity-medium",
+ "NetworkNormal" => "severity-low",
+        _ => "severity-info"
+         };
+      var rowClass = log.Level switch
+      {
+ "Error" => "row-danger",
+  "Warning" => "row-warning",
+    _ => ""
+     };
+          <tr class="@rowClass">
+       <td>@log.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+<td><span class="severity-badge @levelClass">@log.Level</span></td>
+     <td>
+      <div class="truncate" style="max-width: 500px;" title="@log.Message">
+ @log.Message
+   </div>
+ @if (!string.IsNullOrEmpty(log.Exception))
+      {
+ <small class="text-danger d-block mt-1">@log.Exception.Substring(0, Math.Min(100, log.Exception.Length))...</small>
+ }
+       </td>
+        <td>@(log.UserId ?? "-")</td>
+  </tr>
+    }
+           </tbody>
+        </table>
+         </div>
+            
+     <!-- Pagination -->
+  @if (Model.TotalPages > 1)
+   {
+         <div class="card-ids-footer d-flex justify-content-between align-items-center">
+   <span class="text-muted">Showing @((Model.CurrentPage - 1) * 100 + 1) to @(Math.Min(Model.CurrentPage * 100, Model.TotalLogs)) of @Model.TotalLogs</span>
+           <nav>
+          <ul class="pagination pagination-sm mb-0">
+         <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+          <a class="page-link" href="?@Model.GetQueryString(Model.CurrentPage - 1)">Previous</a>
+      </li>
+      @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+      {
+       <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+         <a class="page-link" href="?@Model.GetQueryString(i)">@i</a>
+   </li>
+       }
+    <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+   <a class="page-link" href="?@Model.GetQueryString(Model.CurrentPage + 1)">Next</a>
+          </li>
+   </ul>
+      </nav>
+    </div>
+            }
+        }
+      else
+     {
+  <div class="empty-state">
+      <i class="empty-state-icon fa-solid fa-inbox"></i>
+     <h4 class="empty-state-title">No Logs Found</h4>
+ <p class="empty-state-text">No log entries match your current filters.</p>
+ </div>
+    }
+    </div>
+</div>

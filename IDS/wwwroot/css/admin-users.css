@@ -3,3 +3,48 @@
 .user-table .role-employee{background:#f1f3f5;color:#343a40;border:1px solid #ced4da}
 .user-table .role-suspended{background:#fdecec;color:#842029;border:1px solid #f5c2c7}
 .user-filters{border:1px solid #e9ecef;border-radius:.5rem;padding:.75rem1rem;background:#fff}
+
+/* Admin Users - Additional Styles */
+/* Most styling is now handled by site.css design system */
+
+.user-filters {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    background: var(--bg-card);
+}
+
+/* Legacy support - role badges now use .role-badge from site.css */
+.user-table .role-badge {
+    display: inline-block;
+ padding: 0.25rem 0.625rem;
+border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.user-table .role-admin {
+    background: rgba(139, 92, 246, 0.1);
+    color: #7c3aed;
+}
+
+.user-table .role-employee {
+    background: rgba(59, 130, 246, 0.1);
+ color: #2563eb;
+}
+
+.user-table .role-suspended {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.user-table .role-unknown {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+/* Dark mode adjustments */
+.theme-dark .user-filters {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+}

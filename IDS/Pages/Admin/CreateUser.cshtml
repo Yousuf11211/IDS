@@ -4,40 +4,114 @@
  ViewData["Title"] = "Create User";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="page-header">
+    <div class="page-header-hero">
+ <h1 class="page-header-title">
+ <i class="fa-solid fa-user-plus"></i>
+    Create New User
+ </h1>
+    <p class="page-header-subtitle">
+       Add a new user to the IDS system. They will receive an email with their temporary credentials.
+        </p>
+    </div>
+</div>
 
-<form method="post" class="row g-3">
- <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card-ids">
+            <div class="card-ids-header">
+    <h3 class="card-ids-title">
+  <i class="fa-solid fa-id-card text-primary"></i>
+ User Information
+ </h3>
+   </div>
+ <div class="card-ids-body">
+     <form method="post">
+ <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-4" style="display: @(ViewData.ModelState.ErrorCount > 0 ? "flex" : "none")"></div>
 
- <div class="col-12">
- <label asp-for="Input.Email" class="form-label"></label>
- <input asp-for="Input.Email" class="form-control" />
- <span asp-validation-for="Input.Email" class="text-danger"></span>
+         <div class="row g-4">
+          <div class="col-md-6">
+     <div class="form-group">
+ <label asp-for="Input.FirstName" class="form-label-ids">First Name</label>
+       <input asp-for="Input.FirstName" class="form-control-ids" placeholder="John" />
+       <span asp-validation-for="Input.FirstName" class="form-error"></span>
+      </div>
+     </div>
+      
+    <div class="col-md-6">
+        <div class="form-group">
+      <label asp-for="Input.LastName" class="form-label-ids">Last Name</label>
+    <input asp-for="Input.LastName" class="form-control-ids" placeholder="Doe" />
+          <span asp-validation-for="Input.LastName" class="form-error"></span>
+      </div>
+          </div>
+           
+     <div class="col-12">
+  <div class="form-group">
+        <label asp-for="Input.Email" class="form-label-ids">Email Address *</label>
+       <input asp-for="Input.Email" class="form-control-ids" placeholder="user@example.com" />
+    <span asp-validation-for="Input.Email" class="form-error"></span>
+        <p class="form-text">This will be used as the username and for sending the welcome email.</p>
+  </div>
+   </div>
+     
+     <div class="col-md-6">
+ <div class="form-group">
+    <label asp-for="Input.Password" class="form-label-ids">Temporary Password *</label>
+  <input asp-for="Input.Password" class="form-control-ids" type="password" placeholder="••••••••" />
+    <span asp-validation-for="Input.Password" class="form-error"></span>
+          <p class="form-text">User will be required to change this on first login.</p>
  </div>
-
- <div class="col-12">
- <label asp-for="Input.Password" class="form-label"></label>
- <input asp-for="Input.Password" class="form-control" />
- <span asp-validation-for="Input.Password" class="text-danger"></span>
- </div>
-
- <div class="col-12">
- <label asp-for="Input.Role" class="form-label">Role (select or type to create)</label>
- <select asp-for="Input.Role" class="form-select">
- <option value="">(none)</option>
- @foreach (var r in Model.AvailableRoles)
+        </div>
+  
+            <div class="col-md-6">
+ <div class="form-group">
+   <label asp-for="Input.Role" class="form-label-ids">Role *</label>
+     <select asp-for="Input.Role" class="form-control-ids form-select-ids">
+   <option value="">Select a role...</option>
+           @foreach (var r in Model.AvailableRoles)
  {
- <option value="@r">@r</option>
- }
- </select>
- <span asp-validation-for="Input.Role" class="text-danger"></span>
+  <option value="@r">@r</option>
+       }
+      </select>
+        <span asp-validation-for="Input.Role" class="form-error"></span>
+    </div>
+    </div>
+  </div>
+       
+     <hr class="my-4" />
+       
+       <div class="d-flex justify-content-between">
+   <a asp-page="/Admin/UserList" class="btn-ids btn-ids-secondary">
+<i class="fa-solid fa-arrow-left me-2"></i> Back to Users
+ </a>
+    <button type="submit" class="btn-ids btn-ids-success">
+   <i class="fa-solid fa-user-plus me-2"></i> Create User
+    </button>
+  </div>
+   </form>
  </div>
-
- <div class="col-12">
- <button type="submit" class="btn btn-primary">Create user</button>
- <a asp-page="/Admin/UserList" class="btn btn-secondary ms-2">Back to users</a>
  </div>
-</form>
+    
+        <!-- Info Card -->
+        <div class="card-ids mt-4">
+  <div class="card-ids-body">
+  <div class="d-flex gap-3">
+  <div class="metric-icon gradient-blue" style="width: 40px; height: 40px; font-size: 1rem;">
+     <i class="fa-solid fa-envelope"></i>
+     </div>
+       <div>
+     <h4 style="font-size: 1rem; margin-bottom: 0.25rem;">Email Notification</h4>
+<p class="text-muted mb-0" style="font-size: 0.875rem;">
+  The new user will receive an email with their login credentials and instructions.
+      Make sure the email address is correct and accessible.
+    </p>
+       </div>
+    </div>
+ </div>
+   </div>
+    </div>
+</div>
 
 @section Scripts {
  <partial name="_ValidationScriptsPartial" />

@@ -3,6 +3,141 @@
 @{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title">
+    <i class="fa-solid fa-shield-halved"></i>
+  Privacy Policy
+  </h1>
+        <p class="page-header-subtitle">
+    How we collect, use, and protect your information in the IDS Security System.
+    </p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-ids">
+      <div class="card-ids-body">
+   <h2 class="h4 mb-4">1. Information We Collect</h2>
+      <p>The IDS Security System collects the following types of information:</p>
+       <ul>
+    <li><strong>Account Information:</strong> Email address, name, and authentication credentials</li>
+  <li><strong>Network Data:</strong> Network traffic logs, IP addresses, ports, and protocol information</li>
+   <li><strong>Activity Logs:</strong> System access logs, user actions, and audit trails</li>
+  <li><strong>Security Alerts:</strong> Detected threats, anomalies, and security events</li>
+    </ul>
+    
+  <h2 class="h4 mb-4 mt-5">2. How We Use Your Information</h2>
+     <p>Your information is used for:</p>
+    <ul>
+  <li>Authenticating and authorizing access to the system</li>
+    <li>Detecting and preventing security threats</li>
+   <li>Generating security reports and analytics</li>
+     <li>Maintaining audit trails for compliance purposes</li>
+           <li>Improving system performance and accuracy</li>
+         </ul>
+        
+     <h2 class="h4 mb-4 mt-5">3. Data Security</h2>
+   <p>We implement industry-standard security measures to protect your data:</p>
+            <ul>
+     <li>Encrypted data transmission (HTTPS/TLS)</li>
+   <li>Secure password hashing</li>
+            <li>Role-based access control</li>
+   <li>Regular security audits</li>
+          <li>Automatic session timeout</li>
+   </ul>
+  
+          <h2 class="h4 mb-4 mt-5">4. Data Retention</h2>
+       <p>
+   Security logs and network data are retained according to your organization's 
+        data retention policy. Users can request deletion of their personal data 
+ through the account management interface.
+    </p>
+    
+ <h2 class="h4 mb-4 mt-5">5. Your Rights</h2>
+<p>You have the right to:</p>
+      <ul>
+        <li>Access your personal data</li>
+     <li>Request correction of inaccurate data</li>
+      <li>Request deletion of your account</li>
+  <li>Download your personal data</li>
+       <li>Object to certain processing activities</li>
+   </ul>
+ 
+ <h2 class="h4 mb-4 mt-5">6. Contact</h2>
+        <p>
+For privacy-related inquiries, please contact your system administrator 
+   or use the Help & Support section of the application.
+       </p>
+      
+ <div class="alert-ids alert-ids-info mt-5">
+    <i class="alert-ids-icon fa-solid fa-info-circle"></i>
+     <div class="alert-ids-content">
+      <strong>Last Updated:</strong> @DateTime.Now.ToString("MMMM yyyy")
+   </div>
+   </div>
+   </div>
+        </div>
+ </div>
+    
+    <div class="col-lg-4">
+    <div class="card-ids">
+   <div class="card-ids-header">
+   <h3 class="card-ids-title">
+       <i class="fa-solid fa-download text-primary"></i>
+        Your Data
+         </h3>
+          </div>
+  <div class="card-ids-body">
+     <p class="text-muted mb-3">Manage your personal data and privacy settings.</p>
+      @if (User?.Identity?.IsAuthenticated == true)
+     {
+   <a asp-area="Identity" asp-page="/Account/Manage/PersonalData" class="btn-ids btn-ids-primary w-100 mb-2">
+    <i class="fa-solid fa-download me-2"></i> Manage Personal Data
+  </a>
+    <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn-ids btn-ids-secondary w-100">
+    <i class="fa-solid fa-user-gear me-2"></i> Account Settings
+         </a>
+       }
+      else
+       {
+  <p class="text-muted">Sign in to manage your personal data.</p>
+    <a href="/Identity/Account/Login" class="btn-ids btn-ids-primary w-100">
+ <i class="fa-solid fa-right-to-bracket me-2"></i> Sign In
+ </a>
+ }
+   </div>
+        </div>
+        
+        <div class="card-ids mt-4">
+       <div class="card-ids-header">
+      <h3 class="card-ids-title">
+    <i class="fa-solid fa-lock text-success"></i>
+  Security Features
+   </h3>
+          </div>
+            <div class="card-ids-body">
+         <ul class="list-unstyled mb-0">
+    <li class="d-flex align-items-center gap-2 py-2 border-bottom">
+       <i class="fa-solid fa-check text-success"></i>
+  <span>Two-Factor Authentication</span>
+  </li>
+   <li class="d-flex align-items-center gap-2 py-2 border-bottom">
+      <i class="fa-solid fa-check text-success"></i>
+  <span>Encrypted Connections</span>
+   </li>
+    <li class="d-flex align-items-center gap-2 py-2 border-bottom">
+  <i class="fa-solid fa-check text-success"></i>
+  <span>Session Timeout</span>
+    </li>
+        <li class="d-flex align-items-center gap-2 py-2">
+    <i class="fa-solid fa-check text-success"></i>
+  <span>Audit Logging</span>
+  </li>
+     </ul>
+   </div>
+        </div>
+    </div>
+</div>

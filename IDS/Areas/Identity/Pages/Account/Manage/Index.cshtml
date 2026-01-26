@@ -1,63 +1,154 @@
 ﻿@page
 @model IndexModel
 @{
- ViewData["Title"] = "Profile";
- ViewData["ActivePage"] = ManageNavPages.Index;
+    ViewData["Title"] = "Profile";
+    ViewData["ActivePage"] = ManageNavPages.Index;
 }
 
-<style>
-.profile-card { background:#fff; border-radius:.75rem; padding:1.25rem; box-shadow:010px25px rgba(0,0,0,.08); }
-.profile-card .title { font-weight:600; margin-bottom:1rem; }
-</style>
+<div class="page-header">
+    <div class="page-header-hero">
+ <h1 class="page-header-title">
+     <i class="fa-solid fa-user-circle"></i>
+   Profile Settings
+ </h1>
+ <p class="page-header-subtitle">
+    Manage your account information and preferences.
+     </p>
+    </div>
+</div>
 
-<h3 class="mb-3">@ViewData["Title"]</h3>
-<partial name="_StatusMessage" for="StatusMessage" />
-<div class="row">
- <div class="col-md-7">
- <div class="profile-card">
- <div class="title">Account information</div>
- <form id="profile-form" method="post">
- <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
- <div class="form-floating mb-3">
- <input asp-for="Input.UserName" class="form-control" placeholder="Choose your username" />
- <label asp-for="Input.UserName" class="form-label"></label>
- <span asp-validation-for="Input.UserName" class="text-danger"></span>
+<partial name="_StatusMessage" />
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card-ids">
+     <div class="card-ids-header">
+   <h3 class="card-ids-title">
+      <i class="fa-solid fa-id-card text-primary"></i>
+    Account Information
+       </h3>
+            </div>
+    <div class="card-ids-body">
+     <form id="profile-form" method="post">
+     <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-4" role="alert"></div>
+    
+        <div class="row g-3">
+     <div class="col-md-6">
+ <div class="form-group">
+        <label asp-for="Input.FirstName" class="form-label-ids">First Name</label>
+         <input asp-for="Input.FirstName" class="form-control-ids" placeholder="John" />
+  <span asp-validation-for="Input.FirstName" class="form-error"></span>
+           </div>
+      </div>
+    <div class="col-md-6">
+      <div class="form-group">
+         <label asp-for="Input.LastName" class="form-label-ids">Last Name</label>
+          <input asp-for="Input.LastName" class="form-control-ids" placeholder="Doe" />
+         <span asp-validation-for="Input.LastName" class="form-error"></span>
+         </div>
+        </div>
+       </div>
+     
+   <div class="form-group">
+        <label asp-for="Input.UserName" class="form-label-ids">Username</label>
+            <div class="input-group">
+        <span class="input-group-text" style="background: var(--bg-tertiary); border-color: var(--border-color);">
+      <i class="fa-solid fa-at text-muted"></i>
+ </span>
+<input asp-for="Input.UserName" class="form-control-ids" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" placeholder="username" />
+     </div>
+   <span asp-validation-for="Input.UserName" class="form-error"></span>
+  </div>
+         
+       <div class="form-group">
+   <label asp-for="Input.Email" class="form-label-ids">Email Address</label>
+         <div class="input-group">
+        <span class="input-group-text" style="background: var(--bg-tertiary); border-color: var(--border-color);">
+     <i class="fa-solid fa-envelope text-muted"></i>
+       </span>
+       <input asp-for="Input.Email" class="form-control-ids" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" placeholder="you@example.com" />
+      </div>
+<span asp-validation-for="Input.Email" class="form-error"></span>
+    <p class="form-text">Changing your email may require re-confirmation.</p>
+         </div>
+   
+       <div class="form-group">
+     <label asp-for="Input.PhoneNumber" class="form-label-ids">Phone Number (Optional)</label>
+      <div class="input-group">
+       <span class="input-group-text" style="background: var(--bg-tertiary); border-color: var(--border-color);">
+     <i class="fa-solid fa-phone text-muted"></i>
+          </span>
+         <input asp-for="Input.PhoneNumber" class="form-control-ids" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" placeholder="+1 (555) 123-4567" />
+         </div>
+         <span asp-validation-for="Input.PhoneNumber" class="form-error"></span>
+         </div>
+   
+      <hr class="my-4" />
+     
+     <button type="submit" class="btn-ids btn-ids-success btn-ids-lg">
+   <i class="fa-solid fa-save me-2"></i> Save Changes
+       </button>
+     </form>
+     </div>
+  </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Quick Links -->
+   <div class="card-ids">
+   <div class="card-ids-header">
+<h3 class="card-ids-title">
+        <i class="fa-solid fa-link text-info"></i>
+   Quick Links
+       </h3>
  </div>
- <div class="form-floating mb-3">
- <input asp-for="Input.Email" class="form-control" placeholder="Enter your email" />
- <label asp-for="Input.Email" class="form-label"></label>
- <span asp-validation-for="Input.Email" class="text-danger"></span>
+  <div class="card-ids-body p-0">
+ <nav class="sidebar-nav">
+   <a asp-page="./ChangePassword" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+    <i class="fa-solid fa-key"></i> Change Password
+        </a>
+ <a asp-page="./TwoFactorAuthentication" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+  <i class="fa-solid fa-shield-halved"></i> Two-Factor Auth
+   </a>
+<a asp-page="./PersonalData" class="sidebar-nav-link" style="padding: 0.75rem 1rem;">
+   <i class="fa-solid fa-download"></i> Personal Data
+       </a>
+    </nav>
+     </div>
+        </div>
+        
+        <!-- Account Info -->
+     <div class="card-ids mt-4">
+      <div class="card-ids-header">
+ <h3 class="card-ids-title">
+     <i class="fa-solid fa-circle-info text-warning"></i>
+     Account Info
+       </h3>
+  </div>
+   <div class="card-ids-body">
+ <dl class="mb-0">
+       <dt class="text-muted" style="font-size: 0.8125rem;">Account Status</dt>
+  <dd class="mb-3">
+          <span class="status-badge status-normal">Active</span>
+ </dd>
+         
+    <dt class="text-muted" style="font-size: 0.8125rem;">Email Confirmed</dt>
+    <dd>
+       @if (Model.IsEmailConfirmed)
+        {
+  <span class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Verified</span>
+      }
+  else
+        {
+   <span class="text-warning"><i class="fa-solid fa-exclamation-circle me-1"></i> Not Verified</span>
+  }
+       </dd>
+  </dl>
  </div>
- <div class="form-floating mb-3">
- <input asp-for="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
- <label asp-for="Input.PhoneNumber" class="form-label"></label>
- <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
- </div>
- <div class="row g-2">
- <div class="col">
- <div class="form-floating mb-3">
- <input asp-for="Input.FirstName" class="form-control" placeholder="First name" />
- <label asp-for="Input.FirstName" class="form-label"></label>
- <span asp-validation-for="Input.FirstName" class="text-danger"></span>
- </div>
- </div>
- <div class="col">
- <div class="form-floating mb-3">
- <input asp-for="Input.LastName" class="form-control" placeholder="Last name" />
- <label asp-for="Input.LastName" class="form-label"></label>
- <span asp-validation-for="Input.LastName" class="text-danger"></span>
- </div>
- </div>
- </div>
- <button id="update-profile-button" type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
- </form>
- </div>
- </div>
- <div class="col-md-5">
- <div class="alert alert-info">Tip: Use a unique username. Email changes may require re-confirmation.</div>
- </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
- <partial name="_ValidationScriptsPartial" />
+    <partial name="_ValidationScriptsPartial" />
 }

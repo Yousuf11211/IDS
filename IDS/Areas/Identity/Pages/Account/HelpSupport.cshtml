@@ -1,42 +1,158 @@
 @page
 @model IDS.Areas.Identity.Pages.Account.HelpSupportModel
 @{
- ViewData["Title"] = "Help & Support";
+  ViewData["Title"] = "Help & Support";
 }
 
-<h2 class="mb-4">Help & Support</h2>
-<p class="text-muted">Frequently asked questions. More content coming soon.</p>
-<div class="accordion" id="faqAccordion">
- <div class="accordion-item">
- <h2 class="accordion-header" id="q1h">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q1" aria-expanded="false" aria-controls="q1">How do I change my password?</button>
- </h2>
- <div id="q1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
- <div class="accordion-body">Go to Profile > Security (Change Password) and enter your current password and new password.</div>
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title">
+       <i class="fa-solid fa-circle-question"></i>
+    Help & Support
+        </h1>
+     <p class="page-header-subtitle">
+    Find answers to common questions and get assistance.
+     </p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-ids">
+   <div class="card-ids-header">
+   <h2 class="card-ids-title">
+       <i class="fa-solid fa-messages-question text-primary"></i>
+     Frequently Asked Questions
+   </h2>
  </div>
+     <div class="card-ids-body">
+    <div class="accordion" id="faqAccordion">
+       <div class="accordion-item">
+  <h3 class="accordion-header">
+    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#q1">
+        <i class="fa-solid fa-key me-2 text-primary"></i>
+     How do I change my password?
+        </button>
+    </h3>
+    <div id="q1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+   <div class="accordion-body">
+     Go to <strong>Profile > Change Password</strong> from the user menu. 
+Enter your current password and your new password, then click Save.
+       </div>
+          </div>
+         </div>
+    
+            <div class="accordion-item">
+ <h3 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2">
+       <i class="fa-solid fa-shield-halved me-2 text-success"></i>
+   How do I enable two-factor authentication?
+     </button>
+    </h3>
+        <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+            Navigate to <strong>Profile > Two-Factor Auth</strong> from the user menu. 
+   Follow the on-screen instructions to configure your authenticator app 
+(Google Authenticator, Microsoft Authenticator, etc.).
+  </div>
+     </div>
+    </div>
+   
+        <div class="accordion-item">
+    <h3 class="accordion-header">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">
+  <i class="fa-solid fa-user-pen me-2 text-info"></i>
+        How can I update my profile details?
+     </button>
+     </h3>
+     <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body">
+      Open the <strong>Profile</strong> page from the user menu dropdown. 
+   You can edit your username, first name, last name, phone number, 
+and email address. Click Save when done.
+   </div>
+    </div>
+          </div>
+     
+      <div class="accordion-item">
+    <h3 class="accordion-header">
+<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4">
+   <i class="fa-solid fa-unlock me-2 text-warning"></i>
+       I forgot my password
+      </button>
+   </h3>
+   <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+<div class="accordion-body">
+Use the <strong>"Forgot password"</strong> link on the login screen. 
+      Enter your email address and you'll receive a password reset link. 
+  If you don't receive an email, check your spam folder or contact an administrator.
+    </div>
+       </div>
  </div>
- <div class="accordion-item">
- <h2 class="accordion-header" id="q2h">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2" aria-expanded="false" aria-controls="q2">How do I enable two-factor authentication?</button>
- </h2>
- <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
- <div class="accordion-body">Navigate to Security > Two-factor authentication and follow the on-screen instructions to configure your authenticator app.</div>
- </div>
- </div>
- <div class="accordion-item">
- <h2 class="accordion-header" id="q3h">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3" aria-expanded="false" aria-controls="q3">How can I update my profile details?</button>
- </h2>
- <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
- <div class="accordion-body">Open the Profile page from the user menu and edit username, names, phone number, or email then click Save.</div>
- </div>
- </div>
- <div class="accordion-item">
- <h2 class="accordion-header" id="q4h">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q4" aria-expanded="false" aria-controls="q4">I forgot my password.</button>
- </h2>
- <div id="q4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
- <div class="accordion-body">Use the "Forgot password" link on the login screen. If you did not receive an email, contact an administrator.</div>
- </div>
- </div>
+  
+       <div class="accordion-item">
+     <h3 class="accordion-header">
+           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q5">
+       <i class="fa-solid fa-user-slash me-2 text-danger"></i>
+   My account is suspended
+    </button>
+  </h3>
+         <div id="q5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+     <div class="accordion-body">
+    If your account has been suspended, you will not be able to log in. 
+   Please contact your system administrator to understand the reason 
+ and request reactivation if appropriate.
+     </div>
+    </div>
+   </div>
+        </div>
+   </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Contact Support -->
+        <div class="card-ids">
+       <div class="card-ids-header">
+         <h3 class="card-ids-title">
+  <i class="fa-solid fa-headset text-success"></i>
+         Need More Help?
+       </h3>
+     </div>
+          <div class="card-ids-body">
+   <p class="text-muted mb-3">
+  Can't find what you're looking for? Contact support for assistance.
+    </p>
+ <a href="mailto:support@ids-system.local" class="btn-ids btn-ids-primary w-100 mb-2">
+            <i class="fa-solid fa-envelope me-2"></i> Email Support
+      </a>
+     <a href="/Help" class="btn-ids btn-ids-secondary w-100">
+  <i class="fa-solid fa-book-open me-2"></i> Full Help Center
+     </a>
+     </div>
+        </div>
+        
+     <!-- Quick Links -->
+   <div class="card-ids mt-4">
+      <div class="card-ids-header">
+   <h3 class="card-ids-title">
+           <i class="fa-solid fa-link text-info"></i>
+      Quick Links
+   </h3>
+  </div>
+    <div class="card-ids-body p-0">
+   <nav class="sidebar-nav">
+       <a asp-page="/Account/Manage/ChangePassword" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+   <i class="fa-solid fa-key"></i> Change Password
+     </a>
+   <a asp-page="/Account/Manage/TwoFactorAuthentication" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+ <i class="fa-solid fa-shield-halved"></i> Two-Factor Auth
+   </a>
+    <a asp-page="/Account/Manage/Index" class="sidebar-nav-link" style="padding: 0.75rem 1rem;">
+     <i class="fa-solid fa-user"></i> Profile Settings
+  </a>
+      </nav>
+            </div>
+        </div>
+    </div>
 </div>

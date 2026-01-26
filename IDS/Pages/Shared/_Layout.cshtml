@@ -3,96 +3,172 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - IDS</title>
+    <title>@ViewData["Title"] - IDS Security</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-Avb2QiuDEEvB4bZJYdft2mNjVShBftLdPG8FJ0V7irTLQ8Uo16qeRvEALZy9FTgvLqjAZaFJ0cJTgLJhLdJvMA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/IDS.styles.css" asp-append-version="true" />
-
+    
     @await RenderSectionAsync("HeadContent", required: false)
-
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-dark bg-dark border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">IDS</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/Privacy">Privacy</a>
-                        </li>
-
-                        @* Show Dashboard link only to authenticated users *@
-                        @if (User?.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-page="/Dashboard">Dashboard</a>
-                            </li>
-                        }
-
-                        @* Menu header dropdown (was Admin) *@
-                        @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
-                        {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="menuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Menu
-                                </a>
-                                <ul class="dropdown-menu" aria-labelledby="menuDropdown">
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Admin/CreateUser">Create User</a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Admin/UserList">Manage Users</a>
-                                    </li>
-                                    <li><hr class="dropdown-divider" /></li>
-                                    <li>
-                                        <a class="dropdown-item" asp-page="/Dashboard" asp-route-view="logs">Logs Management</a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
-
-                    </ul>
-                    <partial name="_LoginPartial" />
-                </div>
+ <header>
+  <nav class="navbar navbar-ids navbar-expand-lg">
+    <div class="container-fluid px-4">
+         <a class="navbar-brand" asp-area="" asp-page="/Index">
+<i class="fa-solid fa-shield-halved"></i>
+      IDS Security
+              </a>
+   
+ <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain"
+aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+             <span class="navbar-toggler-icon"></span>
+     </button>
+                
+<div class="navbar-collapse collapse" id="navbarMain">
+       <ul class="navbar-nav me-auto">
+       @if (User?.Identity?.IsAuthenticated == true)
+       {
+            <li class="nav-item">
+    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Dashboard" ? "active" : "")" asp-area="" asp-page="/Dashboard">
+                   <i class="fa-solid fa-gauge me-1"></i> Dashboard
+         </a>
+          </li>
+        
+            @if (User.IsInRole("Admin"))
+            {
+            <li class="nav-item">
+          <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Alerts") == true ? "active" : "")" asp-area="" asp-page="/Admin/Alerts">
+          <i class="fa-solid fa-bell me-1"></i> Alerts
+                 </a>
+          </li>
+       <li class="nav-item">
+ <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/UserList") == true ? "active" : "")" asp-area="" asp-page="/Admin/UserList">
+    <i class="fa-solid fa-users me-1"></i> Users
+         </a>
+   </li>
+    <li class="nav-item">
+            <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Database") == true ? "active" : "")" asp-area="" asp-page="/Admin/DatabaseViewer">
+          <i class="fa-solid fa-database me-1"></i> Database
+      </a>
+ </li>
+       <li class="nav-item">
+          <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Logs") == true ? "active" : "")" asp-area="" asp-page="/Admin/Logs">
+   <i class="fa-solid fa-scroll me-1"></i> Logs
+        </a>
+        </li>
+      }
+    }
+       else
+          {
+             <li class="nav-item">
+           <a class="nav-link" asp-area="" asp-page="/Index">
+     <i class="fa-solid fa-home me-1"></i> Home
+  </a>
+                 </li>
+            }
+       
+         <li class="nav-item">
+     <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Help" ? "active" : "")" asp-area="" asp-page="/Help">
+        <i class="fa-solid fa-circle-question me-1"></i> Help
+         </a>
+                </li>
+ </ul>
+      
+    <div class="d-flex align-items-center gap-3">
+       <!-- Theme Toggle -->
+  <button id="themeToggle" class="btn btn-icon btn-ids-ghost" aria-label="Toggle theme" title="Toggle dark/light mode">
+  <i class="fa-solid fa-moon" id="themeIcon"></i>
+       </button>
+          
+ <partial name="_LoginPartial" />
+   </div>
+  </div>
             </div>
         </nav>
-    </header>
+  </header>
+
     @if (ViewData["FullWidthLayout"] != null)
+ {
+        <main role="main" class="main-content-full">
+       @RenderBody()
+</main>
+    }
+    else if (ViewData["NoContainer"] != null)
     {
-        @* Full width for Dashboard *@
-        <main role="main" class="p-0">
-            @* p-0 is a Bootstrap class to remove padding *@
-            @RenderBody()
+    <main role="main">
+  @RenderBody()
         </main>
     }
     else
     {
-        @* Normal layout for all other pages *@
-        <div class="container">
-            <main role="main" class="pb-3">
-                @RenderBody()
-            </main>
-        </div>
+        <main role="main" class="main-content">
+  <div class="container-fluid" style="max-width: 1400px;">
+        @RenderBody()
+            </div>
+        </main>
     }
 
-    <footer class="border-top footer text-muted">
-        <center><div class="container">
-            &copy;2025 - IDS
-        </div></center> 
-    </footer>
+    <footer class="footer-ids">
+        <div class="container">
+       <span>&copy; @DateTime.Now.Year IDS Security System</span>
+ <span class="mx-2">|</span>
+        <a href="/Privacy" class="text-muted text-decoration-none">Privacy Policy</a>
+  </div>
+</footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    <script>
+        // Theme management
+    (function() {
+            const root = document.documentElement;
+            const LS_KEY = 'ids-theme';
+     const toggle = document.getElementById('themeToggle');
+  const icon = document.getElementById('themeIcon');
+            
+            function applyTheme(theme) {
+        if (theme === 'dark') {
+             root.classList.add('theme-dark');
+                    if (icon) {
+              icon.classList.remove('fa-moon');
+      icon.classList.add('fa-sun');
+           }
+         } else {
+   root.classList.remove('theme-dark');
+           if (icon) {
+              icon.classList.remove('fa-sun');
+              icon.classList.add('fa-moon');
+       }
+        }
+        }
+      
+      // Initialize theme
+    const savedTheme = localStorage.getItem(LS_KEY) || 'dark';
+  applyTheme(savedTheme);
+            
+     // Toggle handler
+ if (toggle) {
+                toggle.addEventListener('click', () => {
+         const newTheme = root.classList.contains('theme-dark') ? 'light' : 'dark';
+ localStorage.setItem(LS_KEY, newTheme);
+         applyTheme(newTheme);
+        });
+       }
+        })();
+</script>
 
-    @await RenderSectionAsync("Scripts", required: false)
+ @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

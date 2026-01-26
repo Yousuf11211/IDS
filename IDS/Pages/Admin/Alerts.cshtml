@@ -1,0 +1,205 @@
+@page
+@model IDS.Pages.Admin.AlertsModel
+@{
+  ViewData["Title"] = "Security Alerts";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+ <h1 class="page-header-title">
+ <i class="fa-solid fa-bell"></i>
+    Security Alerts
+  </h1>
+     <p class="page-header-subtitle">
+       Monitor and manage security alerts detected by the IDS system.
+   </p>
+    </div>
+</div>
+
+<!-- Alert Statistics -->
+<div class="metrics-grid mb-4">
+ <div class="metric-card" style="--metric-accent: var(--danger);">
+        <div class="metric-icon gradient-red">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+      <div class="metric-content">
+        <div class="metric-label">Critical Alerts</div>
+   <div class="metric-value">@Model.CriticalCount</div>
+        </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--warning);">
+     <div class="metric-icon gradient-yellow">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+ <div class="metric-content">
+        <div class="metric-label">High Priority</div>
+    <div class="metric-value">@Model.HighCount</div>
+        </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--info);">
+ <div class="metric-icon gradient-blue">
+ <i class="fa-solid fa-info-circle"></i>
+        </div>
+  <div class="metric-content">
+    <div class="metric-label">Medium/Low</div>
+       <div class="metric-value">@Model.OtherCount</div>
+</div>
+ </div>
+    <div class="metric-card" style="--metric-accent: var(--success);">
+     <div class="metric-icon gradient-green">
+      <i class="fa-solid fa-check-circle"></i>
+     </div>
+     <div class="metric-content">
+    <div class="metric-label">Acknowledged</div>
+            <div class="metric-value">@Model.AcknowledgedCount</div>
+</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card-ids mb-4">
+    <div class="card-ids-body">
+        <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-3">
+    <label class="form-label-ids">Severity</label>
+      <select name="severity" class="form-control-ids form-select-ids">
+      <option value="">All Severities</option>
+     <option value="Critical" selected="@(Model.SeverityFilter == "Critical")">Critical</option>
+          <option value="High" selected="@(Model.SeverityFilter == "High")">High</option>
+ <option value="Medium" selected="@(Model.SeverityFilter == "Medium")">Medium</option>
+   <option value="Low" selected="@(Model.SeverityFilter == "Low")">Low</option>
+ <option value="Info" selected="@(Model.SeverityFilter == "Info")">Info</option>
+     </select>
+ </div>
+    <div class="col-md-3">
+<label class="form-label-ids">Status</label>
+       <select name="status" class="form-control-ids form-select-ids">
+<option value="">All Status</option>
+ <option value="unacknowledged" selected="@(Model.StatusFilter == "unacknowledged")">Unacknowledged</option>
+    <option value="acknowledged" selected="@(Model.StatusFilter == "acknowledged")">Acknowledged</option>
+       </select>
+  </div>
+         <div class="col-md-3">
+  <label class="form-label-ids">Date Range</label>
+              <select name="dateRange" class="form-control-ids form-select-ids">
+        <option value="all">All Time</option>
+     <option value="today" selected="@(Model.DateRange == "today")">Today</option>
+  <option value="week" selected="@(Model.DateRange == "week")">Last 7 Days</option>
+  <option value="month" selected="@(Model.DateRange == "month")">Last 30 Days</option>
+        </select>
+      </div>
+     <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn-ids btn-ids-primary">
+  <i class="fa-solid fa-filter"></i> Filter
+  </button>
+   <a href="/Admin/Alerts" class="btn-ids btn-ids-secondary">
+     <i class="fa-solid fa-times"></i> Clear
+ </a>
+   </div>
+     </form>
+    </div>
+</div>
+
+<!-- Alerts Table -->
+<div class="card-ids">
+  <div class="card-ids-header">
+        <h3 class="card-ids-title">
+ <i class="fa-solid fa-list text-info"></i>
+Alert List
+   <span class="badge bg-primary ms-2">@Model.Alerts.Count alerts</span>
+        </h3>
+    </div>
+    <div class="card-ids-body p-0">
+        @if (Model.Alerts.Any())
+       {
+       <div style="overflow-x: auto;">
+ <table class="table-ids">
+      <thead>
+<tr>
+   <th style="width: 100px;">Severity</th>
+       <th style="width: 180px;">Timestamp</th>
+         <th style="width: 120px;">Type</th>
+       <th>Source ? Destination</th>
+     <th>Message</th>
+  <th style="width: 100px;">Status</th>
+         <th style="width: 120px;">Actions</th>
+ </tr>
+      </thead>
+        <tbody>
+     @foreach (var alert in Model.Alerts)
+           {
+      var severityClass = alert.Severity.ToLower() switch
+      {
+       "critical" => "severity-critical",
+    "high" => "severity-high",
+    "medium" => "severity-medium",
+      "low" => "severity-low",
+      _ => "severity-info"
+       };
+       var rowClass = alert.Severity.ToLower() switch
+       {
+         "critical" => "row-danger",
+  "high" => "row-warning",
+      _ => ""
+           };
+    <tr class="@rowClass">
+     <td><span class="severity-badge @severityClass">@alert.Severity</span></td>
+       <td>@alert.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+   <td>@alert.AlertType</td>
+    <td>
+       <code>@alert.SourceIP:@alert.SourcePort</code>
+       <i class="fa-solid fa-arrow-right mx-1 text-muted"></i>
+ <code>@alert.DestinationIP:@alert.DestinationPort</code>
+          </td>
+         <td class="truncate" style="max-width: 300px;" title="@alert.Message">@alert.Message</td>
+     <td>
+  @if (alert.IsAcknowledged)
+     {
+        <span class="status-badge status-normal">Acknowledged</span>
+    }
+       else
+     {
+                 <span class="status-badge status-warning">Pending</span>
+      }
+    </td>
+   <td>
+      <div class="d-flex gap-1">
+  @if (!alert.IsAcknowledged)
+  {
+       <form method="post" asp-page-handler="Acknowledge" style="display:inline;">
+      <input type="hidden" name="alertId" value="@alert.Id" />
+      <button type="submit" class="btn-ids btn-ids-success btn-icon btn-icon-sm" title="Acknowledge">
+          <i class="fa-solid fa-check"></i>
+   </button>
+         </form>
+  }
+      <button type="button" class="btn-ids btn-ids-ghost btn-icon btn-icon-sm" title="View Details" 
+      onclick="viewAlertDetails(@alert.Id)">
+  <i class="fa-solid fa-eye"></i>
+     </button>
+       </div>
+     </td>
+     </tr>
+}
+ </tbody>
+    </table>
+         </div>
+}
+        else
+        {
+       <div class="empty-state">
+ <i class="empty-state-icon fa-solid fa-shield-check"></i>
+        <h4 class="empty-state-title">No Alerts Found</h4>
+ <p class="empty-state-text">No security alerts match your current filters.</p>
+        </div>
+     }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function viewAlertDetails(id) {
+     alert('View details for alert ' + id + ' - implement modal as needed');
+        }
+    </script>
+}
