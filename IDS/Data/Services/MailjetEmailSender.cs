@@ -26,6 +26,7 @@ namespace IDS.Data.Services
         private readonly bool _emailEnabled;
         private readonly bool _ignoreSSLErrors;
         private readonly string _templateBasePath;
+        private readonly string _logoUrl;
 
         /// <summary>
         /// Initializes the Mailjet email sender with configuration from environment variables.
@@ -46,6 +47,7 @@ namespace IDS.Data.Services
             _fromEmail = Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL") ?? "no-reply@intrusiondetectionsystem.great-site.net";
             _fromName = Environment.GetEnvironmentVariable("MAILJET_FROM_NAME") ?? "IDS System";
             _supportEmail = Environment.GetEnvironmentVariable("SUPPORT_EMAIL") ?? "support@intrusiondetectionsystem.great-site.net";
+            _logoUrl = Environment.GetEnvironmentVariable("EMAIL_LOGO_URL") ?? string.Empty;
             
             // EMAIL_STATUS controls whether emails are actually sent
             // When false, emails are logged but not sent (useful for development)
@@ -73,6 +75,11 @@ namespace IDS.Data.Services
         /// Gets the support email address from configuration.
         /// </summary>
         public string SupportEmail => _supportEmail;
+
+        /// <summary>
+        /// Gets the logo URL for email branding.
+        /// </summary>
+        public string LogoUrl => _logoUrl;
 
       #region IEmailSender Implementation
 
@@ -224,96 +231,94 @@ namespace IDS.Data.Services
         /// <summary>
         /// Sends a temporary password email to a new user.
         /// </summary>
-        public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsync(string toEmail, string userName, string temporaryPassword, string? loginUrl = null)
+public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsync(string toEmail, string userName, string temporaryPassword, string? loginUrl = null)
         {
-            var placeholders = new Dictionary<string, string>
-            {
-                { "UserName", userName ?? "User" },
-                { "UserEmail", toEmail },
-                { "TemporaryPassword", temporaryPassword },
-                { "LoginUrl", loginUrl ?? "/Identity/Account/Login" },
-                { "SupportEmail", _supportEmail },
-                { "Year", DateTime.Now.Year.ToString() }
-            };
+   var placeholders = GetBasePlaceholders();
+        placeholders["UserName"] = userName ?? "User";
+            placeholders["UserEmail"] = toEmail;
+            placeholders["TemporaryPassword"] = temporaryPassword;
+            placeholders["LoginUrl"] = loginUrl ?? "/Identity/Account/Login";
 
             var (htmlBody, textBody) = await LoadTemplateAsync("TempPasswordEmail", placeholders);
             return await SendEmailAsync(toEmail, userName, "Your Temporary Password - IDS", htmlBody, textBody);
         }
 
-        /// <summary>
-        /// Sends a password reset email.
+    /// <summary>
+   /// Sends a password reset email.
         /// </summary>
-    public async Task SendPasswordResetEmailAsync(string toEmail, string userName, string resetUrl, int expiryHours = 24)
+ public async Task SendPasswordResetEmailAsync(string toEmail, string userName, string resetUrl, int expiryHours = 24)
         {
-            var placeholders = new Dictionary<string, string>
-   {
-         { "UserName", userName ?? "User" },
-            { "UserEmail", toEmail },
-      { "ResetUrl", resetUrl },
-       { "ExpiryHours", expiryHours.ToString() },
-                { "SupportEmail", _supportEmail },
-  { "Year", DateTime.Now.Year.ToString() }
-      };
+  var placeholders = GetBasePlaceholders();
+     placeholders["UserName"] = userName ?? "User";
+     placeholders["UserEmail"] = toEmail;
+    placeholders["ResetUrl"] = resetUrl;
+            placeholders["ExpiryHours"] = expiryHours.ToString();
 
-   var (htmlBody, textBody) = await LoadTemplateAsync("PasswordResetEmail", placeholders);
-            await SendEmailAsync(toEmail, userName, "Reset Your Password - IDS", htmlBody, textBody);
+  var (htmlBody, textBody) = await LoadTemplateAsync("PasswordResetEmail", placeholders);
+   await SendEmailAsync(toEmail, userName, "Reset Your Password - IDS", htmlBody, textBody);
         }
 
         /// <summary>
         /// Sends an email confirmation email.
-        /// </summary>
+     /// </summary>
         public async Task SendEmailConfirmationAsync(string toEmail, string userName, string confirmationUrl)
-   {
-            var placeholders = new Dictionary<string, string>
-      {
-         { "UserName", userName ?? "User" },
-                { "UserEmail", toEmail },
-      { "ConfirmationUrl", confirmationUrl },
-     { "SupportEmail", _supportEmail },
-  { "Year", DateTime.Now.Year.ToString() }
-            };
+ {
+            var placeholders = GetBasePlaceholders();
+         placeholders["UserName"] = userName ?? "User";
+    placeholders["UserEmail"] = toEmail;
+        placeholders["ConfirmationUrl"] = confirmationUrl;
 
-       var (htmlBody, textBody) = await LoadTemplateAsync("EmailConfirmation", placeholders);
-  await SendEmailAsync(toEmail, userName, "Confirm Your Email - IDS", htmlBody, textBody);
+      var (htmlBody, textBody) = await LoadTemplateAsync("EmailConfirmation", placeholders);
+        await SendEmailAsync(toEmail, userName, "Confirm Your Email - IDS", htmlBody, textBody);
         }
 
-    /// <summary>
-      /// Sends a security alert notification email.
+        /// <summary>
+        /// Sends a security alert notification email.
         /// </summary>
- public async Task SendSecurityAlertEmailAsync(
-            string toEmail, 
-   string userName,
-            string alertId,
-    string alertTitle,
-     string alertDescription,
-  string severityLevel,
-            string sourceIP,
+        public async Task SendSecurityAlertEmailAsync(
+ string toEmail, 
+            string userName,
+   string alertId,
+            string alertTitle,
+    string alertDescription,
+    string severityLevel,
+   string sourceIP,
             string attackType,
-       DateTime detectedAt,
-       string? recommendedAction = null,
-   string? dashboardUrl = null)
-      {
-            var placeholders = new Dictionary<string, string>
-      {
-        { "UserName", userName ?? "Admin" },
-                { "AlertId", alertId },
-          { "AlertTitle", alertTitle },
-                { "AlertDescription", alertDescription },
-          { "SeverityLevel", severityLevel },
-   { "SourceIP", sourceIP ?? "Unknown" },
-                { "AttackType", attackType ?? "Unknown" },
-         { "DetectedAt", detectedAt.ToString("yyyy-MM-dd HH:mm:ss UTC") },
-   { "RecommendedAction", recommendedAction ?? "Review the alert details and take appropriate action based on your security policies." },
-         { "DashboardUrl", dashboardUrl ?? "/Admin/Alerts" },
-      { "SupportEmail", _supportEmail },
-            { "Year", DateTime.Now.Year.ToString() }
-            };
+     DateTime detectedAt,
+            string? recommendedAction = null,
+        string? dashboardUrl = null)
+  {
+         var placeholders = GetBasePlaceholders();
+        placeholders["UserName"] = userName ?? "Admin";
+            placeholders["AlertId"] = alertId;
+   placeholders["AlertTitle"] = alertTitle;
+            placeholders["AlertDescription"] = alertDescription;
+        placeholders["SeverityLevel"] = severityLevel;
+placeholders["SourceIP"] = sourceIP ?? "Unknown";
+    placeholders["AttackType"] = attackType ?? "Unknown";
+      placeholders["DetectedAt"] = detectedAt.ToString("yyyy-MM-dd HH:mm:ss UTC");
+ placeholders["RecommendedAction"] = recommendedAction ?? "Review the alert details and take appropriate action based on your security policies.";
+          placeholders["DashboardUrl"] = dashboardUrl ?? "/Admin/Alerts";
 
-   var (htmlBody, textBody) = await LoadTemplateAsync("SecurityAlertEmail", placeholders);
-       await SendEmailAsync(toEmail, userName, $"?? Security Alert: {alertTitle} - IDS", htmlBody, textBody);
-      }
+            var (htmlBody, textBody) = await LoadTemplateAsync("SecurityAlertEmail", placeholders);
+         await SendEmailAsync(toEmail, userName, $"?? Security Alert: {alertTitle} - IDS", htmlBody, textBody);
+        }
 
-      #endregion
+        /// <summary>
+ /// Gets base placeholders common to all email templates.
+/// </summary>
+        private Dictionary<string, string> GetBasePlaceholders()
+        {
+          return new Dictionary<string, string>
+            {
+    { "SupportEmail", _supportEmail },
+    { "Year", DateTime.Now.Year.ToString() },
+     { "LogoUrl", _logoUrl },
+         { "HasLogo", string.IsNullOrEmpty(_logoUrl) ? "false" : "true" }
+     };
+        }
+
+    #endregion
 
         #region Template Helpers
 
