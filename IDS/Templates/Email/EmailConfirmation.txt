@@ -1,0 +1,37 @@
+================================================================================
+      INTRUSION DETECTION SYSTEM
+   Email Confirmation
+================================================================================
+
+Hello {UserName},
+
+Thank you for registering with the Intrusion Detection System. 
+
+To complete your registration and activate your account, please confirm 
+your email address by clicking the link below:
+
+--------------------------------------------------------------------------------
+         CONFIRM YOUR EMAIL
+--------------------------------------------------------------------------------
+
+{ConfirmationUrl}
+
+--------------------------------------------------------------------------------
+
+? Almost there! Once confirmed, you'll have full access to all IDS features.
+
+If you didn't create an account with IDS, you can safely ignore this email.
+
+--------------------------------------------------------------------------------
+          NEED HELP?
+--------------------------------------------------------------------------------
+
+If you have any questions or need assistance, please contact our support team:
+Email: {SupportEmail}
+
+--------------------------------------------------------------------------------
+
+© {Year} Intrusion Detection System. All rights reserved.
+This is an automated message. Please do not reply directly to this email.
+
+================================================================================
