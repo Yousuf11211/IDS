@@ -21,10 +21,38 @@
             </p>
         </li>
         <li>
-            <p>Scan the QR Code or enter this key <kbd>@Model.SharedKey</kbd> into your two factor authenticator app. Spaces and casing do not matter.</p>
-            <div class="alert alert-info">Learn how to <a href="https://go.microsoft.com/fwlink/?Linkid=852423">enable QR code generation</a>.</div>
-            <div id="qrCode"></div>
-            <div id="qrCodeData" data-url="@Model.AuthenticatorUri"></div>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="fw-bold">Option 1: Scan QR Code</p>
+                    <div id="qrCode" class="mb-3"></div>
+                    <div id="qrCodeData" data-url="@Html.Raw(Model.AuthenticatorUri)"></div>
+                </div>
+                <div class="col-md-6">
+                     <p class="fw-bold">Option 2: Manual Entry</p>
+                     
+                     <div class="alert alert-ids alert-ids-warning mb-3">
+                         <i class="fa-solid fa-lightbulb me-2"></i>
+                         <strong>Using Microsoft Authenticator?</strong><br/>
+                         Select <strong>"Other (Google, Facebook, etc.)"</strong> when adding the account.<br/>
+                         <em class="small">Do NOT select "Work or school account" — that asks for a Code & URL which won't work here.</em>
+                     </div>
+
+                     <p>If you can't scan the code, enter these details manually:</p>
+                     
+                     <div class="card bg-light mb-3">
+                         <div class="card-body">
+                             <div class="mb-2">
+                                 <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Account Name</small>
+                                 <div class="fs-5">IDS</div>
+                             </div>
+                             <div>
+                                 <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Secret Key</small>
+                                 <div class="font-monospace fs-5 text-break" style="letter-spacing: 1px;">@Model.SharedKey</div>
+                             </div>
+                         </div>
+                     </div>
+                </div>
+            </div>
         </li>
         <li>
             <p>
@@ -50,4 +78,27 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script type="text/javascript">
+        // Create the QR Code
+        var qrCodeContainer = document.getElementById("qrCode");
+        var authenticatorUri = "@Html.Raw(Model.AuthenticatorUri)";
+        
+        // Ensure the URI is properly logged for debugging
+        console.log("Generating QR for:", authenticatorUri);
+
+        try {
+            new QRCode(qrCodeContainer,
+                {
+                    text: authenticatorUri,
+                    width: 200,
+                    height: 200,
+                    correctLevel: QRCode.CorrectLevel.M // Medium error correction
+                });
+        } catch (e) {
+            console.error("QR Code generation failed:", e);
+            document.getElementById("qrFallback").style.display = "block";
+            qrCodeContainer.innerHTML = "<p class='text-danger'>Error generating QR code. Please use the manual key below.</p>";
+        }
+    </script>
 }
