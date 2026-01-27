@@ -16,47 +16,52 @@ namespace IDS.Data.Services
         private readonly IWebHostEnvironment _environment;
   
         // Configuration loaded from environment variables
-  private readonly string _apiKey;
+        private readonly string _apiKey;
         private readonly string _secretKey;
         private readonly string _smtpServer;
         private readonly int _smtpPort;
-     private readonly string _fromEmail;
+        private readonly string _fromEmail;
         private readonly string _fromName;
         private readonly string _supportEmail;
         private readonly bool _emailEnabled;
-  private readonly string _templateBasePath;
+        private readonly bool _ignoreSSLErrors;
+        private readonly string _templateBasePath;
 
-      /// <summary>
+        /// <summary>
         /// Initializes the Mailjet email sender with configuration from environment variables.
         /// </summary>
         public MailjetEmailSender(ILogger<MailjetEmailSender> logger, IWebHostEnvironment environment)
-  {
+        {
             _logger = logger;
-        _environment = environment;
+            _environment = environment;
 
-     // =====================================================
-         // Load configuration from environment variables
-   // Falls back to defaults for development
             // =====================================================
-          _apiKey = Environment.GetEnvironmentVariable("MAILJET_API_KEY") ?? string.Empty;
-     _secretKey = Environment.GetEnvironmentVariable("MAILJET_SECRET_KEY") ?? string.Empty;
-          _smtpServer = Environment.GetEnvironmentVariable("MAILJET_SMTP_SERVER") ?? "in-v3.mailjet.com";
-    _smtpPort = int.TryParse(Environment.GetEnvironmentVariable("MAILJET_SMTP_PORT"), out var port) ? port : 587;
+            // Load configuration from environment variables
+            // Falls back to defaults for development
+            // =====================================================
+            _apiKey = Environment.GetEnvironmentVariable("MAILJET_API_KEY") ?? string.Empty;
+            _secretKey = Environment.GetEnvironmentVariable("MAILJET_SECRET_KEY") ?? string.Empty;
+            _smtpServer = Environment.GetEnvironmentVariable("MAILJET_SMTP_SERVER") ?? "in-v3.mailjet.com";
+            _smtpPort = int.TryParse(Environment.GetEnvironmentVariable("MAILJET_SMTP_PORT"), out var port) ? port : 587;
             _fromEmail = Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL") ?? "no-reply@intrusiondetectionsystem.great-site.net";
-    _fromName = Environment.GetEnvironmentVariable("MAILJET_FROM_NAME") ?? "IDS System";
-      _supportEmail = Environment.GetEnvironmentVariable("SUPPORT_EMAIL") ?? "support@intrusiondetectionsystem.great-site.net";
+            _fromName = Environment.GetEnvironmentVariable("MAILJET_FROM_NAME") ?? "IDS System";
+            _supportEmail = Environment.GetEnvironmentVariable("SUPPORT_EMAIL") ?? "support@intrusiondetectionsystem.great-site.net";
             
             // EMAIL_STATUS controls whether emails are actually sent
-         // When false, emails are logged but not sent (useful for development)
-       var emailStatus = Environment.GetEnvironmentVariable("EMAIL_STATUS") ?? "false";
-  _emailEnabled = emailStatus.Equals("true", StringComparison.OrdinalIgnoreCase);
+            // When false, emails are logged but not sent (useful for development)
+            var emailStatus = Environment.GetEnvironmentVariable("EMAIL_STATUS") ?? "false";
+            _emailEnabled = emailStatus.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            // SECURITY: Allows bypassing SSL certificate checks (useful for dev/corporate networks but UNSAFE for production)
+            var ignoreSSL = Environment.GetEnvironmentVariable("MAILJET_IGNORE_CERTIFICATE_ERRORS") ?? "false";
+            _ignoreSSLErrors = ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
   
-      // Template path relative to content root
-          _templateBasePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
+            // Template path relative to content root
+            _templateBasePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
             
             // Log configuration status (without sensitive data)
-      _logger.LogInformation("MailjetEmailSender initialized. Email sending is {Status}. SMTP: {Server}:{Port}", 
-  _emailEnabled ? "ENABLED" : "DISABLED", _smtpServer, _smtpPort);
+            _logger.LogInformation("MailjetEmailSender initialized. Email sending is {Status}. SMTP: {Server}:{Port}. SSL Bypass: {SSL}", 
+                _emailEnabled ? "ENABLED" : "DISABLED", _smtpServer, _smtpPort, _ignoreSSLErrors);
         }
 
         /// <summary>
@@ -173,10 +178,14 @@ namespace IDS.Data.Services
                 // =====================================================
                 using var client = new SmtpClient();
 
-                // FIX: Bypass SSL certificate revocation checks which often fail on dev machines/corporate networks
-                client.CheckCertificateRevocation = false;
-                // FIX: Trust the server certificate even if validation fails (e.g. self-signed or revocation issues)
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                if (_ignoreSSLErrors)
+                {
+                    // WARNING: Only use this in development or if strictly necessary due to network/firewall issues
+                    // This creates a security risk (Man-in-the-Middle attacks)
+                    client.CheckCertificateRevocation = false;
+                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                    _logger.LogWarning("SSL Certificate validation is DISABLED. This is unsafe for production.");
+                }
         
                 // Connect to Mailjet SMTP server
                 await client.ConnectAsync(_smtpServer, _smtpPort, SecureSocketOptions.StartTls);
