@@ -6,277 +6,277 @@
 
 <div class="page-header">
     <div class="page-header-hero">
-    <h1 class="page-header-title">
-            <i class="fa-solid fa-circle-question"></i>
-    Help & Support
+        <h1 class="page-header-title">
+   <i class="fa-solid fa-circle-question"></i>
+     Help & Support
       </h1>
         <p class="page-header-subtitle">
-            Find answers to common questions and learn how to use the IDS system effectively.
+     Find answers to common questions and learn how to use the IDS system effectively.
         </p>
     </div>
 </div>
 
 <div class="row g-4">
     <!-- Quick Start Guide -->
- <div class="col-lg-8">
-  <div class="card-ids">
-  <div class="card-ids-header">
-           <h2 class="card-ids-title">
-         <i class="fa-solid fa-rocket text-primary"></i>
-  Quick Start Guide
-            </h2>
-            </div>
+    <div class="col-lg-8">
+        <div class="card-ids">
+ <div class="card-ids-header">
+         <h2 class="card-ids-title">
+ <i class="fa-solid fa-rocket text-primary me-2"></i>
+Quick Start Guide
+       </h2>
+   </div>
             <div class="card-ids-body">
-  <div class="accordion" id="quickStartAccordion">
-    <div class="accordion-item">
-              <h3 class="accordion-header">
-   <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-     <i class="fa-solid fa-gauge me-2 text-primary"></i>
-    Using the Dashboard
-       </button>
-     </h3>
-   <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#quickStartAccordion">
-     <div class="accordion-body">
-   <p>The Dashboard provides a comprehensive overview of your network security status:</p>
-             <ul>
-      <li><strong>Metrics Cards</strong> - View total logs, normal traffic, detected attacks, and system status at a glance.</li>
-              <li><strong>IDS Status</strong> - Shows the current health of the intrusion detection system (Normal, Attention, or Degraded).</li>
-  <li><strong>Logs Explorer</strong> - (Admin only) Browse and filter security logs by type and severity.</li>
-      </ul>
-        </div>
- </div>
-        </div>
-          
-      <div class="accordion-item">
-    <h3 class="accordion-header">
-   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
-         <i class="fa-solid fa-bell me-2 text-warning"></i>
-          Understanding Alerts
-   </button>
-      </h3>
-   <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
-         <div class="accordion-body">
-              <p>Alerts are generated when the system detects suspicious or malicious network activity:</p>
-         <ul>
-         <li><strong class="text-danger">Critical</strong> - Immediate action required. Active attack or severe security breach.</li>
-        <li><strong class="text-warning">High</strong> - Significant threat detected. Investigate promptly.</li>
- <li><strong style="color: var(--warning);">Medium</strong> - Potential security issue. Review when possible.</li>
- <li><strong class="text-success">Low</strong> - Minor anomaly detected. Monitor for patterns.</li>
- <li><strong class="text-info">Info</strong> - Informational only. No action required.</li>
-        </ul>
-    </div>
-       </div>
-   </div>
-     
-     <div class="accordion-item">
-<h3 class="accordion-header">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-    <i class="fa-solid fa-user-gear me-2 text-info"></i>
- Managing Your Profile
-    </button>
-</h3>
-  <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
-        <div class="accordion-body">
-  <p>Access your profile settings through the user menu in the top-right corner:</p>
-            <ul>
-       <li><strong>Profile</strong> - Update your name and contact information.</li>
-       <li><strong>Change Password</strong> - Update your password regularly for security.</li>
-       <li><strong>Two-Factor Authentication</strong> - Enable 2FA for additional account security.</li>
-   <li><strong>Personal Data</strong> - Download or delete your personal data.</li>
-           </ul>
-                </div>
-     </div>
-        </div>
-        
-          @if (User.IsInRole("Admin"))
-   {
-              <div class="accordion-item">
-                <h3 class="accordion-header">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
-      <i class="fa-solid fa-users-gear me-2 text-purple"></i>
-       Admin Features
- </button>
- </h3>
-        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
-            <div class="accordion-body">
-      <p>As an administrator, you have access to additional features:</p>
-    <ul>
-    <li><strong>User Management</strong> - Create, edit, and manage user accounts and roles.</li>
-      <li><strong>Database Viewer</strong> - View and manage all database tables for testing and maintenance.</li>
-<li><strong>Logs Explorer</strong> - Full access to all system and security logs.</li>
-     <li><strong>Alerts Management</strong> - Acknowledge and manage security alerts.</li>
-            <li><strong>Audit Logs</strong> - Review all administrative actions for compliance.</li>
-          </ul>
-      </div>
-      </div>
-             </div>
-          }
-    </div>
-            </div>
-        </div>
-        
-      <!-- FAQ Section -->
-        <div class="card-ids mt-4">
-            <div class="card-ids-header">
-        <h2 class="card-ids-title">
-     <i class="fa-solid fa-messages-question text-info"></i>
-     Frequently Asked Questions
-                </h2>
-            </div>
-            <div class="card-ids-body">
-         <div class="accordion" id="faqAccordion">
-   <div class="accordion-item">
-    <h3 class="accordion-header">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-       What types of attacks can the IDS detect?
-        </button>
-    </h3>
-          <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                <div class="accordion-body">
-               The IDS system is designed to detect various attack types including:
-        <ul>
-               <li>Denial of Service (DoS) attacks</li>
-<li>Network probing and port scanning</li>
-         <li>Remote-to-Local (R2L) attacks</li>
-      <li>User-to-Root (U2R) privilege escalation</li>
-        <li>Malware and suspicious payload patterns</li>
-     </ul>
-   </div>
-  </div>
-   </div>
-  
+<div class="accordion" id="quickStartAccordion">
         <div class="accordion-item">
-     <h3 class="accordion-header">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-  How often are metrics updated?
-             </button>
-            </h3>
-   <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-      <div class="accordion-body">
-         Dashboard metrics are updated in real-time as new network events are processed. The system continuously monitors network traffic and updates statistics accordingly.
-  </div>
+         <h3 class="accordion-header">
+ <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+<i class="fa-solid fa-gauge me-2 text-primary"></i>
+    Using the Dashboard
+    </button>
+  </h3>
+         <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#quickStartAccordion">
+       <div class="accordion-body" style="color: var(--text-primary);">
+           <p>The Dashboard provides a comprehensive overview of your network security status:</p>
+     <ul>
+      <li><strong>Metrics Cards</strong> - View total logs, normal traffic, detected attacks, and system status at a glance.</li>
+        <li><strong>IDS Status</strong> - Shows the current health of the intrusion detection system (Normal, Attention, or Degraded).</li>
+        <li><strong>Logs Explorer</strong> - (Admin only) Browse and filter security logs by type and severity.</li>
+        </ul>
+       </div>
    </div>
   </div>
-      
-      <div class="accordion-item">
+    
+    <div class="accordion-item">
      <h3 class="accordion-header">
-           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-               What should I do if I receive a critical alert?
+     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+    <i class="fa-solid fa-bell me-2 text-warning"></i>
+              Understanding Alerts
+       </button>
+</h3>
+  <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
+             <div class="accordion-body" style="color: var(--text-primary);">
+   <p>Alerts are generated when the system detects suspicious or malicious network activity:</p>
+              <ul>
+  <li><strong style="color: #ef4444;">Critical</strong> - Immediate action required. Active attack or severe security breach.</li>
+          <li><strong style="color: #f97316;">High</strong> - Significant threat detected. Investigate promptly.</li>
+            <li><strong style="color: #eab308;">Medium</strong> - Potential security issue. Review when possible.</li>
+      <li><strong style="color: #22c55e;">Low</strong> - Minor anomaly detected. Monitor for patterns.</li>
+         <li><strong style="color: #3b82f6;">Info</strong> - Informational only. No action required.</li>
+        </ul>
+   </div>
+</div>
+  </div>
+              
+   <div class="accordion-item">
+       <h3 class="accordion-header">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+<i class="fa-solid fa-user-gear me-2 text-info"></i>
+       Managing Your Profile
+     </button>
+           </h3>
+  <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
+    <div class="accordion-body" style="color: var(--text-primary);">
+  <p>Access your profile settings through the user menu in the top-right corner:</p>
+   <ul>
+        <li><strong>Profile</strong> - Update your name and contact information.</li>
+             <li><strong>Change Password</strong> - Update your password regularly for security.</li>
+    <li><strong>Two-Factor Authentication</strong> - Enable 2FA for additional account security.</li>
+    <li><strong>Personal Data</strong> - Download or delete your personal data.</li>
+        </ul>
+   </div>
+            </div>
+     </div>
+      
+        @if (User.IsInRole("Admin"))
+       {
+   <div class="accordion-item">
+       <h3 class="accordion-header">
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+     <i class="fa-solid fa-users-gear me-2" style="color: #a855f7;"></i>
+          Admin Features
    </button>
-   </h3>
-             <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-            <div class="accordion-body">
-       <ol>
-     <li>Review the alert details immediately</li>
-      <li>Check the source and destination IPs involved</li>
-        <li>Assess if the activity is legitimate or malicious</li>
-         <li>If malicious, isolate affected systems if necessary</li>
-           <li>Document the incident and acknowledge the alert</li>
-        <li>Follow your organization's incident response procedures</li>
-    </ol>
-       </div>
-     </div>
-       </div>
-   
-              <div class="accordion-item">
+     </h3>
+   <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#quickStartAccordion">
+         <div class="accordion-body" style="color: var(--text-primary);">
+ <p>As an administrator, you have access to additional features:</p>
+     <ul>
+        <li><strong>User Management</strong> - Create, edit, and manage user accounts and roles.</li>
+       <li><strong>Database Viewer</strong> - View and manage all database tables for testing and maintenance.</li>
+       <li><strong>Logs Explorer</strong> - Full access to all system and security logs.</li>
+       <li><strong>Alerts Management</strong> - Acknowledge and manage security alerts.</li>
+        <li><strong>Audit Logs</strong> - Review all administrative actions for compliance.</li>
+       </ul>
+      </div>
+          </div>
+         </div>
+         }
+         </div>
+        </div>
+        </div>
+     
+        <!-- FAQ Section -->
+        <div class="card-ids mt-4">
+      <div class="card-ids-header">
+      <h2 class="card-ids-title">
+       <i class="fa-solid fa-messages-question text-info me-2"></i>
+    Frequently Asked Questions
+           </h2>
+ </div>
+        <div class="card-ids-body">
+  <div class="accordion" id="faqAccordion">
+     <div class="accordion-item">
   <h3 class="accordion-header">
-         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
-              Why was my account suspended?
-        </button>
-      </h3>
-   <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-               <div class="accordion-body">
-         Account suspension may occur for security reasons such as:
-         <ul>
-          <li>Multiple failed login attempts</li>
-  <li>Suspicious activity detected from your account</li>
- <li>Policy violations</li>
-     <li>Administrative action</li>
-               </ul>
-    Please contact your system administrator to resolve the issue.
-     </div>
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+      What types of attacks can the IDS detect?
+       </button>
+  </h3>
+  <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+ <div class="accordion-body" style="color: var(--text-primary);">
+   The IDS system is designed to detect various attack types including:
+   <ul>
+      <li>Denial of Service (DoS) attacks</li>
+           <li>Network probing and port scanning</li>
+               <li>Remote-to-Local (R2L) attacks</li>
+       <li>User-to-Root (U2R) privilege escalation</li>
+     <li>Malware and suspicious payload patterns</li>
+          </ul>
+  </div>
       </div>
-               </div>
-        </div>
       </div>
+    
+     <div class="accordion-item">
+        <h3 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+           How often are metrics updated?
+       </button>
+    </h3>
+        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+        <div class="accordion-body" style="color: var(--text-primary);">
+        Dashboard metrics are updated in real-time as new network events are processed. The system continuously monitors network traffic and updates statistics accordingly.
+ </div>
+    </div>
+</div>
+    
+        <div class="accordion-item">
+    <h3 class="accordion-header">
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+      What should I do if I receive a critical alert?
+</button>
+     </h3>
+     <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+         <div class="accordion-body" style="color: var(--text-primary);">
+        <ol>
+ <li>Review the alert details immediately</li>
+           <li>Check the source and destination IPs involved</li>
+     <li>Assess if the activity is legitimate or malicious</li>
+   <li>If malicious, isolate affected systems if necessary</li>
+   <li>Document the incident and acknowledge the alert</li>
+       <li>Follow your organization's incident response procedures</li>
+    </ol>
+         </div>
+       </div>
+             </div>
+ 
+          <div class="accordion-item">
+ <h3 class="accordion-header">
+       <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+     Why was my account suspended?
+       </button>
+        </h3>
+       <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+     <div class="accordion-body" style="color: var(--text-primary);">
+       Account suspension may occur for security reasons such as:
+             <ul>
+<li>Multiple failed login attempts</li>
+       <li>Suspicious activity detected from your account</li>
+       <li>Policy violations</li>
+    <li>Administrative action</li>
+       </ul>
+       Please contact your system administrator to resolve the issue.
+      </div>
+       </div>
         </div>
+           </div>
+   </div>
+    </div>
     </div>
     
-    <!-- Sidebar -->
+ <!-- Sidebar -->
     <div class="col-lg-4">
-        <!-- Contact Support -->
-        <div class="card-ids">
-            <div class="card-ids-header">
-            <h3 class="card-ids-title">
-            <i class="fa-solid fa-headset text-success"></i>
-            Contact Support
+    <!-- Contact Support -->
+      <div class="card-ids">
+  <div class="card-ids-header">
+           <h3 class="card-ids-title">
+  <i class="fa-solid fa-headset text-success me-2"></i>
+       Contact Support
     </h3>
-   </div>
-       <div class="card-ids-body">
-     <p class="text-muted mb-3">Need additional help? Reach out to our support team.</p>
-    <div class="d-flex flex-column gap-3">
-<a href="mailto:support@ids-system.local" class="btn-ids btn-ids-secondary w-100">
-          <i class="fa-solid fa-envelope"></i>
-        Email Support
-      </a>
-           <a href="#" class="btn-ids btn-ids-secondary w-100">
-<i class="fa-solid fa-ticket"></i>
-            Submit Ticket
-              </a>
      </div>
-  </div>
-        </div>
-        
-   <!-- System Info -->
-    <div class="card-ids mt-4">
- <div class="card-ids-header">
-       <h3 class="card-ids-title">
-   <i class="fa-solid fa-circle-info text-info"></i>
- System Information
-     </h3>
-            </div>
-            <div class="card-ids-body">
-    <dl class="mb-0">
-            <dt class="text-muted">Version</dt>
-              <dd>IDS v1.0.0</dd>
-         
-    <dt class="text-muted mt-2">Framework</dt>
- <dd>.NET 8.0</dd>
-          
- <dt class="text-muted mt-2">Last Updated</dt>
-             <dd>@DateTime.Now.ToString("MMMM yyyy")</dd>
-    </dl>
+ <div class="card-ids-body">
+         <p style="color: var(--text-secondary); margin-bottom: 1rem;">Need additional help? Reach out to our support team.</p>
+     <div class="d-flex flex-column gap-3">
+    <a href="mailto:support@ids-system.local" class="btn-ids btn-ids-secondary w-100">
+<i class="fa-solid fa-envelope me-2"></i>
+ <span>Email Support</span>
+   </a>
+    <a href="#" class="btn-ids btn-ids-secondary w-100">
+       <i class="fa-solid fa-ticket me-2"></i>
+  <span>Submit Ticket</span>
+         </a>
+ </div>
     </div>
         </div>
-     
-        <!-- Keyboard Shortcuts -->
+        
+ <!-- System Info -->
         <div class="card-ids mt-4">
-        <div class="card-ids-header">
-       <h3 class="card-ids-title">
-              <i class="fa-solid fa-keyboard text-secondary"></i>
-  Keyboard Shortcuts
-         </h3>
- </div>
-            <div class="card-ids-body">
-         <ul class="list-unstyled mb-0">
-     <li class="d-flex justify-content-between py-2 border-bottom">
-      <span>Toggle Theme</span>
-  <kbd>T</kbd>
-     </li>
-<li class="d-flex justify-content-between py-2 border-bottom">
-        <span>Go to Dashboard</span>
-        <kbd>D</kbd>
-             </li>
-             <li class="d-flex justify-content-between py-2 border-bottom">
-   <span>Search</span>
- <kbd>/</kbd>
-    </li>
-      <li class="d-flex justify-content-between py-2">
-   <span>Close Modal</span>
-   <kbd>Esc</kbd>
-          </li>
-   </ul>
+    <div class="card-ids-header">
+    <h3 class="card-ids-title">
+        <i class="fa-solid fa-circle-info text-info me-2"></i>
+   System Information
+    </h3>
             </div>
-      </div>
+ <div class="card-ids-body">
+      <dl class="mb-0">
+         <dt style="color: var(--text-secondary);">Version</dt>
+    <dd style="color: var(--text-primary);">IDS v1.0.0</dd>
+  
+      <dt style="color: var(--text-secondary); margin-top: 0.5rem;">Framework</dt>
+  <dd style="color: var(--text-primary);">.NET 8.0</dd>
+   
+      <dt style="color: var(--text-secondary); margin-top: 0.5rem;">Last Updated</dt>
+  <dd style="color: var(--text-primary);">@DateTime.Now.ToString("MMMM yyyy")</dd>
+       </dl>
+            </div>
+        </div>
+    
+        <!-- Keyboard Shortcuts -->
+  <div class="card-ids mt-4">
+            <div class="card-ids-header">
+     <h3 class="card-ids-title">
+         <i class="fa-solid fa-keyboard me-2" style="color: var(--text-secondary);"></i>
+   Keyboard Shortcuts
+      </h3>
+     </div>
+     <div class="card-ids-body">
+     <ul class="list-unstyled mb-0">
+        <li class="d-flex justify-content-between py-2 border-bottom">
+     <span style="color: var(--text-primary);">Toggle Theme</span>
+       <kbd>T</kbd>
+  </li>
+      <li class="d-flex justify-content-between py-2 border-bottom">
+         <span style="color: var(--text-primary);">Go to Dashboard</span>
+   <kbd>D</kbd>
+   </li>
+     <li class="d-flex justify-content-between py-2 border-bottom">
+       <span style="color: var(--text-primary);">Search</span>
+   <kbd>/</kbd>
+      </li>
+     <li class="d-flex justify-content-between py-2">
+         <span style="color: var(--text-primary);">Close Modal</span>
+    <kbd>Esc</kbd>
+     </li>
+      </ul>
+            </div>
+        </div>
     </div>
 </div>

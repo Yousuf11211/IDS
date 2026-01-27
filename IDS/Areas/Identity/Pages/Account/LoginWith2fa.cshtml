@@ -7,51 +7,194 @@
 
 <div class="login-page">
     <div class="login-container">
-      <div class="login-card">
-            <div class="login-logo">
-        <i class="fa-solid fa-shield-halved"></i>
-       </div>
-    <h1 class="login-title">Two-Factor Authentication</h1>
-            <p class="login-subtitle">Your account is protected with 2FA. Enter the code from your authenticator app.</p>
+    <div class="login-card">
+ <div class="login-logo">
+         <i class="fa-solid fa-shield-halved"></i>
+  </div>
+            <h1 class="login-title">Two-Factor Authentication</h1>
+            <p class="login-subtitle">Enter the 6-digit code from your authenticator app</p>
 
-            <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
-         <input asp-for="RememberMe" type="hidden" />
-         <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-3" role="alert"></div>
+         <form method="post" asp-route-returnUrl="@Model.ReturnUrl" id="2fa-form">
+<input asp-for="RememberMe" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-3" role="alert"></div>
 
-        <div class="form-group">
-         <label asp-for="Input.TwoFactorCode" class="form-label-ids">Authenticator Code</label>
-    <input asp-for="Input.TwoFactorCode" class="form-control-ids text-center" 
-     style="font-size: 1.5rem; letter-spacing: 0.5rem; font-family: monospace;" 
-  autocomplete="off" 
- placeholder="000000"
-         maxlength="7" />
-       <span asp-validation-for="Input.TwoFactorCode" class="form-error"></span>
-       </div>
+   <!-- 6 Individual Digit Boxes -->
+        <div class="otp-container mb-4">
+    <input type="text" class="otp-input" maxlength="1" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" />
+   <input type="text" class="otp-input" maxlength="1" data-index="1" inputmode="numeric" pattern="[0-9]" />
+        <input type="text" class="otp-input" maxlength="1" data-index="2" inputmode="numeric" pattern="[0-9]" />
+    <input type="text" class="otp-input" maxlength="1" data-index="3" inputmode="numeric" pattern="[0-9]" />
+           <input type="text" class="otp-input" maxlength="1" data-index="4" inputmode="numeric" pattern="[0-9]" />
+          <input type="text" class="otp-input" maxlength="1" data-index="5" inputmode="numeric" pattern="[0-9]" />
+                </div>
+            
+     <!-- Hidden field for the actual code -->
+    <input asp-for="Input.TwoFactorCode" type="hidden" id="TwoFactorCode" />
+        <span asp-validation-for="Input.TwoFactorCode" class="form-error text-center d-block mb-3"></span>
 
-          <div class="form-check mb-4">
-            <input asp-for="Input.RememberMachine" class="form-check-input" />
-         <label asp-for="Input.RememberMachine" class="form-check-label">
-      Don't ask again on this device
-    </label>
-       </div>
+    <div class="form-check mb-4 text-start">
+  <input asp-for="Input.RememberMachine" class="form-check-input" />
+      <label asp-for="Input.RememberMachine" class="form-check-label">
+     Don't ask again on this device
+ </label>
+    </div>
 
-       <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100">
-   <i class="fa-solid fa-unlock me-2"></i> Verify & Sign In
-          </button>
-      </form>
+      <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100">
+           <i class="fa-solid fa-unlock me-2"></i>
+               <span>Verify & Sign In</span>
+        </button>
+            </form>
         </div>
 
-   <div class="card-ids mt-4">
-       <div class="card-ids-body text-center">
-     <p class="mb-2 text-muted">Don't have access to your authenticator?</p>
-           <a asp-page="./LoginWithRecoveryCode" asp-route-returnUrl="@Model.ReturnUrl" class="btn-ids btn-ids-secondary">
-                <i class="fa-solid fa-key me-2"></i> Use Recovery Code
- </a>
+        <div class="card-ids mt-4">
+            <div class="card-ids-body text-center">
+                <p class="mb-2 text-muted">Don't have access to your authenticator?</p>
+        <a asp-page="./LoginWithRecoveryCode" asp-route-returnUrl="@Model.ReturnUrl" class="btn-ids btn-ids-secondary">
+         <i class="fa-solid fa-key me-2"></i>
+      <span>Use Recovery Code</span>
+           </a>
             </div>
-      </div>
+        </div>
     </div>
 </div>
 
+<style>
+    .otp-container {
+        display: flex;
+        justify-content: center;
+    gap: 0.5rem;
+    }
+    
+    .otp-input {
+        width: 50px;
+     height: 60px;
+  text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+      border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+    
+    .otp-input:focus {
+        outline: none;
+  border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        background: var(--bg-card);
+    }
+    
+.otp-input.filled {
+        border-color: var(--success);
+     background: rgba(16, 185, 129, 0.1);
+    }
+    
+    .otp-input.error {
+        border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+    }
+</style>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+   const inputs = document.querySelectorAll('.otp-input');
+       const hiddenInput = document.getElementById('TwoFactorCode');
+          const form = document.getElementById('2fa-form');
+       
+            // Focus first input on load
+      inputs[0].focus();
+       
+        // Update hidden field with all digits
+            function updateHiddenField() {
+       let code = '';
+         inputs.forEach(input => {
+         code += input.value;
+      });
+       hiddenInput.value = code;
+            }
+            
+            inputs.forEach((input, index) => {
+        // Handle input
+     input.addEventListener('input', function(e) {
+           const value = e.target.value;
+   
+    // Only allow numbers
+     if (!/^\d*$/.test(value)) {
+       e.target.value = '';
+         return;
+      }
+    
+           // Add filled class
+        if (value) {
+            input.classList.add('filled');
+              } else {
+           input.classList.remove('filled');
+      }
+  
+          // Move to next input
+          if (value && index < inputs.length - 1) {
+        inputs[index + 1].focus();
+   }
+           
+   updateHiddenField();
+            
+       // Auto-submit when all 6 digits entered
+     if (hiddenInput.value.length === 6) {
+      // Small delay for better UX
+       setTimeout(() => {
+     form.submit();
+          }, 200);
+              }
+           });
+         
+  // Handle backspace
+   input.addEventListener('keydown', function(e) {
+  if (e.key === 'Backspace' && !input.value && index > 0) {
+              inputs[index - 1].focus();
+     inputs[index - 1].value = '';
+            inputs[index - 1].classList.remove('filled');
+                 updateHiddenField();
+             }
+      
+          // Handle arrow keys
+                if (e.key === 'ArrowLeft' && index > 0) {
+           inputs[index - 1].focus();
+        }
+   if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+  inputs[index + 1].focus();
+        }
+    });
+       
+       // Handle paste
+          input.addEventListener('paste', function(e) {
+          e.preventDefault();
+              const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        
+        pastedData.split('').forEach((char, i) => {
+        if (inputs[i]) {
+         inputs[i].value = char;
+      inputs[i].classList.add('filled');
+     }
+               });
+    
+              // Focus last filled or next empty
+     const focusIndex = Math.min(pastedData.length, inputs.length - 1);
+      inputs[focusIndex].focus();
+ 
+ updateHiddenField();
+        
+  // Auto-submit if 6 digits pasted
+       if (pastedData.length === 6) {
+       setTimeout(() => {
+         form.submit();
+    }, 200);
+    }
+ });
+});
+        });
+    </script>
 }

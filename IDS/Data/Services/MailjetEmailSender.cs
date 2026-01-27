@@ -47,20 +47,24 @@ namespace IDS.Data.Services
             _fromEmail = Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL") ?? "no-reply@intrusiondetectionsystem.great-site.net";
             _fromName = Environment.GetEnvironmentVariable("MAILJET_FROM_NAME") ?? "IDS System";
             _supportEmail = Environment.GetEnvironmentVariable("SUPPORT_EMAIL") ?? "support@intrusiondetectionsystem.great-site.net";
-            _logoUrl = Environment.GetEnvironmentVariable("EMAIL_LOGO_URL") ?? string.Empty;
             
             // EMAIL_STATUS controls whether emails are actually sent
-            // When false, emails are logged but not sent (useful for development)
+       // When false, emails are logged but not sent (useful for development)
             var emailStatus = Environment.GetEnvironmentVariable("EMAIL_STATUS") ?? "false";
             _emailEnabled = emailStatus.Equals("true", StringComparison.OrdinalIgnoreCase);
 
             // SECURITY: Allows bypassing SSL certificate checks (useful for dev/corporate networks but UNSAFE for production)
             var ignoreSSL = Environment.GetEnvironmentVariable("MAILJET_IGNORE_CERTIFICATE_ERRORS") ?? "false";
-            _ignoreSSLErrors = ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
+         _ignoreSSLErrors = ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
   
-            // Template path relative to content root
-            _templateBasePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
-            
+       // Logo URL - can be set via environment variable or defaults to local path
+ // NOTE: For emails, the logo must be publicly accessible. Local files won't work in email clients.
+            // In production, use a full URL like https://yourdomain.com/Email_logo/Email_logo.png
+      _logoUrl = Environment.GetEnvironmentVariable("EMAIL_LOGO_URL") ?? string.Empty;
+     
+    // Template path relative to content root
+  _templateBasePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
+
             // Log configuration status (without sensitive data)
             _logger.LogInformation("MailjetEmailSender initialized. Email sending is {Status}. SMTP: {Server}:{Port}. SSL Bypass: {SSL}", 
                 _emailEnabled ? "ENABLED" : "DISABLED", _smtpServer, _smtpPort, _ignoreSSLErrors);

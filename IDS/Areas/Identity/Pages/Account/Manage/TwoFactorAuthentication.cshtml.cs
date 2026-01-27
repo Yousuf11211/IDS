@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using IDS.Data.Models;
+using IDS.Security;
 
 namespace IDS.Areas.Identity.Pages.Account.Manage
 {
@@ -52,6 +53,11 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
         public bool IsMachineRemembered { get; set; }
 
         /// <summary>
+        /// Whether the current user is an Admin (only Admins can disable 2FA).
+        /// </summary>
+        public bool IsAdmin { get; set; }
+
+        /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
@@ -70,6 +76,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
             Is2faEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
             IsMachineRemembered = await _signInManager.IsTwoFactorClientRememberedAsync(user);
             RecoveryCodesLeft = await _userManager.CountRecoveryCodesAsync(user);
+            IsAdmin = await _userManager.IsInRoleAsync(user, AppRoles.Admin);
 
             return Page();
         }

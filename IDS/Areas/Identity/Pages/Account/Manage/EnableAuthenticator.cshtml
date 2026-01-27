@@ -1,104 +1,266 @@
 ﻿@page
 @model EnableAuthenticatorModel
 @{
-    ViewData["Title"] = "Configure authenticator app";
+    ViewData["Title"] = "Set Up Authenticator";
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
 }
 
-<partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div>
-    <p>To use an authenticator app go through the following steps:</p>
-    <ol class="list">
-        <li>
-            <p>
-                Download a two-factor authenticator app like Microsoft Authenticator for
-                <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Android</a> and
-                <a href="https://go.microsoft.com/fwlink/?Linkid=825073">iOS</a> or
-                Google Authenticator for
-                <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&amp;hl=en">Android</a> and
-                <a href="https://itunes.apple.com/us/app/google-authenticator/id388497605?mt=8">iOS</a>.
-            </p>
-        </li>
-        <li>
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="fw-bold">Option 1: Scan QR Code</p>
-                    <div id="qrCode" class="mb-3"></div>
-                    <div id="qrCodeData" data-url="@Html.Raw(Model.AuthenticatorUri)"></div>
-                </div>
-                <div class="col-md-6">
-                     <p class="fw-bold">Option 2: Manual Entry</p>
-                     
-                     <div class="alert alert-ids alert-ids-warning mb-3">
-                         <i class="fa-solid fa-lightbulb me-2"></i>
-                         <strong>Using Microsoft Authenticator?</strong><br/>
-                         Select <strong>"Other (Google, Facebook, etc.)"</strong> when adding the account.<br/>
-                         <em class="small">Do NOT select "Work or school account" — that asks for a Code & URL which won't work here.</em>
-                     </div>
-
-                     <p>If you can't scan the code, enter these details manually:</p>
-                     
-                     <div class="card bg-light mb-3">
-                         <div class="card-body">
-                             <div class="mb-2">
-                                 <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Account Name</small>
-                                 <div class="fs-5">IDS</div>
-                             </div>
-                             <div>
-                                 <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem;">Secret Key</small>
-                                 <div class="font-monospace fs-5 text-break" style="letter-spacing: 1px;">@Model.SharedKey</div>
-                             </div>
-                         </div>
-                     </div>
-                </div>
-            </div>
-        </li>
-        <li>
-            <p>
-                Once you have scanned the QR code or input the key above, your two factor authentication app will provide you
-                with a unique code. Enter the code in the confirmation box below.
-            </p>
-            <div class="row">
-                <div class="col-md-6">
-                    <form id="send-code" method="post">
-                        <div class="form-floating mb-3">
-                            <input asp-for="Input.Code" class="form-control" autocomplete="off" placeholder="Please enter the code."/>
-                            <label asp-for="Input.Code" class="control-label form-label">Verification Code</label>
-                            <span asp-validation-for="Input.Code" class="text-danger"></span>
-                        </div>
-                        <button type="submit" class="w-100 btn btn-lg btn-primary">Verify</button>
-                        <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-                    </form>
-                </div>
-            </div>
-        </li>
-    </ol>
+<div class="page-header">
+    <div class="page-header-hero">
+     <h1 class="page-header-title">
+            <i class="fa-solid fa-mobile-screen"></i>
+         Set Up Authenticator App
+ </h1>
+   <p class="page-header-subtitle">
+       Secure your account with two-factor authentication using an authenticator app.
+  </p>
+  </div>
 </div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script type="text/javascript">
-        // Create the QR Code
-        var qrCodeContainer = document.getElementById("qrCode");
-        var authenticatorUri = "@Html.Raw(Model.AuthenticatorUri)";
-        
-        // Ensure the URI is properly logged for debugging
-        console.log("Generating QR for:", authenticatorUri);
+<partial name="_StatusMessage" for="StatusMessage" />
 
-        try {
-            new QRCode(qrCodeContainer,
-                {
-                    text: authenticatorUri,
-                    width: 200,
-                    height: 200,
-                    correctLevel: QRCode.CorrectLevel.M // Medium error correction
-                });
-        } catch (e) {
-            console.error("QR Code generation failed:", e);
-            document.getElementById("qrFallback").style.display = "block";
-            qrCodeContainer.innerHTML = "<p class='text-danger'>Error generating QR code. Please use the manual key below.</p>";
-        }
+<div class="row g-4">
+    <div class="col-lg-8">
+    <!-- Step 1: Download App -->
+        <div class="card-ids mb-4">
+       <div class="card-ids-header">
+            <h3 class="card-ids-title">
+      <i class="fa-solid fa-download text-primary me-2"></i>
+    Step 1: Download an Authenticator App
+           </h3>
+          </div>
+            <div class="card-ids-body">
+    <p class="mb-3">If you don't already have one, download a two-factor authenticator app:</p>
+<div class="d-flex flex-wrap gap-3">
+       <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank" class="btn-ids btn-ids-secondary">
+     <i class="fa-brands fa-google-play me-2"></i>
+<span>Google Authenticator</span>
+     </a>
+         <a href="https://www.microsoft.com/en-us/security/mobile-authenticator-app" target="_blank" class="btn-ids btn-ids-secondary">
+          <i class="fa-brands fa-microsoft me-2"></i>
+   <span>Microsoft Authenticator</span>
+     </a>
+     </div>
+         </div>
+        </div>
+
+      <!-- Step 2: Scan or Enter Key -->
+   <div class="card-ids mb-4">
+  <div class="card-ids-header">
+        <h3 class="card-ids-title">
+        <i class="fa-solid fa-qrcode text-success me-2"></i>
+   Step 2: Scan QR Code or Enter Key
+   </h3>
+   </div>
+     <div class="card-ids-body">
+   <div class="row g-4">
+   <div class="col-md-6 text-center">
+           <p class="fw-bold mb-3">Option A: Scan QR Code</p>
+          <div id="qrCode" class="mb-3 d-inline-block" style="padding: 15px; background: white; border-radius: 8px;"></div>
+      <div id="qrCodeData" data-url="@Html.Raw(Model.AuthenticatorUri)"></div>
+       </div>
+       <div class="col-md-6">
+ <p class="fw-bold mb-3">Option B: Manual Entry</p>
+           
+        <div class="alert-ids alert-ids-warning mb-3" style="font-size: 0.875rem;">
+     <i class="alert-ids-icon fa-solid fa-lightbulb"></i>
+        <div class="alert-ids-content">
+      <strong>Using Microsoft Authenticator?</strong><br/>
+       Select <strong>"Other (Google, Facebook, etc.)"</strong> when adding.<br/>
+      <em>Don't select "Work or school account".</em>
+   </div>
+      </div>
+
+          <div class="card-ids" style="background: var(--bg-tertiary);">
+   <div class="card-ids-body">
+  <div class="mb-3">
+       <label class="form-label-ids" style="font-size: 0.75rem;">Account Name</label>
+       <div class="fs-5 fw-bold">IDS</div>
+       </div>
+      <div>
+        <label class="form-label-ids" style="font-size: 0.75rem;">Secret Key</label>
+        <div class="font-monospace fw-bold text-break" style="font-size: 1rem; letter-spacing: 2px; color: var(--text-primary);">
+            @Model.SharedKey
+    </div>
+   </div>
+  </div>
+    </div>
+          </div>
+         </div>
+     </div>
+        </div>
+
+        <!-- Step 3: Enter Code -->
+   <div class="card-ids">
+     <div class="card-ids-header">
+     <h3 class="card-ids-title">
+       <i class="fa-solid fa-check-circle text-info me-2"></i>
+         Step 3: Verify Setup
+      </h3>
+       </div>
+  <div class="card-ids-body">
+           <p class="mb-4">Enter the 6-digit code from your authenticator app to verify the setup:</p>
+    
+     <form id="verify-form" method="post">
+           <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-3" role="alert"></div>
+      
+        <!-- 6 Individual Digit Boxes -->
+      <div class="otp-container mb-4">
+      <input type="text" class="otp-input" maxlength="1" data-index="0" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code" />
+    <input type="text" class="otp-input" maxlength="1" data-index="1" inputmode="numeric" pattern="[0-9]" />
+           <input type="text" class="otp-input" maxlength="1" data-index="2" inputmode="numeric" pattern="[0-9]" />
+      <input type="text" class="otp-input" maxlength="1" data-index="3" inputmode="numeric" pattern="[0-9]" />
+           <input type="text" class="otp-input" maxlength="1" data-index="4" inputmode="numeric" pattern="[0-9]" />
+     <input type="text" class="otp-input" maxlength="1" data-index="5" inputmode="numeric" pattern="[0-9]" />
+     </div>
+       
+    <!-- Hidden field for the actual code -->
+ <input asp-for="Input.Code" type="hidden" id="VerificationCode" />
+  <span asp-validation-for="Input.Code" class="form-error text-center d-block mb-3"></span>
+
+        <button type="submit" class="btn-ids btn-ids-success btn-ids-lg">
+     <i class="fa-solid fa-check me-2"></i>
+  <span>Verify & Enable 2FA</span>
+      </button>
+         </form>
+  </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Help Card -->
+ <div class="card-ids">
+  <div class="card-ids-header">
+     <h3 class="card-ids-title">
+         <i class="fa-solid fa-circle-question text-info me-2"></i>
+   Need Help?
+        </h3>
+    </div>
+           <div class="card-ids-body">
+    <p class="mb-3" style="color: var(--text-secondary);">Having trouble scanning the QR code?</p>
+  <ol style="padding-left: 1.25rem; color: var(--text-secondary);">
+       <li class="mb-2">Make sure your phone camera is in focus</li>
+       <li class="mb-2">Try adjusting screen brightness</li>
+        <li class="mb-2">Use the manual entry option instead</li>
+     </ol>
+        </div>
+        </div>
+
+    <div class="card-ids mt-4">
+  <div class="card-ids-header">
+      <h3 class="card-ids-title">
+   <i class="fa-solid fa-shield-halved text-success me-2"></i>
+          Why 2FA?
+      </h3>
+       </div>
+            <div class="card-ids-body">
+        <p style="color: var(--text-secondary);">
+    Two-factor authentication adds an extra layer of security. Even if someone steals your password, they can't access your account without your phone.
+  </p>
+        </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .otp-container {
+     display: flex;
+  justify-content: flex-start;
+        gap: 0.5rem;
+}
+    
+ .otp-input {
+   width: 50px;
+    height: 60px;
+      text-align: center;
+     font-size: 1.5rem;
+     font-weight: 700;
+        font-family: 'Courier New', monospace;
+   border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-tertiary);
+  color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+    
+    .otp-input:focus {
+  outline: none;
+     border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        background: var(--bg-card);
+    }
+    
+    .otp-input.filled {
+border-color: var(--success);
+        background: rgba(16, 185, 129, 0.1);
+    }
+</style>
+
+@section Scripts {
+ <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+ document.addEventListener('DOMContentLoaded', function() {
+          // Generate QR Code
+  var qrCodeContainer = document.getElementById("qrCode");
+            var authenticatorUri = "@Html.Raw(Model.AuthenticatorUri)";
+  
+ try {
+     new QRCode(qrCodeContainer, {
+          text: authenticatorUri,
+        width: 200,
+ height: 200,
+    correctLevel: QRCode.CorrectLevel.M
+           });
+       } catch (e) {
+ console.error("QR Code generation failed:", e);
+       qrCodeContainer.innerHTML = "<p class='text-danger'>Error generating QR code. Use manual entry.</p>";
+   }
+
+            // OTP Input handling
+     const inputs = document.querySelectorAll('.otp-input');
+   const hiddenInput = document.getElementById('VerificationCode');
+            const form = document.getElementById('verify-form');
+          
+  inputs[0].focus();
+          
+            function updateHiddenField() {
+      let code = '';
+       inputs.forEach(input => { code += input.value; });
+    hiddenInput.value = code;
+      }
+  
+       inputs.forEach((input, index) => {
+      input.addEventListener('input', function(e) {
+   const value = e.target.value;
+       if (!/^\d*$/.test(value)) { e.target.value = ''; return; }
+            if (value) { input.classList.add('filled'); } else { input.classList.remove('filled'); }
+        if (value && index < inputs.length - 1) { inputs[index + 1].focus(); }
+           updateHiddenField();
+      });
+      
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && !input.value && index > 0) {
+  inputs[index - 1].focus();
+       inputs[index - 1].value = '';
+      inputs[index - 1].classList.remove('filled');
+       updateHiddenField();
+    }
+if (e.key === 'ArrowLeft' && index > 0) { inputs[index - 1].focus(); }
+    if (e.key === 'ArrowRight' && index < inputs.length - 1) { inputs[index + 1].focus(); }
+       });
+       
+        input.addEventListener('paste', function(e) {
+       e.preventDefault();
+   const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+           pastedData.split('').forEach((char, i) => {
+     if (inputs[i]) { inputs[i].value = char; inputs[i].classList.add('filled'); }
+          });
+        const focusIndex = Math.min(pastedData.length, inputs.length - 1);
+     inputs[focusIndex].focus();
+               updateHiddenField();
+         });
+        });
+        });
     </script>
 }
