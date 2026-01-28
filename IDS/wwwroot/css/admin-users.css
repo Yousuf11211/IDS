@@ -43,8 +43,104 @@ border-radius: var(--radius-sm);
     color: var(--text-muted);
 }
 
+/* ============================================
+   Admin Users - Supplementary Styles
+   Most styling handled by site.css design system
+   ============================================ */
+
+/* User Filters Card */
+.user-filters {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+ background: var(--bg-card);
+}
+
+/* Role Badges - Enhanced colors */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.role-badge.role-admin {
+  background: rgba(139, 92, 246, 0.15);
+    color: #7c3aed;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.role-badge.role-employee {
+    background: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.role-badge.role-suspended {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.role-badge.role-unknown {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+/* Dark Mode Role Badges */
+.theme-dark .role-badge.role-admin {
+  background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+}
+
+.theme-dark .role-badge.role-employee {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+.theme-dark .role-badge.role-suspended {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* User Table Specific */
+.user-table {
+    width: 100%;
+}
+
+.user-table .role-badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+/* Suspended User Row Highlight */
+.table-ids tr.suspended-row {
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.table-ids tr.suspended-row:hover {
+    background-color: rgba(239, 68, 68, 0.08);
+}
+
 /* Dark mode adjustments */
 .theme-dark .user-filters {
-    background: var(--bg-card);
+ background: var(--bg-card);
     border-color: var(--border-color);
+}
+
+/* Action Dropdown Z-index for table context */
+.table-ids td .action-dropdown .action-menu {
+    z-index: 1000;
+}
+
+/* Ensure proper modal backdrop in dark mode */
+.theme-dark .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
 }
