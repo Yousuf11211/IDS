@@ -32,58 +32,26 @@ namespace IDS.Areas.Identity.Pages.Account
             _userManager = userManager;
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [BindProperty]
         public InputModel Input { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public IList<AuthenticationScheme> ExternalLogins { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public string ReturnUrl { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [TempData]
         public string ErrorMessage { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public class InputModel
         {
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
             [Required]
             [EmailAddress]
             public string Email { get; set; }
 
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
             [Required]
             [DataType(DataType.Password)]
             public string Password { get; set; }
 
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
             [Display(Name = "Remember me?")]
             public bool RememberMe { get; set; }
         }
@@ -120,40 +88,61 @@ namespace IDS.Areas.Identity.Pages.Account
                     user = await _userManager.FindByEmailAsync(Input.Email);
                 }
 
-                if (user != null)
+                if (user == null)
                 {
-                    // Block suspended users
-                    if (await _userManager.IsInRoleAsync(user, AppRoles.Suspended))
-                    {
-                        ModelState.AddModelError(string.Empty, "Your account is currently suspended. Contact admin for further assistance.");
-                        _logger.LogWarning("Suspended user {EmailOrUser} attempted to log in.", Input.Email);
-                        return Page();
-                    }
-
-                    // Use the actual username for sign-in (not the email text box value)
-                    var result = await _signInManager.PasswordSignInAsync(user.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-                    if (result.Succeeded)
-                    {
-                        _logger.LogInformation("User logged in.");
-                        return LocalRedirect(returnUrl);
-                    }
-                    if (result.RequiresTwoFactor)
-                    {
-                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                    }
-                    if (result.IsLockedOut)
-                    {
-                        _logger.LogWarning("User account locked out.");
-                        return RedirectToPage("./Lockout");
-                    }
-
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                     return Page();
                 }
 
-                // No user found for provided identifier
-                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-                return Page();
+                // Block suspended users first
+                if (await _userManager.IsInRoleAsync(user, AppRoles.Suspended))
+                {
+                    ModelState.AddModelError(string.Empty, "Your account is currently suspended. Contact admin for further assistance.");
+                    _logger.LogWarning("Suspended user {EmailOrUser} attempted to log in.", Input.Email);
+                    return Page();
+                }
+
+                // Verify the password
+                var passwordValid = await _userManager.CheckPasswordAsync(user, Input.Password);
+                if (!passwordValid)
+                {
+                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    return Page();
+                }
+
+                // Check if 2FA should be enforced
+                var require2faEnvValue = Environment.GetEnvironmentVariable("REQUIRE_2FA_ON_LOGIN");
+                var is2faGloballyRequired = string.Equals(require2faEnvValue, "true", StringComparison.OrdinalIgnoreCase);
+                var userHas2faEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
+
+                _logger.LogInformation("Login attempt for {Email}. REQUIRE_2FA_ON_LOGIN={EnvValue}, is2faGloballyRequired={Global}, userHas2fa={User2fa}", 
+           Input.Email, require2faEnvValue ?? "(null)", is2faGloballyRequired, userHas2faEnabled);
+
+                // Only require 2FA if BOTH: global setting is true AND user has 2FA enabled
+                if (is2faGloballyRequired && userHas2faEnabled)
+                {
+                    _logger.LogInformation("2FA required for user {Email}. Redirecting to 2FA page.", Input.Email);
+   
+                    // Use PasswordSignInAsync to set up the 2FA flow properly
+                    var signInResult = await _signInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+               
+                    if (signInResult.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    }
+        
+                    // If somehow 2FA wasn't triggered, fall through to direct sign-in
+                    if (signInResult.Succeeded)
+                    {
+                        return LocalRedirect(returnUrl);
+                    }
+                }
+
+                // 2FA is either globally disabled OR user doesn't have it enabled
+                // Sign in directly without 2FA
+                _logger.LogInformation("Signing in user {Email} directly (2FA bypassed or not enabled).", Input.Email);
+                await _signInManager.SignInAsync(user, Input.RememberMe);
+                return LocalRedirect(returnUrl);
             }
 
             // If we got this far, something failed, redisplay form
