@@ -1,47 +1,40 @@
 ================================================================================
-  ?? SECURITY ALERT ??
-      INTRUSION DETECTION SYSTEM
+  INTRUSION DETECTION SYSTEM
+     Security Alert
 ================================================================================
 
-PRIORITY: {SeverityLevel}
+** SECURITY ALERT: {AlertType} **
+----------------------------------
+
+Hello {UserName},
+
+We detected suspicious activity on your IDS account that requires your 
+attention.
 
 --------------------------------------------------------------------------------
-          {AlertTitle}
+ALERT DETAILS
 --------------------------------------------------------------------------------
+Alert Type:  {AlertType}
+Time:        {Timestamp}
+IP Address:  {IpAddress}
+Location:    {Location}
 
-{AlertDescription}
-
---------------------------------------------------------------------------------
-          ALERT DETAILS
---------------------------------------------------------------------------------
-
-Alert ID:       {AlertId}
-Detected At:    {DetectedAt}
-Source IP:      {SourceIP}
-Attack Type:    {AttackType}
-
---------------------------------------------------------------------------------
-      RECOMMENDED ACTION
---------------------------------------------------------------------------------
-
-{RecommendedAction}
-
---------------------------------------------------------------------------------
-          VIEW IN DASHBOARD
---------------------------------------------------------------------------------
-
-{DashboardUrl}
-
---------------------------------------------------------------------------------
-       NEED ASSISTANCE?
---------------------------------------------------------------------------------
-
-For immediate security support, contact:
-Email: {SupportEmail}
+Details:
+{AlertDetails}
 
 --------------------------------------------------------------------------------
 
-© {Year} Intrusion Detection System. All rights reserved.
-This is an automated security notification.
+** RECOMMENDED ACTIONS **
+- If this was you, no action is needed.
+- If this wasn't you, change your password immediately.
+- Consider enabling two-factor authentication for added security.
 
+--------------------------------------------------------------------------------
+
+If you have any concerns about your account security, please contact our 
+support team immediately.
+
+================================================================================
+Need help? Contact us at {SupportEmail}
+(c) {Year} Intrusion Detection System. All rights reserved.
 ================================================================================
