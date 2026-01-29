@@ -77,7 +77,7 @@ builder.Services.AddSignalR(options =>
 });
 
 // =====================================================
-// Add API Controllers for Detection Pipeline
+// Add API Controllers (read-only detection data access)
 // =====================================================
 builder.Services.AddControllers();
 
@@ -95,12 +95,13 @@ builder.Services.AddScoped<IDetectionService, DetectionService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
 // =====================================================
-// Register Live Detection Services (SignalR + Monitoring)
+// Live Detection Services (READ-ONLY)
+// Monitors Benign_Table and Attack_Table written by external pipeline
 // =====================================================
 builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
 builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
 
-// Background service to monitor detection tables and push updates
+// Background service to monitor detection tables and push updates via SignalR
 builder.Services.AddHostedService<DetectionMonitorService>();
 
 var app = builder.Build();
@@ -222,7 +223,7 @@ app.MapGet("/auth/ping", () => Results.Ok()).RequireAuthorization();
 app.MapHub<DashboardHub>("/hubs/dashboard");
 
 // =====================================================
-// Map API Controllers for Detection Pipeline
+// Map API Controllers (read-only detection data)
 // =====================================================
 app.MapControllers();
 

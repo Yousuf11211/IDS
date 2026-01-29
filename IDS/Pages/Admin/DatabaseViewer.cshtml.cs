@@ -68,7 +68,12 @@ namespace IDS.Pages.Admin
      "NetworkEvents",
        "SystemSettings",
  "AuditLogs",
-        "DashboardMetrics"
+        "DashboardMetrics",
+      "SupportTickets",
+                "TicketComments",
+         // Live Detection Tables (populated by external ML pipeline)
+              "Benign_Table",
+                "Attack_Table"
             };
 
             var connectionString = GetConnectionString();
