@@ -23,6 +23,7 @@ namespace IDS.Data
         // Live Detection Tables - populated by external detection pipeline
         public DbSet<BenignTraffic> BenignTraffic { get; set; } = null!;
         public DbSet<AttackTraffic> AttackTraffic { get; set; } = null!;
+        public DbSet<RawPacket> RawPackets { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -175,6 +176,33 @@ namespace IDS.Data
                 b.HasIndex(t => t.AttackType);
                 b.HasIndex(t => t.Severity);
                 b.HasIndex(t => t.IsAcknowledged);
+            });
+
+            // =====================================================
+            // Raw Packets Table - Stores all captured packets
+            // =====================================================
+            builder.Entity<RawPacket>(b =>
+            {
+                b.ToTable("RawPackets");
+                b.HasKey(p => p.Id);
+                b.Property(p => p.SourceIP).HasMaxLength(45);
+                b.Property(p => p.DestinationIP).HasMaxLength(45);
+                b.Property(p => p.Protocol).HasMaxLength(20);
+                b.Property(p => p.Service).HasMaxLength(50);
+                b.Property(p => p.TcpFlags).HasMaxLength(50);
+                b.Property(p => p.PayloadData).HasMaxLength(8000);
+                b.Property(p => p.PayloadEncoding).HasMaxLength(20);
+                b.Property(p => p.Classification).HasMaxLength(20);
+                b.Property(p => p.SessionId).HasMaxLength(100);
+                b.Property(p => p.NetworkInterface).HasMaxLength(100);
+                b.Property(p => p.Metadata).HasMaxLength(4000);
+                b.HasIndex(p => p.CapturedAt);
+                b.HasIndex(p => p.SourceIP);
+                b.HasIndex(p => p.DestinationIP);
+                b.HasIndex(p => p.Protocol);
+                b.HasIndex(p => p.IsProcessed);
+                b.HasIndex(p => p.Classification);
+                b.HasIndex(p => p.SessionId);
             });
         }
     }

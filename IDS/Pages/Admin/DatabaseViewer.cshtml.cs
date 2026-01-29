@@ -72,7 +72,8 @@ namespace IDS.Pages.Admin
       "SupportTickets",
                 "TicketComments",
          // Live Detection Tables (populated by external ML pipeline)
-              "Benign_Table",
+                "RawPackets",
+                "Benign_Table",
                 "Attack_Table"
             };
 

@@ -5,7 +5,7 @@ namespace IDS.Data.Models
 {
     /// <summary>
     /// Represents benign (normal) network traffic detected by the IDS pipeline.
- /// </summary>
+    /// </summary>
     public class BenignTraffic
     {
         public long Id { get; set; }
@@ -214,10 +214,135 @@ public double ConfidenceScore { get; set; }
     }
 
     /// <summary>
+    /// Stores raw packet data captured by the detection pipeline.
+    /// This provides a complete record of all network traffic before classification.
+    /// </summary>
+    public class RawPacket
+    {
+        public long Id { get; set; }
+
+        /// <summary>
+        /// Timestamp when the packet was captured.
+  /// </summary>
+        public DateTime CapturedAt { get; set; } = DateTime.UtcNow;
+
+   /// <summary>
+      /// Source IP address.
+  /// </summary>
+        [MaxLength(45)]
+     public string SourceIP { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Destination IP address.
+        /// </summary>
+    [MaxLength(45)]
+        public string DestinationIP { get; set; } = string.Empty;
+
+   /// <summary>
+      /// Source port number.
+        /// </summary>
+        public int SourcePort { get; set; }
+
+    /// <summary>
+        /// Destination port number.
+        /// </summary>
+        public int DestinationPort { get; set; }
+
+        /// <summary>
+        /// Network protocol (TCP, UDP, ICMP, etc.)
+        /// </summary>
+        [MaxLength(20)]
+        public string Protocol { get; set; } = string.Empty;
+
+    /// <summary>
+        /// Packet size in bytes.
+        /// </summary>
+        public int PacketSize { get; set; }
+
+        /// <summary>
+        /// Duration of the connection in milliseconds.
+        /// </summary>
+     public double Duration { get; set; }
+
+        /// <summary>
+/// Number of bytes sent from source to destination.
+        /// </summary>
+ public long BytesSent { get; set; }
+
+     /// <summary>
+        /// Number of bytes received from destination.
+   /// </summary>
+        public long BytesReceived { get; set; }
+
+        /// <summary>
+        /// Service type (HTTP, HTTPS, FTP, SSH, etc.)
+        /// </summary>
+      [MaxLength(50)]
+        public string? Service { get; set; }
+
+        /// <summary>
+  /// TCP flags (SYN, ACK, FIN, RST, PSH, URG).
+        /// </summary>
+        [MaxLength(50)]
+        public string? TcpFlags { get; set; }
+
+        /// <summary>
+        /// Raw payload data (hex encoded or base64).
+  /// </summary>
+        [MaxLength(8000)]
+     public string? PayloadData { get; set; }
+
+    /// <summary>
+  /// Payload encoding type (hex, base64, none).
+        /// </summary>
+        [MaxLength(20)]
+        public string? PayloadEncoding { get; set; }
+
+     /// <summary>
+        /// Raw feature vector extracted for ML model (JSON).
+        /// </summary>
+        public string? FeatureVector { get; set; }
+
+        /// <summary>
+        /// Whether this packet has been processed/classified.
+    /// </summary>
+        public bool IsProcessed { get; set; } = false;
+
+        /// <summary>
+      /// Classification result after processing (Benign, Attack, Unknown).
+        /// </summary>
+    [MaxLength(20)]
+    public string? Classification { get; set; }
+
+   /// <summary>
+    /// Reference ID to Benign_Table or Attack_Table after classification.
+     /// </summary>
+        public long? ClassifiedRecordId { get; set; }
+
+     /// <summary>
+      /// Session/flow identifier to group related packets.
+ /// </summary>
+     [MaxLength(100)]
+      public string? SessionId { get; set; }
+
+        /// <summary>
+        /// Network interface where packet was captured.
+ /// </summary>
+        [MaxLength(100)]
+      public string? NetworkInterface { get; set; }
+
+        /// <summary>
+        /// Additional metadata (JSON format).
+        /// </summary>
+        [MaxLength(4000)]
+        public string? Metadata { get; set; }
+    }
+
+    /// <summary>
     /// Real-time statistics snapshot for SignalR updates.
     /// </summary>
     public class LiveDashboardStats
-{
+    {
         public long TotalBenign { get; set; }
         public long TotalAttacks { get; set; }
         public long BenignLast24h { get; set; }
