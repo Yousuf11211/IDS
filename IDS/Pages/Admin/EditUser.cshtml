@@ -1,0 +1,287 @@
+@page "{id}"
+@model IDS.Pages.Admin.EditUserModel
+@{
+    ViewData["Title"] = "Edit User";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+   <h1 class="page-header-title">
+            <i class="fa-solid fa-user-pen"></i>
+   Edit User
+        </h1>
+   <p class="page-header-subtitle">
+            @Model.UserFullName (@Model.UserEmail)
+        </p>
+ <div class="page-header-actions">
+ <a asp-page="/Admin/UserList" class="btn-ids btn-ids-secondary" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+       <i class="fa-solid fa-arrow-left"></i> Back to Users
+     </a>
+</div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    var isError = Model.StatusMessage.Contains("Error");
+    var isWarning = Model.StatusMessage.Contains("Warning");
+    var alertClass = isError ? "alert-ids-danger" : isWarning ? "alert-ids-warning" : "alert-ids-success";
+    var iconClass = isError ? "fa-circle-xmark" : isWarning ? "fa-triangle-exclamation" : "fa-circle-check";
+    <div class="alert-ids @alertClass mb-4">
+     <i class="alert-ids-icon fa-solid @iconClass"></i>
+  <div class="alert-ids-content">@Model.StatusMessage</div>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- User Details Form -->
+    <div class="col-lg-8">
+   <div class="card-ids">
+     <div class="card-ids-header">
+ <h2 class="card-ids-title">
+          <i class="fa-solid fa-id-card text-primary"></i>
+  User Details
+ </h2>
+   </div>
+   <div class="card-ids-body">
+  <form method="post" asp-page-handler="Update">
+       <input type="hidden" asp-for="Input.UserId" />
+<div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-4" style="display: @(ViewData.ModelState.ErrorCount > 0 ? "flex" : "none")"></div>
+      
+      <div class="row g-3">
+      <div class="col-md-6">
+        <div class="form-group">
+     <label asp-for="Input.FirstName" class="form-label-ids"></label>
+       <input asp-for="Input.FirstName" class="form-control-ids" placeholder="Enter first name" />
+    <span asp-validation-for="Input.FirstName" class="form-error"></span>
+        </div>
+      </div>
+   <div class="col-md-6">
+<div class="form-group">
+<label asp-for="Input.LastName" class="form-label-ids"></label>
+    <input asp-for="Input.LastName" class="form-control-ids" placeholder="Enter last name" />
+       <span asp-validation-for="Input.LastName" class="form-error"></span>
+     </div>
+  </div>
+ <div class="col-12">
+       <div class="form-group">
+   <label asp-for="Input.Email" class="form-label-ids"></label>
+  <input asp-for="Input.Email" class="form-control-ids" placeholder="user@example.com" />
+ <span asp-validation-for="Input.Email" class="form-error"></span>
+    </div>
+   </div>
+       <div class="col-12">
+      <div class="form-group">
+     <label asp-for="Input.Role" class="form-label-ids"></label>
+             <select asp-for="Input.Role" class="form-control-ids form-select-ids">
+       @foreach (var role in Model.AllRoles)
+  {
+    <option value="@role">@role</option>
+             }
+     </select>
+ <span asp-validation-for="Input.Role" class="form-error"></span>
+        @if (Model.IsCurrentUser)
+  {
+        <p class="form-text text-warning">
+    <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        Warning: Changing your own role from Admin will revoke your administrative access.
+ </p>
+          }
+  </div>
+        </div>
+ </div>
+  
+       <div class="d-flex justify-content-end gap-2 mt-4">
+   <a asp-page="/Admin/UserList" class="btn-ids btn-ids-secondary">Cancel</a>
+     <button type="submit" class="btn-ids btn-ids-primary">
+ <i class="fa-solid fa-save me-1"></i> Save Changes
+        </button>
+   </div>
+     </form>
+  </div>
+        </div>
+    </div>
+    
+    <!-- Actions Sidebar -->
+    <div class="col-lg-4">
+        <!-- User Info Card -->
+        <div class="card-ids">
+       <div class="card-ids-header">
+    <h3 class="card-ids-title">
+         <i class="fa-solid fa-circle-info text-info"></i>
+    User Info
+    </h3>
+   </div>
+  <div class="card-ids-body">
+         @{
+             var roleClass = Model.CurrentRole?.ToLowerInvariant() switch
+          {
+     "admin" => "role-admin",
+     "support" => "role-support",
+   "employee" => "role-employee",
+ "suspended" => "role-suspended",
+        _ => "role-unknown"
+ };
+ var initials = !string.IsNullOrEmpty(Model.Input.FirstName) 
+       ? $"{Model.Input.FirstName.FirstOrDefault()}{Model.Input.LastName?.FirstOrDefault()}"
+        : Model.UserEmail.FirstOrDefault().ToString().ToUpper();
+                }
+  <div class="text-center mb-4">
+     <div class="user-avatar mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.5rem;">
+        @initials.ToUpper()
+     </div>
+    <h4 style="margin-bottom: 0.25rem;">@Model.UserFullName</h4>
+     <p class="text-muted mb-2">@Model.UserEmail</p>
+        <span class="role-badge @roleClass">@Model.CurrentRole</span>
+         @if (Model.IsCurrentUser)
+  {
+       <span class="badge bg-info ms-1">You</span>
+          }
+    </div>
+        </div>
+  </div>
+
+   <!-- Quick Actions Card -->
+       <div class="card-ids mt-4">
+ <div class="card-ids-header">
+   <h3 class="card-ids-title">
+<i class="fa-solid fa-bolt text-warning"></i>
+  Quick Actions
+           </h3>
+  </div>
+      <div class="card-ids-body">
+       <div class="d-flex flex-column gap-2">
+<!-- Reset Password -->
+       <button type="button" class="btn-ids btn-ids-secondary w-100" onclick="showConfirmModal('resetPassword', 'Reset Password', 'Are you sure you want to reset the password for this user? A new temporary password will be sent to their email.')">
+     <i class="fa-solid fa-key me-2"></i> Reset Password
+       </button>
+       
+           @if (Model.CurrentRole != "Suspended")
+  {
+        <!-- Suspend User -->
+        @if (!Model.IsCurrentUser)
+    {
+     <button type="button" class="btn-ids btn-ids-warning w-100" onclick="showConfirmModal('suspend', 'Suspend User', 'Are you sure you want to suspend this user? They will not be able to log in until unsuspended.')">
+        <i class="fa-solid fa-user-slash me-2"></i> Suspend User
+  </button>
+           }
+    }
+ else
+       {
+ <!-- Unsuspend User -->
+        <button type="button" class="btn-ids btn-ids-success w-100" onclick="showUnsuspendModal()">
+ <i class="fa-solid fa-user-check me-2"></i> Unsuspend User
+   </button>
+    }
+        
+  @if (!Model.IsCurrentUser)
+    {
+  <!-- Delete User -->
+    <button type="button" class="btn-ids btn-ids-danger w-100" onclick="showConfirmModal('delete', 'Delete User', 'Are you sure you want to permanently delete this user? This action cannot be undone.')">
+<i class="fa-solid fa-trash me-2"></i> Delete User
+        </button>
+  }
+        </div>
+          </div>
+    </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+<div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+  <div class="modal-header" style="border-color: var(--border-color);">
+   <h5 class="modal-title" id="confirmModalLabel">
+    <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>
+   <span id="modalTitle">Confirm Action</span>
+     </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+     </div>
+            <div class="modal-body">
+         <p id="modalMessage" style="color: var(--text-primary);">Are you sure you want to proceed?</p>
+           </div>
+ <div class="modal-footer" style="border-color: var(--border-color);">
+     <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
+       <form id="confirmForm" method="post" style="display: inline;">
+       <input type="hidden" name="userId" value="@Model.Input.UserId" />
+             <button type="submit" id="confirmBtn" class="btn-ids btn-ids-danger">
+  <i class="fa-solid fa-check me-1"></i> Confirm
+             </button>
+       </form>
+     </div>
+    </div>
+    </div>
+</div>
+
+<!-- Unsuspend Modal -->
+<div class="modal fade" id="unsuspendModal" tabindex="-1" aria-labelledby="unsuspendModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+   <div class="modal-header" style="border-color: var(--border-color);">
+   <h5 class="modal-title" id="unsuspendModalLabel">
+    <i class="fa-solid fa-user-check text-success me-2"></i>
+        Unsuspend User
+    </h5>
+     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  </div>
+    <form method="post" asp-page-handler="Unsuspend">
+       <input type="hidden" name="userId" value="@Model.Input.UserId" />
+        <div class="modal-body">
+      <p style="color: var(--text-primary);">Select a role for the user after unsuspension:</p>
+       <div class="form-group">
+ <select name="newRole" class="form-control-ids form-select-ids">
+     @foreach (var role in Model.AllRoles.Where(r => r != "Suspended"))
+   {
+        <option value="@role" selected="@(role == "Employee")">@role</option>
+   }
+             </select>
+    </div>
+    </div>
+         <div class="modal-footer" style="border-color: var(--border-color);">
+          <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn-ids btn-ids-success">
+  <i class="fa-solid fa-user-check me-1"></i> Unsuspend
+     </button>
+        </div>
+       </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+     function showConfirmModal(action, title, message) {
+            document.getElementById('modalTitle').textContent = title;
+document.getElementById('modalMessage').textContent = message;
+       
+    const form = document.getElementById('confirmForm');
+      const btn = document.getElementById('confirmBtn');
+            
+          switch(action) {
+     case 'resetPassword':
+form.action = '?handler=ResetPassword';
+        btn.className = 'btn-ids btn-ids-primary';
+      btn.innerHTML = '<i class="fa-solid fa-key me-1"></i> Reset Password';
+        break;
+      case 'suspend':
+            form.action = '?handler=Suspend';
+  btn.className = 'btn-ids btn-ids-warning';
+       btn.innerHTML = '<i class="fa-solid fa-user-slash me-1"></i> Suspend';
+     break;
+      case 'delete':
+         form.action = '?handler=Delete';
+       btn.className = 'btn-ids btn-ids-danger';
+    btn.innerHTML = '<i class="fa-solid fa-trash me-1"></i> Delete';
+         break;
+      }
+            
+     new bootstrap.Modal(document.getElementById('confirmModal')).show();
+      }
+        
+   function showUnsuspendModal() {
+      new bootstrap.Modal(document.getElementById('unsuspendModal')).show();
+  }
+    </script>
+}

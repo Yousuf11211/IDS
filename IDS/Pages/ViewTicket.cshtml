@@ -1,0 +1,222 @@
+@page "{id:int}"
+@model IDS.Pages.ViewTicketModel
+@{
+    ViewData["Title"] = $"Ticket {Model.Ticket?.TicketNumber}";
+}
+
+@if (Model.Ticket == null)
+{
+    <div class="alert-ids alert-ids-danger">
+        <i class="alert-ids-icon fa-solid fa-circle-xmark"></i>
+        <div class="alert-ids-content">Ticket not found.</div>
+    </div>
+    return;
+}
+
+@{
+    var statusClass = Model.Ticket.Status switch
+    {
+        "Open" => "status-warning",
+        "InProgress" => "status-info",
+ "Resolved" => "status-normal",
+        "Closed" => "status-normal",
+        _ => "status-info"
+    };
+    var priorityClass = Model.Ticket.Priority switch
+    {
+"Critical" => "severity-critical",
+        "High" => "severity-high",
+        "Medium" => "severity-medium",
+        "Low" => "severity-low",
+        _ => "severity-info"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+  <h1 class="page-header-title">
+            <i class="fa-solid fa-ticket"></i>
+     @Model.Ticket.TicketNumber
+</h1>
+        <p class="page-header-subtitle">
+            @Model.Ticket.Subject
+        </p>
+        <div class="page-header-actions">
+     <span class="status-badge @statusClass me-2" style="font-size: 0.875rem;">@Model.Ticket.Status</span>
+          <span class="severity-badge @priorityClass" style="font-size: 0.875rem;">@Model.Ticket.Priority</span>
+</div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    var isError = Model.StatusMessage.Contains("Error");
+    <div class="alert-ids @(isError ? "alert-ids-danger" : "alert-ids-success") mb-4">
+    <i class="alert-ids-icon fa-solid @(isError ? "fa-circle-xmark" : "fa-circle-check")"></i>
+        <div class="alert-ids-content">@Model.StatusMessage</div>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Ticket Details -->
+    <div class="col-lg-8">
+        <div class="card-ids">
+  <div class="card-ids-header">
+        <h2 class="card-ids-title">
+   <i class="fa-solid fa-file-lines text-primary"></i>
+          Ticket Details
+            </h2>
+         </div>
+<div class="card-ids-body">
+ <div class="mb-4">
+ <label class="form-label-ids">Category</label>
+       <p style="color: var(--text-primary);">@Model.Ticket.Category</p>
+           </div>
+     <div class="mb-4">
+  <label class="form-label-ids">Description</label>
+   <div class="p-3 rounded" style="background: var(--bg-tertiary); color: var(--text-primary); white-space: pre-wrap;">@Model.Ticket.Description</div>
+            </div>
+            
+  @if (!string.IsNullOrEmpty(Model.Ticket.ResolutionNotes))
+     {
+           <div class="mb-4">
+    <label class="form-label-ids">
+              <i class="fa-solid fa-check-circle text-success me-1"></i>
+ Resolution Notes
+          </label>
+       <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--text-primary); white-space: pre-wrap;">@Model.Ticket.ResolutionNotes</div>
+    </div>
+             }
+  </div>
+    </div>
+        
+    <!-- Comments Section -->
+   <div class="card-ids mt-4">
+            <div class="card-ids-header">
+        <h3 class="card-ids-title">
+   <i class="fa-solid fa-comments text-info"></i>
+    Conversation
+    <span class="badge bg-primary ms-2">@Model.Comments.Count</span>
+          </h3>
+            </div>
+        <div class="card-ids-body">
+     @if (Model.Comments.Any())
+       {
+              <div class="d-flex flex-column gap-3 mb-4">
+           @foreach (var comment in Model.Comments)
+     {
+             var isSupport = comment.IsFromSupport;
+ <div class="p-3 rounded @(isSupport ? "ms-4" : "me-4")" style="background: @(isSupport ? "rgba(59, 130, 246, 0.1)" : "var(--bg-tertiary)"); border-left: 3px solid @(isSupport ? "var(--primary)" : "var(--text-muted)");">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+     <strong style="color: var(--text-primary);">
+   @if (isSupport)
+    {
+           <i class="fa-solid fa-headset text-primary me-1"></i>
+          }
+      @comment.UserName
+  @if (isSupport)
+   {
+           <span class="badge bg-primary ms-2" style="font-size: 0.65rem;">Support</span>
+}
+  </strong>
+ <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy HH:mm")</small>
+      </div>
+       <p class="mb-0" style="color: var(--text-secondary); white-space: pre-wrap;">@comment.Content</p>
+     </div>
+  }
+    </div>
+            }
+       else
+           {
+  <p class="text-muted text-center py-3">
+   <i class="fa-solid fa-comments" style="font-size: 2rem; opacity: 0.5;"></i>
+         <br>No comments yet.
+            </p>
+       }
+     
+      <!-- Add Comment Form -->
+                @if (Model.Ticket.Status != "Closed")
+       {
+       <form method="post" asp-page-handler="AddComment" asp-route-id="@Model.Ticket.Id">
+      <div class="form-group">
+          <label class="form-label-ids">Add a Comment</label>
+    <textarea asp-for="NewComment" class="form-control-ids" rows="3" placeholder="Type your message here..."></textarea>
+            </div>
+    <div class="d-flex justify-content-end mt-3">
+ <button type="submit" class="btn-ids btn-ids-primary">
+    <i class="fa-solid fa-paper-plane me-2"></i> Send
+       </button>
+            </div>
+            </form>
+     }
+else
+       {
+               <div class="alert-ids alert-ids-info">
+     <i class="alert-ids-icon fa-solid fa-circle-info"></i>
+       <div class="alert-ids-content">This ticket is closed. No further comments can be added.</div>
+            </div>
+          }
+      </div>
+    </div>
+    </div>
+    
+    <!-- Ticket Info Sidebar -->
+    <div class="col-lg-4">
+  <div class="card-ids">
+            <div class="card-ids-header">
+           <h3 class="card-ids-title">
+            <i class="fa-solid fa-circle-info text-warning"></i>
+         Ticket Info
+          </h3>
+            </div>
+         <div class="card-ids-body">
+        <dl class="mb-0">
+         <dt class="text-muted" style="font-size: 0.8125rem;">Ticket Number</dt>
+       <dd style="color: var(--text-primary);">@Model.Ticket.TicketNumber</dd>
+      
+                <dt class="text-muted mt-3" style="font-size: 0.8125rem;">Submitted By</dt>
+   <dd style="color: var(--text-primary);">
+  @Model.Ticket.SubmittedByName
+        <br><small class="text-muted">@Model.Ticket.SubmittedByEmail</small>
+  </dd>
+         
+       <dt class="text-muted mt-3" style="font-size: 0.8125rem;">Created</dt>
+       <dd style="color: var(--text-primary);">@Model.Ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+        
+           <dt class="text-muted mt-3" style="font-size: 0.8125rem;">Last Updated</dt>
+      <dd style="color: var(--text-primary);">@Model.Ticket.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+  
+    @if (!string.IsNullOrEmpty(Model.Ticket.AssignedToName))
+          {
+     <dt class="text-muted mt-3" style="font-size: 0.8125rem;">Assigned To</dt>
+  <dd style="color: var(--text-primary);">
+           <i class="fa-solid fa-headset text-primary me-1"></i>
+     @Model.Ticket.AssignedToName
+     </dd>
+  }
+      
+                    @if (Model.Ticket.ResolvedAt.HasValue)
+    {
+      <dt class="text-muted mt-3" style="font-size: 0.8125rem;">Resolved</dt>
+          <dd style="color: var(--success);">@Model.Ticket.ResolvedAt.Value.ToString("MMM dd, yyyy HH:mm")</dd>
+ }
+         </dl>
+          </div>
+     </div>
+        
+   <!-- Actions -->
+        <div class="card-ids mt-4">
+        <div class="card-ids-body">
+       <a asp-page="/SubmitTicket" class="btn-ids btn-ids-secondary w-100 mb-2">
+   <i class="fa-solid fa-arrow-left me-2"></i> Back to My Tickets
+                </a>
+         @if (Model.CanManageTicket)
+           {
+       <a asp-page="/Support/ManageTicket" asp-route-id="@Model.Ticket.Id" class="btn-ids btn-ids-primary w-100">
+  <i class="fa-solid fa-wrench me-2"></i> Manage Ticket
+      </a>
+    }
+          </div>
+        </div>
+    </div>
+</div>

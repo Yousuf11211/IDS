@@ -539,6 +539,9 @@ font-weight: 700;
 /* ============================================
    Buttons
    ============================================ */
+/* ============================================
+   Buttons - ENHANCED
+   ============================================ */
 .btn-ids {
   display: inline-flex;
   align-items: center;
@@ -552,11 +555,25 @@ font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-decoration: none;
+  position: relative;
+  z-index: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-ids:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-ids:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.btn-ids:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn-ids-primary {
@@ -567,6 +584,7 @@ font-weight: 700;
 .btn-ids-primary:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
+  color: white;
 }
 
 .btn-ids-secondary {
@@ -578,6 +596,7 @@ font-weight: 700;
 .btn-ids-secondary:hover:not(:disabled) {
   background: var(--bg-primary);
   border-color: var(--text-muted);
+  color: var(--text-primary);
 }
 
 .btn-ids-danger {
@@ -588,10 +607,28 @@ font-weight: 700;
 .btn-ids-danger:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  color: white;
 }
 
 .btn-ids-success {
   background: linear-gradient(135deg, var(--success), #059669);
+  color: white;
+}
+
+.btn-ids-success:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  color: white;
+}
+
+.btn-ids-warning {
+  background: linear-gradient(135deg, var(--warning), #d97706);
+  color: white;
+}
+
+.btn-ids-warning:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
   color: white;
 }
 
@@ -630,6 +667,9 @@ font-weight: 700;
 /* ============================================
    Forms
    ============================================ */
+/* ============================================
+   Forms - ENHANCED
+   ============================================ */
 .form-group {
   margin-bottom: 1rem;
 }
@@ -651,6 +691,8 @@ font-weight: 700;
   background: var(--bg-secondary);
   color: var(--text-primary);
   transition: all var(--transition-fast);
+  position: relative;
+  z-index: 1;
 }
 
 .form-control-ids:focus {
@@ -663,12 +705,18 @@ font-weight: 700;
   color: var(--text-muted);
 }
 
+.form-control-ids:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .form-select-ids {
   appearance: none;
-background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   padding-right: 2.5rem;
+cursor: pointer;
 }
 
 .form-text {
@@ -681,6 +729,39 @@ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
   font-size: 0.8125rem;
   color: var(--danger);
   margin-top: 0.25rem;
+  display: block;
+}
+
+/* Input group fixes for click issues */
+.input-group {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  width: 100%;
+}
+
+.input-group > .form-control-ids {
+  position: relative;
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+}
+
+.input-group-text {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right: none;
 }
 
 /* ============================================

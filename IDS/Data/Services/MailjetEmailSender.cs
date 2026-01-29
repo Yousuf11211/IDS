@@ -238,13 +238,13 @@ namespace IDS.Data.Services
 public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsync(string toEmail, string userName, string temporaryPassword, string? loginUrl = null)
         {
    var placeholders = GetBasePlaceholders();
-        placeholders["UserName"] = userName ?? "User";
+         placeholders["UserName"] = userName ?? "User";
             placeholders["UserEmail"] = toEmail;
-            placeholders["TemporaryPassword"] = temporaryPassword;
-            placeholders["LoginUrl"] = loginUrl ?? "/Identity/Account/Login";
+   placeholders["TempPassword"] = temporaryPassword;  // Fixed: was TemporaryPassword, template uses TempPassword
+   placeholders["LoginUrl"] = loginUrl ?? "/Identity/Account/Login";
 
             var (htmlBody, textBody) = await LoadTemplateAsync("TempPasswordEmail", placeholders);
-            return await SendEmailAsync(toEmail, userName, "Your Temporary Password - IDS", htmlBody, textBody);
+     return await SendEmailAsync(toEmail, userName, "Your Temporary Password - IDS", htmlBody, textBody);
         }
 
     /// <summary>
@@ -286,11 +286,11 @@ public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsy
             string alertTitle,
     string alertDescription,
     string severityLevel,
-   string sourceIP,
-            string attackType,
+            string sourceIP,
+     string attackType,
      DateTime detectedAt,
             string? recommendedAction = null,
-        string? dashboardUrl = null)
+            string? dashboardUrl = null)
   {
          var placeholders = GetBasePlaceholders();
         placeholders["UserName"] = userName ?? "Admin";
@@ -298,14 +298,14 @@ public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsy
    placeholders["AlertTitle"] = alertTitle;
             placeholders["AlertDescription"] = alertDescription;
         placeholders["SeverityLevel"] = severityLevel;
-placeholders["SourceIP"] = sourceIP ?? "Unknown";
-    placeholders["AttackType"] = attackType ?? "Unknown";
-      placeholders["DetectedAt"] = detectedAt.ToString("yyyy-MM-dd HH:mm:ss UTC");
- placeholders["RecommendedAction"] = recommendedAction ?? "Review the alert details and take appropriate action based on your security policies.";
-          placeholders["DashboardUrl"] = dashboardUrl ?? "/Admin/Alerts";
+            placeholders["SourceIP"] = sourceIP ?? "Unknown";
+            placeholders["AttackType"] = attackType ?? "Unknown";
+            placeholders["DetectedAt"] = detectedAt.ToString("yyyy-MM-dd HH:mm:ss UTC");
+    placeholders["RecommendedAction"] = recommendedAction ?? "Review the alert details and take appropriate action based on your security policies.";
+        placeholders["DashboardUrl"] = dashboardUrl ?? "/Admin/Alerts";
 
-            var (htmlBody, textBody) = await LoadTemplateAsync("SecurityAlertEmail", placeholders);
-         await SendEmailAsync(toEmail, userName, $"?? Security Alert: {alertTitle} - IDS", htmlBody, textBody);
+        var (htmlBody, textBody) = await LoadTemplateAsync("SecurityAlertEmail", placeholders);
+            await SendEmailAsync(toEmail, userName, $"Security Alert: {alertTitle} - IDS", htmlBody, textBody);  // Removed emoji
         }
 
         /// <summary>

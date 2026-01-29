@@ -1,0 +1,221 @@
+@page
+@model IDS.Pages.Support.TicketsModel
+@{
+    ViewData["Title"] = "Support Tickets";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title">
+   <i class="fa-solid fa-headset"></i>
+     Support Tickets
+        </h1>
+   <p class="page-header-subtitle">
+     Manage and respond to user support requests.
+        </p>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    var isError = Model.StatusMessage.Contains("Error");
+    <div class="alert-ids @(isError ? "alert-ids-danger" : "alert-ids-success") mb-4">
+        <i class="alert-ids-icon fa-solid @(isError ? "fa-circle-xmark" : "fa-circle-check")"></i>
+      <div class="alert-ids-content">@Model.StatusMessage</div>
+    </div>
+}
+
+<!-- Statistics Cards -->
+<div class="metrics-grid mb-4">
+    <div class="metric-card" style="--metric-accent: var(--warning);">
+        <div class="metric-icon gradient-yellow">
+  <i class="fa-solid fa-inbox"></i>
+        </div>
+     <div class="metric-content">
+ <div class="metric-label">Open</div>
+       <div class="metric-value">@Model.TotalOpen</div>
+        </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--info);">
+     <div class="metric-icon gradient-cyan">
+        <i class="fa-solid fa-spinner"></i>
+ </div>
+        <div class="metric-content">
+    <div class="metric-label">In Progress</div>
+    <div class="metric-value">@Model.TotalInProgress</div>
+        </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: var(--success);">
+<div class="metric-icon gradient-green">
+   <i class="fa-solid fa-check-circle"></i>
+        </div>
+ <div class="metric-content">
+        <div class="metric-label">Resolved</div>
+            <div class="metric-value">@Model.TotalResolved</div>
+     </div>
+</div>
+    <div class="metric-card" style="--metric-accent: var(--danger);">
+        <div class="metric-icon gradient-red">
+   <i class="fa-solid fa-exclamation-triangle"></i>
+  </div>
+      <div class="metric-content">
+ <div class="metric-label">Critical</div>
+    <div class="metric-value">@Model.TotalCritical</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card-ids mb-4">
+    <div class="card-ids-body">
+        <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-3">
+     <label class="form-label-ids">Status</label>
+     <select name="status" class="form-control-ids form-select-ids">
+    <option value="All" selected="@(Model.CurrentFilter == "All")">All Statuses</option>
+       <option value="Open" selected="@(Model.CurrentFilter == "Open")">Open</option>
+   <option value="InProgress" selected="@(Model.CurrentFilter == "InProgress")">In Progress</option>
+            <option value="Resolved" selected="@(Model.CurrentFilter == "Resolved")">Resolved</option>
+      <option value="Closed" selected="@(Model.CurrentFilter == "Closed")">Closed</option>
+     </select>
+  </div>
+  <div class="col-md-3">
+     <label class="form-label-ids">Priority</label>
+   <select name="priority" class="form-control-ids form-select-ids">
+    <option value="All">All Priorities</option>
+ <option value="Critical">Critical</option>
+   <option value="High">High</option>
+     <option value="Medium">Medium</option>
+ <option value="Low">Low</option>
+    </select>
+  </div>
+    <div class="col-md-4">
+    <label class="form-label-ids">Search</label>
+      <input type="text" name="search" value="@Model.SearchQuery" class="form-control-ids" placeholder="Ticket #, subject, or user...">
+   </div>
+   <div class="col-md-2 d-flex gap-2">
+     <button type="submit" class="btn-ids btn-ids-primary flex-grow-1">
+    <i class="fa-solid fa-filter"></i> Filter
+         </button>
+       <a href="/Support/Tickets" class="btn-ids btn-ids-secondary">
+<i class="fa-solid fa-times"></i>
+     </a>
+        </div>
+  </form>
+    </div>
+</div>
+
+<!-- Tickets Table -->
+<div class="card-ids">
+    <div class="card-ids-header">
+     <h3 class="card-ids-title">
+  <i class="fa-solid fa-list text-info"></i>
+         Ticket Queue
+   <span class="badge bg-primary ms-2">@Model.Tickets.Count tickets</span>
+        </h3>
+    </div>
+    <div class="card-ids-body p-0">
+        @if (Model.Tickets.Any())
+        {
+            <div style="overflow-x: auto;">
+        <table class="table-ids">
+     <thead>
+          <tr>
+ <th>Ticket</th>
+        <th>User</th>
+          <th>Category</th>
+        <th style="width: 90px;">Priority</th>
+          <th style="width: 100px;">Status</th>
+       <th>Assigned</th>
+     <th style="width: 140px;">Created</th>
+            <th style="width: 120px;">Actions</th>
+     </tr>
+ </thead>
+      <tbody>
+  @foreach (var ticket in Model.Tickets)
+      {
+         var statusClass = ticket.Status switch
+  {
+     "Open" => "status-warning",
+        "InProgress" => "status-info",
+      "Resolved" => "status-normal",
+ "Closed" => "status-normal",
+       _ => "status-info"
+ };
+  var priorityClass = ticket.Priority switch
+   {
+      "Critical" => "severity-critical",
+     "High" => "severity-high",
+            "Medium" => "severity-medium",
+ "Low" => "severity-low",
+            _ => "severity-info"
+   };
+         var rowClass = ticket.Priority == "Critical" && ticket.Status == "Open" ? "row-danger" : "";
+        <tr class="@rowClass">
+     <td>
+ <div>
+     <a asp-page="/Support/ManageTicket" asp-route-id="@ticket.Id" class="fw-semibold" style="color: var(--primary);">
+  @ticket.TicketNumber
+        </a>
+       </div>
+ <div class="text-truncate" style="max-width: 200px; color: var(--text-secondary); font-size: 0.8125rem;">
+     @ticket.Subject
+     </div>
+</td>
+         <td>
+      <div style="color: var(--text-primary);">@ticket.SubmittedByName</div>
+   <small class="text-muted">@ticket.SubmittedByEmail</small>
+        </td>
+      <td style="color: var(--text-secondary);">@ticket.Category</td>
+ <td><span class="severity-badge @priorityClass">@ticket.Priority</span></td>
+        <td><span class="status-badge @statusClass">@ticket.Status</span></td>
+          <td>
+       @if (!string.IsNullOrEmpty(ticket.AssignedToName))
+    {
+   <span style="color: var(--text-primary);">
+               <i class="fa-solid fa-user text-primary me-1"></i>
+            @ticket.AssignedToName
+        </span>
+      }
+     else
+           {
+              <span class="text-muted">Unassigned</span>
+     }
+      </td>
+          <td>
+     <span style="color: var(--text-secondary); font-size: 0.8125rem;">
+      @ticket.CreatedAt.ToString("MMM dd, HH:mm")
+   </span>
+       </td>
+        <td>
+         <div class="d-flex gap-1">
+          <a asp-page="/Support/ManageTicket" asp-route-id="@ticket.Id" class="btn-ids btn-ids-primary btn-icon btn-icon-sm" title="Manage">
+    <i class="fa-solid fa-wrench"></i>
+ </a>
+         @if (string.IsNullOrEmpty(ticket.AssignedToUserId))
+       {
+        <form method="post" asp-page-handler="AssignToMe" style="display:inline;">
+        <input type="hidden" name="ticketId" value="@ticket.Id" />
+     <button type="submit" class="btn-ids btn-ids-success btn-icon btn-icon-sm" title="Assign to me">
+             <i class="fa-solid fa-hand"></i>
+       </button>
+   </form>
+    }
+   </div>
+        </td>
+         </tr>
+     }
+             </tbody>
+  </table>
+            </div>
+        }
+    else
+        {
+            <div class="empty-state">
+       <i class="empty-state-icon fa-solid fa-inbox"></i>
+  <h4 class="empty-state-title">No Tickets Found</h4>
+ <p class="empty-state-text">No tickets match your current filters.</p>
+     </div>
+        }
+    </div>
+</div>

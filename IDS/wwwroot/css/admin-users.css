@@ -17,8 +17,8 @@
 /* Legacy support - role badges now use .role-badge from site.css */
 .user-table .role-badge {
     display: inline-block;
- padding: 0.25rem 0.625rem;
-border-radius: var(--radius-sm);
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-sm);
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -28,9 +28,14 @@ border-radius: var(--radius-sm);
     color: #7c3aed;
 }
 
+.user-table .role-support {
+    background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
 .user-table .role-employee {
     background: rgba(59, 130, 246, 0.1);
- color: #2563eb;
+  color: #2563eb;
 }
 
 .user-table .role-suspended {
@@ -43,40 +48,33 @@ border-radius: var(--radius-sm);
     color: var(--text-muted);
 }
 
-/* ============================================
-   Admin Users - Supplementary Styles
-   Most styling handled by site.css design system
-   ============================================ */
-
-/* User Filters Card */
-.user-filters {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: 1rem;
- background: var(--bg-card);
-}
-
-/* Role Badges - Enhanced colors */
+/* Role Badge Styles (used across admin pages) */
 .role-badge {
     display: inline-flex;
     align-items: center;
     padding: 0.25rem 0.625rem;
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
     font-weight: 600;
+    font-size: 0.75rem;
     white-space: nowrap;
 }
 
 .role-badge.role-admin {
-  background: rgba(139, 92, 246, 0.15);
+    background: rgba(139, 92, 246, 0.15);
     color: #7c3aed;
     border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.role-badge.role-support {
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .role-badge.role-employee {
     background: rgba(59, 130, 246, 0.15);
     color: #2563eb;
-border: 1px solid rgba(59, 130, 246, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .role-badge.role-suspended {
@@ -86,15 +84,38 @@ border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .role-badge.role-unknown {
-    background: var(--bg-tertiary);
+  background: var(--bg-tertiary);
     color: var(--text-muted);
     border: 1px solid var(--border-color);
 }
 
-/* Dark Mode Role Badges */
+/* User Avatar Variants */
+.user-avatar.admin {
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+}
+
+.user-avatar.support {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.user-avatar.suspended {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+/* Dark mode adjustments */
+.theme-dark .user-filters {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+}
+
 .theme-dark .role-badge.role-admin {
-  background: rgba(139, 92, 246, 0.2);
+    background: rgba(139, 92, 246, 0.2);
     color: #a78bfa;
+}
+
+.theme-dark .role-badge.role-support {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
 }
 
 .theme-dark .role-badge.role-employee {
@@ -105,42 +126,4 @@ border: 1px solid rgba(59, 130, 246, 0.3);
 .theme-dark .role-badge.role-suspended {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
-}
-
-/* User Table Specific */
-.user-table {
-    width: 100%;
-}
-
-.user-table .role-badge {
-    display: inline-block;
-    padding: 0.25rem 0.625rem;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    font-size: 0.75rem;
-}
-
-/* Suspended User Row Highlight */
-.table-ids tr.suspended-row {
-    background-color: rgba(239, 68, 68, 0.05);
-}
-
-.table-ids tr.suspended-row:hover {
-    background-color: rgba(239, 68, 68, 0.08);
-}
-
-/* Dark mode adjustments */
-.theme-dark .user-filters {
- background: var(--bg-card);
-    border-color: var(--border-color);
-}
-
-/* Action Dropdown Z-index for table context */
-.table-ids td .action-dropdown .action-menu {
-    z-index: 1000;
-}
-
-/* Ensure proper modal backdrop in dark mode */
-.theme-dark .modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.7);
 }

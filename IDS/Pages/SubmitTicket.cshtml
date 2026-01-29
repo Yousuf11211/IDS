@@ -1,0 +1,194 @@
+@page
+@model IDS.Pages.SubmitTicketModel
+@{
+    ViewData["Title"] = "Submit Support Ticket";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+   <h1 class="page-header-title">
+   <i class="fa-solid fa-ticket"></i>
+      Submit Support Ticket
+        </h1>
+  <p class="page-header-subtitle">
+   Having an issue? Submit a ticket and our IT Support team will help you.
+        </p>
+ </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="alert-ids alert-ids-success mb-4">
+        <i class="alert-ids-icon fa-solid fa-circle-check"></i>
+        <div class="alert-ids-content">@Model.StatusMessage</div>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Submit Ticket Form -->
+    <div class="col-lg-8">
+        <div class="card-ids">
+ <div class="card-ids-header">
+     <h2 class="card-ids-title">
+       <i class="fa-solid fa-pen-to-square text-primary"></i>
+         New Support Request
+          </h2>
+            </div>
+            <div class="card-ids-body">
+       <form method="post">
+         <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-4" style="display: @(ViewData.ModelState.ErrorCount > 0 ? "flex" : "none")"></div>
+         
+       <div class="row g-3">
+  <div class="col-md-8">
+  <div class="form-group">
+  <label asp-for="Input.Subject" class="form-label-ids"></label>
+   <input asp-for="Input.Subject" class="form-control-ids" placeholder="Brief summary of your issue" />
+     <span asp-validation-for="Input.Subject" class="form-error"></span>
+        </div>
+          </div>
+         
+ <div class="col-md-4">
+        <div class="form-group">
+        <label asp-for="Input.Priority" class="form-label-ids"></label>
+    <select asp-for="Input.Priority" class="form-control-ids form-select-ids">
+            @foreach (var priority in Model.Priorities)
+    {
+       <option value="@priority" selected="@(priority == "Medium")">@priority</option>
+   }
+         </select>
+  <span asp-validation-for="Input.Priority" class="form-error"></span>
+          </div>
+           </div>
+          
+            <div class="col-12">
+            <div class="form-group">
+   <label asp-for="Input.Category" class="form-label-ids"></label>
+        <select asp-for="Input.Category" class="form-control-ids form-select-ids">
+       <option value="">-- Select Category --</option>
+     @foreach (var category in Model.Categories)
+           {
+    <option value="@category">@category</option>
+  }
+               </select>
+         <span asp-validation-for="Input.Category" class="form-error"></span>
+   </div>
+         </div>
+    
+            <div class="col-12">
+              <div class="form-group">
+          <label asp-for="Input.Description" class="form-label-ids"></label>
+    <textarea asp-for="Input.Description" class="form-control-ids" rows="6" 
+        placeholder="Please describe your issue in detail. Include any error messages, steps to reproduce, and what you were trying to do."></textarea>
+      <span asp-validation-for="Input.Description" class="form-error"></span>
+                 <p class="form-text">Be as detailed as possible to help us assist you faster.</p>
+          </div>
+          </div>
+        </div>
+   
+    <div class="d-flex gap-2 mt-4">
+     <button type="submit" class="btn-ids btn-ids-primary">
+  <i class="fa-solid fa-paper-plane me-2"></i> Submit Ticket
+         </button>
+      <a href="/Help" class="btn-ids btn-ids-secondary">
+          <i class="fa-solid fa-book-open me-2"></i> View Help Center
+     </a>
+   </div>
+                </form>
+            </div>
+   </div>
+    </div>
+    
+    <!-- My Recent Tickets Sidebar -->
+    <div class="col-lg-4">
+        <div class="card-ids">
+            <div class="card-ids-header">
+     <h3 class="card-ids-title">
+      <i class="fa-solid fa-clock-rotate-left text-info"></i>
+   My Recent Tickets
+           </h3>
+     </div>
+            <div class="card-ids-body p-0">
+           @if (Model.MyTickets.Any())
+       {
+ <div class="list-group list-group-flush">
+        @foreach (var ticket in Model.MyTickets)
+      {
+               var statusClass = ticket.Status switch
+  {
+              "Open" => "status-warning",
+           "InProgress" => "status-info",
+        "Resolved" => "status-normal",
+              "Closed" => "status-normal",
+       _ => "status-info"
+     };
+  var priorityClass = ticket.Priority switch
+       {
+     "Critical" => "severity-critical",
+      "High" => "severity-high",
+  "Medium" => "severity-medium",
+    "Low" => "severity-low",
+    _ => "severity-info"
+    };
+  <a asp-page="/ViewTicket" asp-route-id="@ticket.Id" class="list-group-item list-group-item-action" style="background: var(--bg-card); border-color: var(--border-color);">
+      <div class="d-flex justify-content-between align-items-start">
+    <div class="flex-grow-1 me-2">
+         <div class="fw-semibold text-truncate" style="color: var(--text-primary); max-width: 180px;">
+      @ticket.Subject
+             </div>
+     <small class="text-muted">@ticket.TicketNumber</small>
+          </div>
+  <span class="status-badge @statusClass" style="font-size: 0.65rem;">@ticket.Status</span>
+        </div>
+         <div class="d-flex justify-content-between mt-2">
+       <small class="text-muted">@ticket.CreatedAt.ToString("MMM dd, yyyy")</small>
+          <span class="severity-badge @priorityClass" style="font-size: 0.6rem;">@ticket.Priority</span>
+ </div>
+     </a>
+       }
+     </div>
+    }
+           else
+     {
+            <div class="p-4 text-center text-muted">
+             <i class="fa-solid fa-inbox" style="font-size: 2rem; opacity: 0.5;"></i>
+  <p class="mt-2 mb-0">No tickets submitted yet</p>
+             </div>
+   }
+      </div>
+        </div>
+        
+        <!-- Priority Guide -->
+        <div class="card-ids mt-4">
+         <div class="card-ids-header">
+              <h3 class="card-ids-title">
+     <i class="fa-solid fa-circle-info text-warning"></i>
+     Priority Guide
+    </h3>
+          </div>
+            <div class="card-ids-body">
+          <ul class="list-unstyled mb-0">
+        <li class="mb-2">
+            <span class="severity-badge severity-critical me-2">Critical</span>
+  <small class="text-muted">System down, security breach</small>
+               </li>
+         <li class="mb-2">
+          <span class="severity-badge severity-high me-2">High</span>
+          <small class="text-muted">Major feature broken</small>
+         </li>
+                 <li class="mb-2">
+   <span class="severity-badge severity-medium me-2">Medium</span>
+        <small class="text-muted">Normal requests</small>
+              </li>
+           <li>
+  <span class="severity-badge severity-low me-2">Low</span>
+  <small class="text-muted">Minor issues, questions</small>
+       </li>
+    </ul>
+   </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

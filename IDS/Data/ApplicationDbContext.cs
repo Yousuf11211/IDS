@@ -17,6 +17,8 @@ namespace IDS.Data
         public DbSet<SystemSetting> SystemSettings { get; set; } = null!;
         public DbSet<AuditLog> AuditLogs { get; set; } = null!;
         public DbSet<DashboardMetrics> DashboardMetrics { get; set; } = null!;
+        public DbSet<SupportTicket> SupportTickets { get; set; } = null!;
+        public DbSet<TicketComment> TicketComments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -88,6 +90,42 @@ namespace IDS.Data
                 b.ToTable("DashboardMetrics");
                 b.HasKey(m => m.Id);
                 b.HasIndex(m => m.SnapshotTime);
+            });
+
+            // Support Ticket Configuration
+            builder.Entity<SupportTicket>(b =>
+            {
+                b.ToTable("SupportTickets");
+                b.HasKey(t => t.Id);
+                b.Property(t => t.TicketNumber).HasMaxLength(50).IsRequired();
+                b.Property(t => t.SubmittedByUserId).HasMaxLength(450).IsRequired();
+                b.Property(t => t.SubmittedByEmail).HasMaxLength(256);
+                b.Property(t => t.SubmittedByName).HasMaxLength(200);
+                b.Property(t => t.Subject).HasMaxLength(200).IsRequired();
+                b.Property(t => t.Description).HasMaxLength(4000).IsRequired();
+                b.Property(t => t.Category).HasMaxLength(50).IsRequired();
+                b.Property(t => t.Priority).HasMaxLength(20).IsRequired();
+                b.Property(t => t.Status).HasMaxLength(20).IsRequired();
+                b.Property(t => t.AssignedToUserId).HasMaxLength(450);
+                b.Property(t => t.AssignedToName).HasMaxLength(200);
+                b.Property(t => t.ResolutionNotes).HasMaxLength(4000);
+                b.HasIndex(t => t.TicketNumber).IsUnique();
+                b.HasIndex(t => t.SubmittedByUserId);
+                b.HasIndex(t => t.Status);
+                b.HasIndex(t => t.CreatedAt);
+                b.HasIndex(t => t.Priority);
+            });
+
+            // Ticket Comment Configuration
+            builder.Entity<TicketComment>(b =>
+            {
+                b.ToTable("TicketComments");
+                b.HasKey(c => c.Id);
+                b.Property(c => c.UserId).HasMaxLength(450).IsRequired();
+                b.Property(c => c.UserName).HasMaxLength(200);
+                b.Property(c => c.Content).HasMaxLength(2000).IsRequired();
+                b.HasIndex(c => c.TicketId);
+                b.HasIndex(c => c.CreatedAt);
             });
         }
     }

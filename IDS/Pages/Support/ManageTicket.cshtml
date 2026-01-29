@@ -1,0 +1,296 @@
+@page "{id:int}"
+@model IDS.Pages.Support.ManageTicketModel
+@{
+    ViewData["Title"] = $"Manage Ticket {Model.Ticket?.TicketNumber}";
+}
+
+@if (Model.Ticket == null)
+{
+    <div class="alert-ids alert-ids-danger">
+     <i class="alert-ids-icon fa-solid fa-circle-xmark"></i>
+     <div class="alert-ids-content">Ticket not found.</div>
+    </div>
+    return;
+}
+
+@{
+    var statusClass = Model.Ticket.Status switch
+    {
+        "Open" => "status-warning",
+  "InProgress" => "status-info",
+        "Resolved" => "status-normal",
+        "Closed" => "status-normal",
+   _ => "status-info"
+    };
+    var priorityClass = Model.Ticket.Priority switch
+    {
+        "Critical" => "severity-critical",
+        "High" => "severity-high",
+        "Medium" => "severity-medium",
+   "Low" => "severity-low",
+   _ => "severity-info"
+    };
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title">
+            <i class="fa-solid fa-wrench"></i>
+     Manage Ticket
+        </h1>
+<p class="page-header-subtitle">
+      @Model.Ticket.TicketNumber - @Model.Ticket.Subject
+      </p>
+ <div class="page-header-actions">
+            <a asp-page="/Support/Tickets" class="btn-ids btn-ids-secondary" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+           <i class="fa-solid fa-arrow-left"></i> Back to Queue
+    </a>
+        </div>
+  </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    var isError = Model.StatusMessage.Contains("Error");
+ <div class="alert-ids @(isError ? "alert-ids-danger" : "alert-ids-success") mb-4">
+        <i class="alert-ids-icon fa-solid @(isError ? "fa-circle-xmark" : "fa-circle-check")"></i>
+        <div class="alert-ids-content">@Model.StatusMessage</div>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Ticket Details & Actions -->
+    <div class="col-lg-8">
+        <!-- Ticket Info -->
+        <div class="card-ids">
+   <div class="card-ids-header d-flex justify-content-between align-items-center">
+          <h2 class="card-ids-title mb-0">
+ <i class="fa-solid fa-file-lines text-primary"></i>
+ Ticket Details
+           </h2>
+   <div>
+ <span class="status-badge @statusClass me-2">@Model.Ticket.Status</span>
+    <span class="severity-badge @priorityClass">@Model.Ticket.Priority</span>
+     </div>
+       </div>
+ <div class="card-ids-body">
+        <div class="row g-3 mb-4">
+     <div class="col-md-6">
+   <label class="form-label-ids">Submitted By</label>
+     <p style="color: var(--text-primary);">
+     @Model.Ticket.SubmittedByName
+           <br><small class="text-muted">@Model.Ticket.SubmittedByEmail</small>
+ </p>
+       </div>
+     <div class="col-md-6">
+  <label class="form-label-ids">Category</label>
+     <p style="color: var(--text-primary);">@Model.Ticket.Category</p>
+   </div>
+          </div>
+        
+   <div class="mb-4">
+       <label class="form-label-ids">Subject</label>
+                <p style="color: var(--text-primary); font-weight: 500;">@Model.Ticket.Subject</p>
+            </div>
+
+         <div class="mb-4">
+   <label class="form-label-ids">Description</label>
+                <div class="p-3 rounded" style="background: var(--bg-tertiary); color: var(--text-primary); white-space: pre-wrap;">@Model.Ticket.Description</div>
+ </div>
+
+  <div class="row g-3">
+  <div class="col-md-4">
+   <label class="form-label-ids">Created</label>
+       <p style="color: var(--text-secondary);">@Model.Ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
+       </div>
+          <div class="col-md-4">
+ <label class="form-label-ids">Last Updated</label>
+         <p style="color: var(--text-secondary);">@Model.Ticket.UpdatedAt.ToString("MMM dd, yyyy HH:mm")</p>
+    </div>
+        <div class="col-md-4">
+  <label class="form-label-ids">Assigned To</label>
+        <p style="color: var(--text-primary);">
+       @if (!string.IsNullOrEmpty(Model.Ticket.AssignedToName))
+         {
+ <i class="fa-solid fa-user text-primary me-1"></i>@Model.Ticket.AssignedToName
+         }
+  else
+         {
+      <span class="text-muted">Unassigned</span>
+   }
+    </p>
+   </div>
+ </div>
+        </div>
+   </div>
+
+        <!-- Comments Section -->
+  <div class="card-ids mt-4">
+            <div class="card-ids-header">
+       <h3 class="card-ids-title">
+       <i class="fa-solid fa-comments text-info"></i>
+ Conversation
+        <span class="badge bg-primary ms-2">@Model.Comments.Count</span>
+      </h3>
+            </div>
+<div class="card-ids-body">
+   @if (Model.Comments.Any())
+         {
+       <div class="d-flex flex-column gap-3 mb-4">
+   @foreach (var comment in Model.Comments)
+  {
+      var isSupport = comment.IsFromSupport;
+     <div class="p-3 rounded @(isSupport ? "ms-4" : "me-4")" style="background: @(isSupport ? "rgba(59, 130, 246, 0.1)" : "var(--bg-tertiary)"); border-left: 3px solid @(isSupport ? "var(--primary)" : "var(--text-muted)");">
+           <div class="d-flex justify-content-between align-items-center mb-2">
+     <strong style="color: var(--text-primary);">
+      @if (isSupport)
+  {
+   <i class="fa-solid fa-headset text-primary me-1"></i>
+         }
+    @comment.UserName
+            @if (isSupport)
+ {
+       <span class="badge bg-primary ms-2" style="font-size: 0.65rem;">Support</span>
+  }
+      </strong>
+  <small class="text-muted">@comment.CreatedAt.ToString("MMM dd, yyyy HH:mm")</small>
+    </div>
+     <p class="mb-0" style="color: var(--text-secondary); white-space: pre-wrap;">@comment.Content</p>
+     </div>
+   }
+         </div>
+      }
+
+             <!-- Add Comment -->
+     @if (Model.Ticket.Status != "Closed")
+          {
+   <form method="post" asp-page-handler="AddComment" asp-route-id="@Model.Ticket.Id">
+     <div class="form-group">
+        <label class="form-label-ids">Reply to User</label>
+<textarea asp-for="NewComment" class="form-control-ids" rows="3" placeholder="Type your response..."></textarea>
+          </div>
+        <div class="d-flex justify-content-end mt-3">
+     <button type="submit" class="btn-ids btn-ids-primary">
+      <i class="fa-solid fa-paper-plane me-2"></i> Send Reply
+       </button>
+         </div>
+       </form>
+       }
+ </div>
+        </div>
+    </div>
+    
+    <!-- Actions Sidebar -->
+    <div class="col-lg-4">
+<!-- Quick Actions -->
+   <div class="card-ids">
+   <div class="card-ids-header">
+    <h3 class="card-ids-title">
+  <i class="fa-solid fa-bolt text-warning"></i>
+Quick Actions
+     </h3>
+</div>
+    <div class="card-ids-body">
+         @if (string.IsNullOrEmpty(Model.Ticket.AssignedToUserId))
+   {
+  <form method="post" asp-page-handler="AssignToMe" asp-route-id="@Model.Ticket.Id" class="mb-3">
+    <button type="submit" class="btn-ids btn-ids-success w-100">
+    <i class="fa-solid fa-hand me-2"></i> Assign to Me
+         </button>
+  </form>
+    }
+      
+  <!-- Update Status -->
+   <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@Model.Ticket.Id" class="mb-3">
+       <label class="form-label-ids">Update Status</label>
+      <div class="d-flex gap-2">
+      <select asp-for="NewStatus" class="form-control-ids form-select-ids">
+     @foreach (var status in Model.Statuses)
+       {
+         <option value="@status" selected="@(status == Model.Ticket.Status)">@status</option>
+   }
+  </select>
+ <button type="submit" class="btn-ids btn-ids-primary">
+       <i class="fa-solid fa-check"></i>
+</button>
+       </div>
+         </form>
+
+        <!-- Update Priority -->
+    <form method="post" asp-page-handler="UpdatePriority" asp-route-id="@Model.Ticket.Id" class="mb-3">
+    <label class="form-label-ids">Update Priority</label>
+        <div class="d-flex gap-2">
+  <select asp-for="NewPriority" class="form-control-ids form-select-ids">
+     @foreach (var priority in Model.Priorities)
+      {
+ <option value="@priority" selected="@(priority == Model.Ticket.Priority)">@priority</option>
+   }
+    </select>
+       <button type="submit" class="btn-ids btn-ids-primary">
+      <i class="fa-solid fa-check"></i>
+             </button>
+   </div>
+    </form>
+        </div>
+   </div>
+
+        <!-- Resolve Ticket -->
+        @if (Model.Ticket.Status != "Resolved" && Model.Ticket.Status != "Closed")
+        {
+            <div class="card-ids mt-4">
+    <div class="card-ids-header">
+    <h3 class="card-ids-title">
+          <i class="fa-solid fa-check-circle text-success"></i>
+    Resolve Ticket
+    </h3>
+    </div>
+           <div class="card-ids-body">
+ <form method="post" asp-page-handler="Resolve" asp-route-id="@Model.Ticket.Id">
+  <div class="form-group">
+ <label class="form-label-ids">Resolution Notes</label>
+  <textarea asp-for="ResolutionNotes" class="form-control-ids" rows="4" placeholder="Describe how the issue was resolved..."></textarea>
+       </div>
+       <button type="submit" class="btn-ids btn-ids-success w-100 mt-3">
+   <i class="fa-solid fa-check-circle me-2"></i> Mark as Resolved
+      </button>
+ </form>
+         </div>
+         </div>
+        }
+
+<!-- Ticket Timeline -->
+   <div class="card-ids mt-4">
+   <div class="card-ids-header">
+       <h3 class="card-ids-title">
+    <i class="fa-solid fa-clock text-info"></i>
+     Timeline
+ </h3>
+ </div>
+            <div class="card-ids-body">
+  <ul class="list-unstyled mb-0">
+ <li class="mb-3">
+ <i class="fa-solid fa-plus-circle text-success me-2"></i>
+         <strong>Created</strong>
+ <br><small class="text-muted">@Model.Ticket.CreatedAt.ToString("MMM dd, yyyy HH:mm")</small>
+  </li>
+         @if (Model.Ticket.Status != "Open")
+   {
+    <li class="mb-3">
+        <i class="fa-solid fa-spinner text-info me-2"></i>
+     <strong>In Progress</strong>
+   <br><small class="text-muted">Assigned to @(Model.Ticket.AssignedToName ?? "Support")</small>
+       </li>
+        }
+              @if (Model.Ticket.ResolvedAt.HasValue)
+       {
+     <li>
+<i class="fa-solid fa-check-circle text-success me-2"></i>
+      <strong>Resolved</strong>
+   <br><small class="text-muted">@Model.Ticket.ResolvedAt.Value.ToString("MMM dd, yyyy HH:mm")</small>
+        </li>
+     }
+                </ul>
+            </div>
+        </div>
+  </div>
+</div>

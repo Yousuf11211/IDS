@@ -1,936 +1,199 @@
 @page
 @model IDS.Pages.Admin.UserListModel
 @{
-  ViewData["Title"] = "Manage Users";
+ ViewData["Title"] = "Manage Users";
 }
 
-@* ============================================
-   User Management Page
-   - Displays user list with role management
-   - Uses action dropdown menus for cleaner UI
-   - Confirmation modals for all sensitive actions
-   ============================================ *@
-
-@section HeadContent {
- <style>
-        /* ============================================
-           User Management Specific Styles
-    ============================================ */
-        
-   /* Action Dropdown */
-        .action-dropdown {
-      position: relative;
-         display: inline-block;
-        }
-        
-        .action-trigger {
-  display: flex;
-     align-items: center;
-     justify-content: center;
-     width: 32px;
-            height: 32px;
-   border: 1px solid var(--border-color);
-   border-radius: var(--radius-md);
-        background: var(--bg-secondary);
-            color: var(--text-secondary);
-    cursor: pointer;
-            transition: all var(--transition-fast);
-      }
-        
-      .action-trigger:hover {
-  background: var(--bg-tertiary);
-            color: var(--text-primary);
-       border-color: var(--text-muted);
-        }
-        
-        .action-trigger:focus {
-            outline: none;
-         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        }
-        
-      .action-menu {
-       position: absolute;
-            top: calc(100% + 4px);
-       right: 0;
-   z-index: 100;
-      min-width: 180px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-8px);
-         transition: all var(--transition-fast);
-        }
-     
-        .action-dropdown.open .action-menu {
-         opacity: 1;
-            visibility: visible;
- transform: translateY(0);
-}
-        
-        .action-menu-item {
-    display: flex;
- align-items: center;
-         gap: 0.75rem;
-     width: 100%;
-     padding: 0.625rem 1rem;
- border: none;
-background: none;
-     color: var(--text-secondary);
-            font-size: 0.875rem;
-    text-align: left;
-   cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-     
-        .action-menu-item:first-child {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-        }
-        
-   .action-menu-item:last-child {
-        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-     }
-        
-        .action-menu-item:hover {
-background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-    
-        .action-menu-item i {
-  width: 16px;
-      text-align: center;
-            font-size: 0.875rem;
-      }
-    
- .action-menu-item.danger {
-      color: var(--danger);
-        }
-        
-        .action-menu-item.danger:hover {
-            background: rgba(239, 68, 68, 0.1);
-  }
-        
-        .action-menu-divider {
-            height: 1px;
-            background: var(--border-color);
-            margin: 0.25rem 0;
-        }
-        
-        /* Compact User Row */
-        .user-row {
-     transition: background-color var(--transition-fast);
-        }
-        
-        .user-row:hover {
-    background: var(--bg-tertiary);
-        }
-        
-        .user-row.suspended {
-       background: rgba(239, 68, 68, 0.05);
-        }
-        
-        .user-row.suspended:hover {
-      background: rgba(239, 68, 68, 0.08);
-        }
-    
-        /* Compact Avatar */
-        .user-avatar-sm {
-            width: 32px;
-          height: 32px;
-     border-radius: var(--radius-full);
- background: linear-gradient(135deg, var(--primary), var(--secondary));
-    display: flex;
-            align-items: center;
-      justify-content: center;
-            color: white;
-          font-weight: 600;
-          font-size: 0.75rem;
-         flex-shrink: 0;
-        }
-        
-  .user-avatar-sm.admin {
- background: linear-gradient(135deg, #7c3aed, #6366f1);
-        }
-        
-        .user-avatar-sm.suspended {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
- }
-     
-        /* User Info Cell */
-    .user-info-cell {
-    display: flex;
-    align-items: center;
-            gap: 0.75rem;
-        }
-      
-  .user-details {
-min-width: 0;
-     }
-   
-        .user-name {
-        font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-      }
-        
- .user-email {
-   font-size: 0.8125rem;
-            color: var(--text-muted);
-          white-space: nowrap;
-       overflow: hidden;
-        text-overflow: ellipsis;
-        }
-  
-        /* Modal Enhancements */
-    .modal-ids .modal-content {
- background: var(--bg-card);
-            border: 1px solid var(--border-color);
-     border-radius: var(--radius-xl);
-        }
-        
-        .modal-ids .modal-header {
-     border-bottom: 1px solid var(--border-color);
-    padding: 1.25rem 1.5rem;
-    }
-        
-        .modal-ids .modal-title {
-     font-weight: 600;
- color: var(--text-primary);
- }
-   
-  .modal-ids .modal-body {
-       padding: 1.5rem;
-   }
-        
-        .modal-ids .modal-footer {
-    border-top: 1px solid var(--border-color);
-     padding: 1rem 1.5rem;
-            gap: 0.5rem;
- }
-   
-        .modal-ids .btn-close {
-    filter: var(--bs-btn-close-white-filter, none);
-        }
-        
-     .theme-dark .modal-ids .btn-close {
-            filter: invert(1);
-    }
-        
-        /* Warning Box in Modals */
-        .modal-warning-box {
-       background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.2);
-    border-radius: var(--radius-md);
-     padding: 1rem;
-            margin-bottom: 1rem;
-        }
-     
-        .modal-warning-box.danger {
-            background: rgba(239, 68, 68, 0.1);
-         border-color: rgba(239, 68, 68, 0.2);
-        }
-        
-        .modal-warning-box i {
-        color: var(--warning);
-          margin-right: 0.5rem;
-        }
-        
-    .modal-warning-box.danger i {
-    color: var(--danger);
-        }
-        
-  /* User Preview in Modal */
-      .user-preview {
-            display: flex;
-   align-items: center;
-         gap: 1rem;
-            padding: 1rem;
-         background: var(--bg-tertiary);
-   border-radius: var(--radius-md);
-            margin-bottom: 1rem;
-        }
-    
-        .user-preview .user-avatar-sm {
-            width: 40px;
-     height: 40px;
-            font-size: 0.875rem;
-    }
-        
-      /* Self-action warning */
-  .self-action-badge {
- display: inline-flex;
-       align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-        background: rgba(245, 158, 11, 0.1);
-    color: var(--warning);
-    border-radius: var(--radius-sm);
-            font-size: 0.7rem;
-    font-weight: 600;
-      margin-left: 0.5rem;
-        }
-  </style>
-}
-
-<!-- Page Header -->
 <div class="page-header">
-    <div class="page-header-hero">
-     <h1 class="page-header-title">
-       <i class="fa-solid fa-users-gear"></i>
-            User Management
+ <div class="page-header-hero">
+  <h1 class="page-header-title">
+  <i class="fa-solid fa-users"></i>
+  User Management
         </h1>
-  <p class="page-header-subtitle">
-Manage user accounts, roles, and permissions for the IDS system.
-        </p>
+    <p class="page-header-subtitle">
+       Manage user accounts, roles, and permissions for the IDS system.
+      </p>
   <div class="page-header-actions">
-            <a asp-page="/Admin/CreateUser" class="btn-ids btn-ids-primary" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
-    <i class="fa-solid fa-user-plus"></i> Create New User
-            </a>
-   </div>
-    </div>
+ <a asp-page="/Admin/CreateUser" class="btn-ids btn-ids-primary" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+   <i class="fa-solid fa-user-plus"></i> Create New User
+      </a>
+</div>
+  </div>
 </div>
 
-<!-- Status Message -->
 @if (!string.IsNullOrEmpty(Model.StatusMessage))
 {
-    <div class="alert-ids @(Model.StatusMessage.Contains("Error") || Model.StatusMessage.Contains("Invalid") || Model.StatusMessage.Contains("Cannot") ? "alert-ids-danger" : "alert-ids-success") mb-4">
-        <i class="alert-ids-icon fa-solid @(Model.StatusMessage.Contains("Error") || Model.StatusMessage.Contains("Invalid") || Model.StatusMessage.Contains("Cannot") ? "fa-circle-xmark" : "fa-circle-check")"></i>
-        <div class="alert-ids-content">@Model.StatusMessage</div>
+    <div class="alert-ids @(Model.StatusMessage.Contains("Error") || Model.StatusMessage.Contains("Invalid") ? "alert-ids-danger" : "alert-ids-success") mb-4">
+ <i class="alert-ids-icon fa-solid @(Model.StatusMessage.Contains("Error") || Model.StatusMessage.Contains("Invalid") ? "fa-circle-xmark" : "fa-circle-check")"></i>
+      <div class="alert-ids-content">@Model.StatusMessage</div>
     </div>
 }
 
-<!-- Filters Section -->
+<!-- Filters -->
 <div class="card-ids mb-4">
     <div class="card-ids-body">
-        <form method="get" class="row g-3 align-items-end">
-          <div class="col-md-4">
-  <label class="form-label-ids">Filter by Role</label>
-      <select name="role" class="form-control-ids form-select-ids">
-                <option value="">All Roles</option>
-            @foreach (var r in Model.AllRoles)
- {
-      <option value="@r" selected="@(Request.Query["role"] == r)">@r</option>
-            }
-             </select>
+  <form method="get" class="row g-3 align-items-end">
+  <div class="col-md-4">
+   <label class="form-label-ids">Filter by Role</label>
+    <select name="role" class="form-control-ids form-select-ids">
+    <option value="">All Roles</option>
+    @foreach (var r in Model.AllRoles)
+       {
+        <option value="@r" selected="@(Request.Query["role"] == r)">@r</option>
+   }
+   </select>
+ </div>
+ <div class="col-md-4">
+<label class="form-label-ids">Search</label>
+  <input type="text" name="search" value="@Request.Query["search"]" class="form-control-ids" placeholder="Search by email...">
+     </div>
+     <div class="col-md-4 d-flex gap-2">
+ <button type="submit" class="btn-ids btn-ids-primary">
+<i class="fa-solid fa-filter"></i> Apply Filter
+    </button>
+         <a href="/Admin/UserList" class="btn-ids btn-ids-secondary">
+ <i class="fa-solid fa-times"></i> Clear
+ </a>
        </div>
-          <div class="col-md-4">
-       <label class="form-label-ids">Search by Email</label>
-     <input type="text" name="search" value="@Request.Query["search"]" class="form-control-ids" placeholder="Search by email...">
-            </div>
-            <div class="col-md-4 d-flex gap-2">
-        <button type="submit" class="btn-ids btn-ids-primary">
-     <i class="fa-solid fa-filter"></i> Apply
-       </button>
-     <a href="/Admin/UserList" class="btn-ids btn-ids-secondary">
-              <i class="fa-solid fa-times"></i> Clear
-      </a>
-      </div>
-        </form>
-    </div>
+     </form>
+</div>
 </div>
 
-<!-- User Statistics Cards -->
+<!-- User Stats -->
 <div class="metrics-grid mb-4">
-    <div class="metric-card" style="--metric-accent: var(--primary);">
-        <div class="metric-icon gradient-blue">
-            <i class="fa-solid fa-users"></i>
+  <div class="metric-card" style="--metric-accent: var(--primary);">
+    <div class="metric-icon gradient-blue">
+ <i class="fa-solid fa-users"></i>
+   </div>
+    <div class="metric-content">
+       <div class="metric-label">Total Users</div>
+      <div class="metric-value">@Model.Users.Count</div>
+    </div>
+ </div>
+    <div class="metric-card" style="--metric-accent: #7c3aed;">
+ <div class="metric-icon gradient-purple">
+<i class="fa-solid fa-user-shield"></i>
+        </div>
+  <div class="metric-content">
+ <div class="metric-label">Administrators</div>
+   <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Admin")</div>
+ </div>
+    </div>
+    <div class="metric-card" style="--metric-accent: #f59e0b;">
+        <div class="metric-icon gradient-yellow">
+   <i class="fa-solid fa-headset"></i>
         </div>
         <div class="metric-content">
-  <div class="metric-label">Total Users</div>
-            <div class="metric-value">@Model.Users.Count</div>
-        </div>
-    </div>
-    <div class="metric-card" style="--metric-accent: #7c3aed;">
-        <div class="metric-icon gradient-purple">
-  <i class="fa-solid fa-user-shield"></i>
-    </div>
-  <div class="metric-content">
-            <div class="metric-label">Administrators</div>
-    <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Admin")</div>
+ <div class="metric-label">IT Support</div>
+          <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Support")</div>
         </div>
     </div>
     <div class="metric-card" style="--metric-accent: var(--info);">
   <div class="metric-icon gradient-cyan">
      <i class="fa-solid fa-user-tie"></i>
    </div>
-        <div class="metric-content">
-       <div class="metric-label">Employees</div>
-            <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Employee")</div>
+  <div class="metric-content">
+  <div class="metric-label">Employees</div>
+         <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Employee")</div>
       </div>
-    </div>
+  </div>
     <div class="metric-card" style="--metric-accent: var(--danger);">
-        <div class="metric-icon gradient-red">
+      <div class="metric-icon gradient-red">
    <i class="fa-solid fa-user-slash"></i>
   </div>
-        <div class="metric-content">
+  <div class="metric-content">
 <div class="metric-label">Suspended</div>
 <div class="metric-value">@Model.Users.Count(u => u.CurrentRole == "Suspended")</div>
    </div>
-    </div>
+  </div>
 </div>
 
 <!-- Users Table -->
 <div class="card-ids">
     <div class="card-ids-header">
-        <h3 class="card-ids-title">
-         <i class="fa-solid fa-list text-info"></i>
+     <h3 class="card-ids-title">
+ <i class="fa-solid fa-list text-info"></i>
       User List
-            <span class="badge bg-primary ms-2">@Model.Users.Count users</span>
-   </h3>
+    <span class="badge bg-primary ms-2">@Model.Users.Count users</span>
+ </h3>
     </div>
-    <div class="card-ids-body p-0">
-        @if (Model.Users.Any())
+ <div class="card-ids-body p-0">
+  @if (Model.Users.Any())
         {
-    <div style="overflow-x: auto;">
-           <table class="table-ids">
-  <thead>
-  <tr>
-              <th>User</th>
-  <th style="width: 120px;">Role</th>
-       <th style="width: 80px; text-align: center;">Actions</th>
-       </tr>
-              </thead>
-            <tbody>
-           @foreach (var u in Model.Users)
+       <div style="overflow-x: auto;">
+ <table class="table-ids">
+ <thead>
+      <tr>
+<th style="width: 60px;">Avatar</th>
+<th>User</th>
+<th style="width: 120px;">Role</th>
+<th style="width: 100px;">Actions</th>
+ </tr>
+     </thead>
+     <tbody>
+     @foreach (var u in Model.Users)
     {
-           var roleClass = u.CurrentRole?.ToLowerInvariant() switch
-          {
-             "admin" => "role-admin",
+    var roleClass = u.CurrentRole?.ToLowerInvariant() switch
+       {
+   "admin" => "role-admin",
+ "support" => "role-support",
         "employee" => "role-employee",
-             "suspended" => "role-suspended",
-                _ => "role-unknown"
+      "suspended" => "role-suspended",
+        _ => "role-unknown"
    };
     var avatarClass = u.CurrentRole?.ToLowerInvariant() switch
-             {
-     "admin" => "admin",
-  "suspended" => "suspended",
-     _ => ""
-          };
-                  var isSuspended = u.CurrentRole == "Suspended";
-   var isCurrentUser = u.Email == User.Identity?.Name;
-        var firstInitial = !string.IsNullOrEmpty(u.FirstName) ? u.FirstName[0].ToString() : "";
-   var lastInitial = !string.IsNullOrEmpty(u.LastName) ? u.LastName[0].ToString() : "";
-            var initials = !string.IsNullOrEmpty(firstInitial) ? firstInitial + lastInitial : u.Email[0].ToString();
-            var displayName = !string.IsNullOrEmpty(u.FirstName) ? $"{u.FirstName} {u.LastName}" : u.Email;
-     var jsDisplayName = displayName.Replace("'", "\\'");
- var jsEmail = u.Email.Replace("'", "\\'");
-
-      <tr class="user-row @(isSuspended ? "suspended" : "")">
-   <td>
-    <div class="user-info-cell">
-     <div class="user-avatar-sm @avatarClass">
-             @initials.ToUpper()
-             </div>
-          <div class="user-details">
-     <div class="user-name">
-       @displayName
-             @if (isCurrentUser)
-     {
-          <span class="self-action-badge">
-       <i class="fa-solid fa-user"></i> You
-       </span>
-                   }
-     </div>
-             <div class="user-email">@u.Email</div>
-     </div>
-        </div>
-     </td>
-        <td>
-     <span class="role-badge @roleClass">
-         @(!string.IsNullOrEmpty(u.CurrentRole) ? u.CurrentRole : "None")
-     </span>
-         </td>
-              <td style="text-align: center;">
-            <div class="action-dropdown" data-user-id="@u.Id">
-             <button type="button" class="action-trigger" title="Actions" aria-label="User actions">
-       <i class="fa-solid fa-ellipsis-vertical"></i>
-    </button>
-  <div class="action-menu">
-         <!-- Change Role -->
-      <button type="button" class="action-menu-item" 
-            onclick="openRoleModal('@u.Id', '@jsEmail', '@u.CurrentRole', '@jsDisplayName', '@initials.ToUpper()', @(isCurrentUser ? "true" : "false"))">
-     <i class="fa-solid fa-user-tag"></i>
-             Change Role
-    </button>
-           
-<!-- Suspend / Unsuspend Toggle -->
-            @if (isSuspended)
- {
-  <button type="button" class="action-menu-item"
-         onclick="openUnsuspendModal('@u.Id', '@jsEmail', '@jsDisplayName', '@initials.ToUpper()')">
-        <i class="fa-solid fa-user-check"></i>
-         Unsuspend User
-       </button>
-   }
-            else
-  {
-          <button type="button" class="action-menu-item"
-      onclick="openSuspendModal('@u.Id', '@jsEmail', '@jsDisplayName', '@initials.ToUpper()', @(isCurrentUser ? "true" : "false"))">
-            <i class="fa-solid fa-user-slash"></i>
-             Suspend User
-    </button>
-          }
-     
-      <!-- Reset Password -->
-      <button type="button" class="action-menu-item"
- onclick="openResetPasswordModal('@u.Id', '@jsEmail', '@jsDisplayName', '@initials.ToUpper()')">
-         <i class="fa-solid fa-key"></i>
-       Reset Password
-        </button>
-        
-    <div class="action-menu-divider"></div>
- 
-            <!-- Delete User -->
-        <button type="button" class="action-menu-item danger"
-    onclick="openDeleteModal('@u.Id', '@jsEmail', '@jsDisplayName', '@initials.ToUpper()', @(isCurrentUser ? "true" : "false"))">
-          <i class="fa-solid fa-trash"></i>
-            Delete User
-       </button>
-                </div>
-       </div>
-                 </td>
-             </tr>
-        }
-      </tbody>
-       </table>
-        </div>
-      }
-      else
-        {
- <div class="empty-state">
-  <i class="empty-state-icon fa-solid fa-users-slash"></i>
-         <h4 class="empty-state-title">No Users Found</h4>
-             <p class="empty-state-text">No users match your current filters.</p>
-         <a asp-page="/Admin/CreateUser" class="btn-ids btn-ids-primary">
-            <i class="fa-solid fa-user-plus"></i> Create First User
-</a>
- </div>
-        }
-    </div>
-</div>
-
-@* ============================================
-   CONFIRMATION MODALS
-   ============================================ *@
-
-<!-- Change Role Modal -->
-<div class="modal fade modal-ids" id="roleModal" tabindex="-1" aria-labelledby="roleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-         <form method="post" asp-page-handler="SetRole" id="roleForm">
-       <div class="modal-header">
-   <h5 class="modal-title" id="roleModalLabel">
-     <i class="fa-solid fa-user-tag text-primary me-2"></i>
-            Change User Role
-  </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-         </div>
-        <div class="modal-body">
-         <!-- Self-action warning (hidden by default) -->
-     <div id="roleSelfWarning" class="modal-warning-box" style="display: none;">
-       <i class="fa-solid fa-exclamation-triangle"></i>
-  <strong>Warning:</strong> You are about to change your own role. 
-             Removing your Admin role will revoke your administrative access.
-  </div>
-         
-      <!-- User Preview -->
-            <div class="user-preview">
-  <div class="user-avatar-sm" id="roleUserAvatar">--</div>
-      <div>
-        <div class="user-name" id="roleUserName">User Name</div>
-       <div class="user-email" id="roleUserEmail">user@example.com</div>
-     </div>
-    </div>
-         
-          <input type="hidden" name="userId" id="roleUserId" />
-          
-     <div class="form-group mb-0">
-                <label class="form-label-ids">Select New Role</label>
-      <select name="role" id="roleSelect" class="form-control-ids form-select-ids">
-     @foreach (var r in Model.AllRoles)
        {
-      <option value="@r">@r</option>
-    }
-    </select>
-      <p class="form-text mt-2">
-     <i class="fa-solid fa-info-circle me-1"></i>
-         Role changes take effect immediately.
-     </p>
-           </div>
-                </div>
-                <div class="modal-footer">
-               <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn-ids btn-ids-primary">
-          <i class="fa-solid fa-check me-1"></i> Update Role
-      </button>
-      </div>
-            </form>
-     </div>
+     "admin" => "admin",
+     "support" => "support",
+  "suspended" => "suspended",
+  _ => ""
+          };
+    var rowClass = u.CurrentRole == "Suspended" ? "row-danger" : "";
+    var initials = !string.IsNullOrEmpty(u.FirstName) 
+    ? $"{u.FirstName.FirstOrDefault()}{u.LastName?.FirstOrDefault()}"
+ : u.Email.FirstOrDefault().ToString();
+ <tr class="@rowClass" style="cursor: pointer;" onclick="window.location.href='/Admin/EditUser/@u.Id'">
+        <td>
+    <div class="user-avatar @avatarClass" style="width: 36px; height: 36px; font-size: 0.75rem; margin: 0;">
+  @initials.ToUpper()
     </div>
-</div>
-
-<!-- Suspend User Modal -->
-<div class="modal fade modal-ids" id="suspendModal" tabindex="-1" aria-labelledby="suspendModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-      <form method="post" asp-page-handler="SetRole" id="suspendForm">
-       <div class="modal-header">
-   <h5 class="modal-title" id="suspendModalLabel">
-                  <i class="fa-solid fa-user-slash text-warning me-2"></i>
-             Suspend User
-          </h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-     </div>
-      <div class="modal-body">
-               <!-- Self-action warning -->
-        <div id="suspendSelfWarning" class="modal-warning-box danger" style="display: none;">
- <i class="fa-solid fa-exclamation-triangle"></i>
-   <strong>Warning:</strong> You cannot suspend your own account.
-          </div>
-    
-          <div class="modal-warning-box">
-        <i class="fa-solid fa-exclamation-triangle"></i>
-             <strong>This action will:</strong>
-       <ul class="mb-0 mt-2" style="color: var(--text-secondary);">
- <li>Immediately revoke user's access to the system</li>
-   <li>Log out the user from all active sessions</li>
-          <li>The user will not be able to login until unsuspended</li>
-     </ul>
-          </div>
-   
-           <!-- User Preview -->
-         <div class="user-preview">
- <div class="user-avatar-sm" id="suspendUserAvatar">--</div>
-       <div>
-    <div class="user-name" id="suspendUserName">User Name</div>
-               <div class="user-email" id="suspendUserEmail">user@example.com</div>
-              </div>
-       </div>
-      
-<input type="hidden" name="userId" id="suspendUserId" />
- <input type="hidden" name="role" value="Suspended" />
-          
-      <p class="mb-0" style="color: var(--text-secondary);">
-     Are you sure you want to suspend this user?
-   </p>
-        </div>
-      <div class="modal-footer">
- <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
-           <button type="submit" id="suspendSubmitBtn" class="btn-ids btn-ids-danger">
-        <i class="fa-solid fa-user-slash me-1"></i> Suspend User
-             </button>
-         </div>
-            </form>
-        </div>
+  </td>
+<td>
+ <div>
+      <strong>@(!string.IsNullOrEmpty(u.FirstName) ? $"{u.FirstName} {u.LastName}" : u.Email)</strong>
+ </div>
+   <small class="text-muted">@u.Email</small>
+ </td>
+ <td>
+   <span class="role-badge @roleClass">@(!string.IsNullOrEmpty(u.CurrentRole) ? u.CurrentRole : "None")</span>
+     </td>
+  <td onclick="event.stopPropagation();">
+    <a asp-page="/Admin/EditUser" asp-route-id="@u.Id" class="btn-ids btn-ids-primary btn-icon btn-icon-sm" title="Edit User">
+ <i class="fa-solid fa-pen-to-square"></i>
+       </a>
+    </td>
+   </tr>
+  }
+       </tbody>
+     </table>
     </div>
-</div>
-
-<!-- Unsuspend User Modal -->
-<div class="modal fade modal-ids" id="unsuspendModal" tabindex="-1" aria-labelledby="unsuspendModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-  <div class="modal-content">
-            <form method="post" asp-page-handler="SetRole" id="unsuspendForm">
-          <div class="modal-header">
-       <h5 class="modal-title" id="unsuspendModalLabel">
-      <i class="fa-solid fa-user-check text-success me-2"></i>
-      Unsuspend User
-         </h5>
-           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-            <div class="modal-body">
-          <!-- User Preview -->
-       <div class="user-preview">
-            <div class="user-avatar-sm suspended" id="unsuspendUserAvatar">--</div>
-                  <div>
-                <div class="user-name" id="unsuspendUserName">User Name</div>
-    <div class="user-email" id="unsuspendUserEmail">user@example.com</div>
-   </div>
-        </div>
-   
-          <input type="hidden" name="userId" id="unsuspendUserId" />
-                    
-              <div class="form-group mb-0">
-     <label class="form-label-ids">Assign Role After Unsuspension</label>
-       <select name="role" id="unsuspendRoleSelect" class="form-control-ids form-select-ids">
-        @foreach (var r in Model.AllRoles.Where(r => r != "Suspended"))
-   {
-            <option value="@r" selected="@(r == "Employee")">@r</option>
-      }
-         </select>
-     <p class="form-text mt-2">
-       <i class="fa-solid fa-info-circle me-1"></i>
-       The user will regain access with the selected role.
-             </p>
-           </div>
-     </div>
- <div class="modal-footer">
-         <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
-    <button type="submit" class="btn-ids btn-ids-success">
-         <i class="fa-solid fa-user-check me-1"></i> Unsuspend User
-       </button>
-     </div>
-         </form>
-        </div>
-    </div>
-</div>
-
-<!-- Reset Password Modal -->
-<div class="modal fade modal-ids" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form method="post" asp-page-handler="ResetPassword" id="resetPasswordForm">
-             <div class="modal-header">
-       <h5 class="modal-title" id="resetPasswordModalLabel">
-         <i class="fa-solid fa-key text-warning me-2"></i>
-       Reset User Password
-        </h5>
-               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-     </div>
-        <div class="modal-body">
-      <div class="modal-warning-box">
-      <i class="fa-solid fa-exclamation-triangle"></i>
-   <strong>This action will:</strong>
-       <ul class="mb-0 mt-2" style="color: var(--text-secondary);">
-    <li>Generate a new temporary password</li>
-      <li>Send the password to the user's email</li>
-           <li>User will be required to change password on next login</li>
-              </ul>
-         </div>
-        
-             <!-- User Preview -->
-       <div class="user-preview">
-   <div class="user-avatar-sm" id="resetUserAvatar">--</div>
-           <div>
-       <div class="user-name" id="resetUserName">User Name</div>
-         <div class="user-email" id="resetUserEmail">user@example.com</div>
-   </div>
-       </div>
-           
-          <input type="hidden" name="userId" id="resetUserId" />
-          
-    <p class="mb-0" style="color: var(--text-secondary);">
-    Are you sure you want to reset the password for this user?
-    </p>
-       </div>
-                <div class="modal-footer">
-          <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
-           <button type="submit" class="btn-ids btn-ids-primary">
-            <i class="fa-solid fa-key me-1"></i> Reset Password
-     </button>
-      </div>
-        </form>
-        </div>
-    </div>
-</div>
-
-<!-- Delete User Modal -->
-<div class="modal fade modal-ids" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-<div class="modal-content">
-       <form method="post" asp-page-handler="DeleteUser" id="deleteForm">
-           <div class="modal-header">
-            <h5 class="modal-title" id="deleteModalLabel">
-            <i class="fa-solid fa-trash text-danger me-2"></i>
-                Delete User
-      </h5>
-           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-    <div class="modal-body">
-  <!-- Self-action warning -->
-       <div id="deleteSelfWarning" class="modal-warning-box danger" style="display: none;">
-       <i class="fa-solid fa-exclamation-triangle"></i>
-            <strong>Warning:</strong> You cannot delete your own account.
-               </div>
-             
-   <div class="modal-warning-box danger">
-     <i class="fa-solid fa-exclamation-triangle"></i>
-              <strong>This action is permanent and cannot be undone!</strong>
-              <ul class="mb-0 mt-2" style="color: var(--text-secondary);">
-           <li>All user data will be permanently deleted</li>
-        <li>User will lose access to all resources</li>
-        <li>Any associated records may become orphaned</li>
-             </ul>
-               </div>
-            
-           <!-- User Preview -->
-        <div class="user-preview">
-           <div class="user-avatar-sm" id="deleteUserAvatar">--</div>
-   <div>
-         <div class="user-name" id="deleteUserName">User Name</div>
-       <div class="user-email" id="deleteUserEmail">user@example.com</div>
-          </div>
-         </div>
-                    
-         <input type="hidden" name="userId" id="deleteUserId" />
-          
-  <p class="mb-0" style="color: var(--text-secondary);">
-              Type <strong id="deleteConfirmEmail">email</strong> to confirm deletion:
-    </p>
-        <input type="text" id="deleteConfirmInput" class="form-control-ids mt-2" placeholder="Enter email to confirm" autocomplete="off" />
-       </div>
-                <div class="modal-footer">
-    <button type="button" class="btn-ids btn-ids-secondary" data-bs-dismiss="modal">Cancel</button>
-    <button type="submit" id="deleteSubmitBtn" class="btn-ids btn-ids-danger" disabled>
-     <i class="fa-solid fa-trash me-1"></i> Delete User
-         </button>
-             </div>
- </form>
-        </div>
-    </div>
-</div>
-
-@section Scripts {
-    <script>
-      (function() {
-       'use strict';
- 
-            // ============================================
-          // Action Dropdown Toggle Logic
-     // ============================================
-  const dropdowns = document.querySelectorAll('.action-dropdown');
-            
-   dropdowns.forEach(dropdown => {
-      const trigger = dropdown.querySelector('.action-trigger');
-      
-         trigger.addEventListener('click', (e) => {
-     e.stopPropagation();
-         
-          // Close all other dropdowns first
-  dropdowns.forEach(d => {
-        if (d !== dropdown) d.classList.remove('open');
-  });
-              
-     // Toggle current dropdown
-      dropdown.classList.toggle('open');
-   });
-            });
-   
-       // Close dropdowns when clicking outside
-      document.addEventListener('click', () => {
-            dropdowns.forEach(d => d.classList.remove('open'));
-            });
-
-            // Close dropdowns on Escape key
-   document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-               dropdowns.forEach(d => d.classList.remove('open'));
-                }
-    });
-      
-            // ============================================
- // Modal Functions
-     // ============================================
-            
-        // Change Role Modal
-            window.openRoleModal = function(userId, email, currentRole, displayName, initials, isSelf) {
-                closeAllDropdowns();
-  
-        document.getElementById('roleUserId').value = userId;
-     document.getElementById('roleUserAvatar').textContent = initials;
-   document.getElementById('roleUserName').textContent = displayName;
-        document.getElementById('roleUserEmail').textContent = email;
-     document.getElementById('roleSelect').value = currentRole;
-             
-          // Show/hide self-warning
-       const selfWarning = document.getElementById('roleSelfWarning');
-             selfWarning.style.display = isSelf ? 'block' : 'none';
-        
-     const modal = new bootstrap.Modal(document.getElementById('roleModal'));
-      modal.show();
-};
-            
-            // Suspend Modal
-            window.openSuspendModal = function(userId, email, displayName, initials, isSelf) {
-      closeAllDropdowns();
-       
-   document.getElementById('suspendUserId').value = userId;
-    document.getElementById('suspendUserAvatar').textContent = initials;
-                document.getElementById('suspendUserName').textContent = displayName;
-     document.getElementById('suspendUserEmail').textContent = email;
-          
-// Show/hide self-warning and disable submit if self
-         const selfWarning = document.getElementById('suspendSelfWarning');
-                const submitBtn = document.getElementById('suspendSubmitBtn');
-   selfWarning.style.display = isSelf ? 'block' : 'none';
-      submitBtn.disabled = isSelf;
-     
-       const modal = new bootstrap.Modal(document.getElementById('suspendModal'));
-          modal.show();
-      };
-
-          // Unsuspend Modal
-            window.openUnsuspendModal = function(userId, email, displayName, initials) {
-          closeAllDropdowns();
-      
-              document.getElementById('unsuspendUserId').value = userId;
-        document.getElementById('unsuspendUserAvatar').textContent = initials;
-              document.getElementById('unsuspendUserName').textContent = displayName;
-                document.getElementById('unsuspendUserEmail').textContent = email;
-          document.getElementById('unsuspendRoleSelect').value = 'Employee';
-     
-         const modal = new bootstrap.Modal(document.getElementById('unsuspendModal'));
-         modal.show();
-        };
-        
-            // Reset Password Modal
-            window.openResetPasswordModal = function(userId, email, displayName, initials) {
-         closeAllDropdowns();
-   
-       document.getElementById('resetUserId').value = userId;
-   document.getElementById('resetUserAvatar').textContent = initials;
-    document.getElementById('resetUserName').textContent = displayName;
-          document.getElementById('resetUserEmail').textContent = email;
-     
-         const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-         modal.show();
-     };
-       
-        // Delete Modal
-  window.openDeleteModal = function(userId, email, displayName, initials, isSelf) {
-   closeAllDropdowns();
-                
-  document.getElementById('deleteUserId').value = userId;
- document.getElementById('deleteUserAvatar').textContent = initials;
-   document.getElementById('deleteUserName').textContent = displayName;
-                document.getElementById('deleteUserEmail').textContent = email;
-      document.getElementById('deleteConfirmEmail').textContent = email;
-    document.getElementById('deleteConfirmInput').value = '';
-         document.getElementById('deleteSubmitBtn').disabled = true;
-    
-    // Show/hide self-warning
-    const selfWarning = document.getElementById('deleteSelfWarning');
-            selfWarning.style.display = isSelf ? 'block' : 'none';
-   
-        // Store email for confirmation
-       document.getElementById('deleteConfirmInput').dataset.email = email;
-  document.getElementById('deleteConfirmInput').dataset.isSelf = isSelf;
-          
-      const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-           modal.show();
-       };
-            
-            // Delete confirmation input validation
-            const deleteInput = document.getElementById('deleteConfirmInput');
-    if (deleteInput) {
-   deleteInput.addEventListener('input', function() {
-      const isSelf = this.dataset.isSelf === 'true';
-       const expectedEmail = this.dataset.email;
-        const submitBtn = document.getElementById('deleteSubmitBtn');
-        
-          // Enable button only if email matches and not self
-     submitBtn.disabled = isSelf || (this.value !== expectedEmail);
-         });
-            }
-  
-      // Helper to close all dropdowns
-  function closeAllDropdowns() {
-                dropdowns.forEach(d => d.classList.remove('open'));
+        }
+        else
+ {
+<div class="empty-state">
+  <i class="empty-state-icon fa-solid fa-users-slash"></i>
+  <h4 class="empty-state-title">No Users Found</h4>
+         <p class="empty-state-text">No users match your current filters.</p>
+<a asp-page="/Admin/CreateUser" class="btn-ids btn-ids-primary">
+    <i class="fa-solid fa-user-plus"></i> Create First User
+  </a>
+  </div>
      }
-    
-        })();
-    </script>
-}
+    </div>
+</div>
+
+<style>
+    .table-ids tbody tr[onclick]:hover {
+        background: var(--bg-tertiary);
+    }
+</style>
