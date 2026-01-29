@@ -19,6 +19,10 @@ namespace IDS.Data
         public DbSet<DashboardMetrics> DashboardMetrics { get; set; } = null!;
         public DbSet<SupportTicket> SupportTickets { get; set; } = null!;
         public DbSet<TicketComment> TicketComments { get; set; } = null!;
+        
+        // Live Detection Tables - populated by external detection pipeline
+        public DbSet<BenignTraffic> BenignTraffic { get; set; } = null!;
+        public DbSet<AttackTraffic> AttackTraffic { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -126,6 +130,51 @@ namespace IDS.Data
                 b.Property(c => c.Content).HasMaxLength(2000).IsRequired();
                 b.HasIndex(c => c.TicketId);
                 b.HasIndex(c => c.CreatedAt);
+            });
+
+     // =====================================================
+    // Benign Traffic Table - Stores normal/safe traffic
+            // =====================================================
+            builder.Entity<BenignTraffic>(b =>
+            {
+                b.ToTable("Benign_Table");
+                b.HasKey(t => t.Id);
+                b.Property(t => t.SourceIP).HasMaxLength(45);
+                b.Property(t => t.DestinationIP).HasMaxLength(45);
+                b.Property(t => t.Protocol).HasMaxLength(20);
+                b.Property(t => t.Service).HasMaxLength(50);
+                b.Property(t => t.FeatureVector).HasMaxLength(4000);
+                b.Property(t => t.ModelVersion).HasMaxLength(50);
+                b.HasIndex(t => t.DetectedAt);
+                b.HasIndex(t => t.SourceIP);
+                b.HasIndex(t => t.DestinationIP);
+                b.HasIndex(t => t.Protocol);
+            });
+
+            // =====================================================
+            // Attack Traffic Table - Stores detected attacks
+            // =====================================================
+            builder.Entity<AttackTraffic>(b =>
+            {
+                b.ToTable("Attack_Table");
+                b.HasKey(t => t.Id);
+                b.Property(t => t.SourceIP).HasMaxLength(45);
+                b.Property(t => t.DestinationIP).HasMaxLength(45);
+                b.Property(t => t.Protocol).HasMaxLength(20);
+                b.Property(t => t.Service).HasMaxLength(50);
+                b.Property(t => t.AttackType).HasMaxLength(100).IsRequired();
+                b.Property(t => t.AttackCategory).HasMaxLength(50);
+                b.Property(t => t.Severity).HasMaxLength(20).IsRequired();
+                b.Property(t => t.FeatureVector).HasMaxLength(4000);
+                b.Property(t => t.ModelVersion).HasMaxLength(50);
+                b.Property(t => t.AcknowledgedBy).HasMaxLength(450);
+                b.Property(t => t.Notes).HasMaxLength(2000);
+                b.HasIndex(t => t.DetectedAt);
+                b.HasIndex(t => t.SourceIP);
+                b.HasIndex(t => t.DestinationIP);
+                b.HasIndex(t => t.AttackType);
+                b.HasIndex(t => t.Severity);
+                b.HasIndex(t => t.IsAcknowledged);
             });
         }
     }

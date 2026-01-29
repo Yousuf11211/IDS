@@ -42,11 +42,18 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
 <li class="nav-item">
     <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Dashboard" ? "active" : "")" asp-area="" asp-page="/Dashboard">
     <i class="fa-solid fa-gauge me-1"></i> Dashboard
-         </a>
+  </a>
           </li>
+  
+<!-- Live Dashboard Link -->
+<li class="nav-item">
+    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/LiveDashboard" ? "active" : "")" asp-area="" asp-page="/LiveDashboard">
+  <i class="fa-solid fa-satellite-dish me-1"></i> Live Feed
+    </a>
+</li>
         
-            @if (User.IsInRole("Admin"))
-            {
+   @if (User.IsInRole("Admin"))
+       {
           <li class="nav-item">
           <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Alerts") == true ? "active" : "")" asp-area="" asp-page="/Admin/Alerts">
           <i class="fa-solid fa-bell me-1"></i> Alerts

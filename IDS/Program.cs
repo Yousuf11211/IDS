@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using IDS.Data.Models;
 using IDS.Data.Services;
 using IDS.Core.Services;
+using IDS.Hubs;
 using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +36,7 @@ var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-  options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // =====================================================
@@ -47,7 +48,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
-  options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6;
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -57,13 +58,28 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
-  options.SlidingExpiration = true;
+    options.SlidingExpiration = true;
     options.LoginPath = "/Identity/Account/Login";
     options.LogoutPath = "/Identity/Account/Logout";
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
 
 builder.Services.AddRazorPages();
+
+// =====================================================
+// Add SignalR for real-time dashboard updates
+// =====================================================
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
+
+// =====================================================
+// Add API Controllers for Detection Pipeline
+// =====================================================
+builder.Services.AddControllers();
 
 // =====================================================
 // Register Application Services
@@ -77,6 +93,15 @@ builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<MailjetE
 
 builder.Services.AddScoped<IDetectionService, DetectionService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+
+// =====================================================
+// Register Live Detection Services (SignalR + Monitoring)
+// =====================================================
+builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
+builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
+
+// Background service to monitor detection tables and push updates
+builder.Services.AddHostedService<DetectionMonitorService>();
 
 var app = builder.Build();
 
@@ -97,19 +122,19 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
     var logger = services.GetRequiredService<ILogger<Program>>();
 
     // Ensure all managed roles exist
-  foreach (var r in AppRoles.All)
+    foreach (var r in AppRoles.All)
     {
         if (!await roleManager.RoleExistsAsync(r))
         {
-      await roleManager.CreateAsync(new IdentityRole(r));
-    logger.LogInformation("Created role: {Role}", r);
+            await roleManager.CreateAsync(new IdentityRole(r));
+            logger.LogInformation("Created role: {Role}", r);
         }
     }
 
     // Get admin credentials (environment variables take priority)
     var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL") 
         ?? config["AdminUser:Email"] 
-     ?? "admin@local";
+        ?? "admin@local";
     var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") 
         ?? config["AdminUser:Password"] 
         ?? "P@ssw0rd!";
@@ -117,54 +142,54 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
     {
-  adminUser = new ApplicationUser 
+        adminUser = new ApplicationUser 
         { 
-     UserName = adminEmail, 
-Email = adminEmail, 
+            UserName = adminEmail, 
+            Email = adminEmail, 
             EmailConfirmed = true, 
-     MustChangePassword = false,
-     FirstName = "System",
-LastName = "Administrator"
-   };
+            MustChangePassword = false,
+            FirstName = "System",
+            LastName = "Administrator"
+        };
         var createResult = await userManager.CreateAsync(adminUser, adminPassword);
         if (createResult.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, AppRoles.Admin);
             logger.LogInformation("Created admin user: {Email}", adminEmail);
-    }
+        }
         else
         {
-      logger.LogError("Failed to create admin user: {Errors}", 
-   string.Join(", ", createResult.Errors.Select(e => e.Description)));
+            logger.LogError("Failed to create admin user: {Errors}", 
+  string.Join(", ", createResult.Errors.Select(e => e.Description)));
         }
     }
-else if (!await userManager.IsInRoleAsync(adminUser, AppRoles.Admin))
+    else if (!await userManager.IsInRoleAsync(adminUser, AppRoles.Admin))
     {
- var currentRoles = await userManager.GetRolesAsync(adminUser);
+        var currentRoles = await userManager.GetRolesAsync(adminUser);
         var toRemove = currentRoles.Where(r => AppRoles.IsManagedRole(r) && r != AppRoles.Admin);
         if (toRemove.Any())
-        await userManager.RemoveFromRolesAsync(adminUser, toRemove);
-  await userManager.AddToRoleAsync(adminUser, AppRoles.Admin);
+            await userManager.RemoveFromRolesAsync(adminUser, toRemove);
+        await userManager.AddToRoleAsync(adminUser, AppRoles.Admin);
     }
 
     // Ensure admin can sign in
-  if (adminUser != null)
+    if (adminUser != null)
     {
         try
-     {
-       if (!adminUser.EmailConfirmed)
-          {
-        adminUser.EmailConfirmed = true;
-       await userManager.UpdateAsync(adminUser);
+        {
+            if (!adminUser.EmailConfirmed)
+            {
+                adminUser.EmailConfirmed = true;
+                await userManager.UpdateAsync(adminUser);
             }
             await userManager.SetLockoutEndDateAsync(adminUser, null);
-     await userManager.ResetAccessFailedCountAsync(adminUser);
-      }
-   catch (Exception ex)
-   {
-  logger.LogWarning(ex, "Error ensuring admin user state");
+            await userManager.ResetAccessFailedCountAsync(adminUser);
         }
- }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Error ensuring admin user state");
+        }
+    }
 }
 
 // =====================================================
@@ -192,24 +217,34 @@ app.UseAuthorization();
 app.MapGet("/auth/ping", () => Results.Ok()).RequireAuthorization();
 
 // =====================================================
+// Map SignalR Hub for real-time dashboard
+// =====================================================
+app.MapHub<DashboardHub>("/hubs/dashboard");
+
+// =====================================================
+// Map API Controllers for Detection Pipeline
+// =====================================================
+app.MapControllers();
+
+// =====================================================
 // Enforce First-Time Password Change
 // =====================================================
 app.Use(async (context, next) =>
 {
     if (context.User?.Identity?.IsAuthenticated == true)
     {
-      var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
-  var user = await userManager.GetUserAsync(context.User);
+        var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.GetUserAsync(context.User);
         if (user != null && user.MustChangePassword)
         {
-     var path = context.Request.Path.Value ?? string.Empty;
+            var path = context.Request.Path.Value ?? string.Empty;
             var allowedPaths = new[] { "/Identity/Account/FirstTimeSetup", "/Account/Logout", "/Identity/Account/Logout" };
-    if (!allowedPaths.Any(p => path.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            if (!allowedPaths.Any(p => path.Contains(p, StringComparison.OrdinalIgnoreCase)))
             {
-      context.Response.Redirect("/Identity/Account/FirstTimeSetup");
-             return;
-   }
-  }
+                context.Response.Redirect("/Identity/Account/FirstTimeSetup");
+                return;
+            }
+        }
     }
     await next();
 });
