@@ -29,6 +29,9 @@ namespace IDS.Data
         {
             base.OnModelCreating(builder);
 
+            // =====================================================
+            // Log Files Table - Stores log information
+            // =====================================================
             builder.Entity<LogFile>(b =>
             {
                 b.ToTable("LogFiles");
@@ -39,6 +42,9 @@ namespace IDS.Data
                 b.HasIndex(l => l.Timestamp);
             });
 
+            // =====================================================
+            // Security Alerts Table - Stores security alert information
+            // =====================================================
             builder.Entity<SecurityAlert>(b =>
             {
                 b.ToTable("SecurityAlerts");
@@ -54,6 +60,9 @@ namespace IDS.Data
                 b.HasIndex(a => a.IsAcknowledged);
             });
 
+            // =====================================================
+            // Network Events Table - Stores network event information
+            // =====================================================
             builder.Entity<NetworkEvent>(b =>
             {
                 b.ToTable("NetworkEvents");
@@ -67,6 +76,9 @@ namespace IDS.Data
                 b.HasIndex(e => e.Classification);
             });
 
+            // =====================================================
+            // System Settings Table - Stores system configuration settings
+            // =====================================================
             builder.Entity<SystemSetting>(b =>
             {
                 b.ToTable("SystemSettings");
@@ -76,6 +88,9 @@ namespace IDS.Data
                 b.HasIndex(s => s.Key).IsUnique();
             });
 
+            // =====================================================
+            // Audit Logs Table - Stores audit log information
+            // =====================================================
             builder.Entity<AuditLog>(b =>
             {
                 b.ToTable("AuditLogs");
@@ -90,6 +105,9 @@ namespace IDS.Data
                 b.HasIndex(a => a.UserId);
             });
 
+            // =====================================================
+            // Dashboard Metrics Table - Stores metrics for dashboards
+            // =====================================================
             builder.Entity<DashboardMetrics>(b =>
             {
                 b.ToTable("DashboardMetrics");
@@ -98,6 +116,7 @@ namespace IDS.Data
             });
 
             // Support Ticket Configuration
+            // =====================================================
             builder.Entity<SupportTicket>(b =>
             {
                 b.ToTable("SupportTickets");
@@ -122,6 +141,7 @@ namespace IDS.Data
             });
 
             // Ticket Comment Configuration
+            // =====================================================
             builder.Entity<TicketComment>(b =>
             {
                 b.ToTable("TicketComments");
@@ -133,76 +153,64 @@ namespace IDS.Data
                 b.HasIndex(c => c.CreatedAt);
             });
 
-     // =====================================================
-    // Benign Traffic Table - Stores normal/safe traffic
             // =====================================================
-            builder.Entity<BenignTraffic>(b =>
-            {
-                b.ToTable("Benign_Table");
-                b.HasKey(t => t.Id);
-                b.Property(t => t.SourceIP).HasMaxLength(45);
-                b.Property(t => t.DestinationIP).HasMaxLength(45);
-                b.Property(t => t.Protocol).HasMaxLength(20);
-                b.Property(t => t.Service).HasMaxLength(50);
-                b.Property(t => t.FeatureVector).HasMaxLength(4000);
-                b.Property(t => t.ModelVersion).HasMaxLength(50);
-                b.HasIndex(t => t.DetectedAt);
-                b.HasIndex(t => t.SourceIP);
-                b.HasIndex(t => t.DestinationIP);
-                b.HasIndex(t => t.Protocol);
-            });
-
-            // =====================================================
-            // Attack Traffic Table - Stores detected attacks
-            // =====================================================
-            builder.Entity<AttackTraffic>(b =>
-            {
-                b.ToTable("Attack_Table");
-                b.HasKey(t => t.Id);
-                b.Property(t => t.SourceIP).HasMaxLength(45);
-                b.Property(t => t.DestinationIP).HasMaxLength(45);
-                b.Property(t => t.Protocol).HasMaxLength(20);
-                b.Property(t => t.Service).HasMaxLength(50);
-                b.Property(t => t.AttackType).HasMaxLength(100).IsRequired();
-                b.Property(t => t.AttackCategory).HasMaxLength(50);
-                b.Property(t => t.Severity).HasMaxLength(20).IsRequired();
-                b.Property(t => t.FeatureVector).HasMaxLength(4000);
-                b.Property(t => t.ModelVersion).HasMaxLength(50);
-                b.Property(t => t.AcknowledgedBy).HasMaxLength(450);
-                b.Property(t => t.Notes).HasMaxLength(2000);
-                b.HasIndex(t => t.DetectedAt);
-                b.HasIndex(t => t.SourceIP);
-                b.HasIndex(t => t.DestinationIP);
-                b.HasIndex(t => t.AttackType);
-                b.HasIndex(t => t.Severity);
-                b.HasIndex(t => t.IsAcknowledged);
-            });
-
-            // =====================================================
-            // Raw Packets Table - Stores all captured packets
+            // Raw Packets Table - Stores all captured packets (172 features)
             // =====================================================
             builder.Entity<RawPacket>(b =>
             {
                 b.ToTable("RawPackets");
                 b.HasKey(p => p.Id);
-                b.Property(p => p.SourceIP).HasMaxLength(45);
-                b.Property(p => p.DestinationIP).HasMaxLength(45);
-                b.Property(p => p.Protocol).HasMaxLength(20);
-                b.Property(p => p.Service).HasMaxLength(50);
-                b.Property(p => p.TcpFlags).HasMaxLength(50);
-                b.Property(p => p.PayloadData).HasMaxLength(8000);
-                b.Property(p => p.PayloadEncoding).HasMaxLength(20);
+                b.Property(p => p.SrcIp).HasMaxLength(45);
+                b.Property(p => p.HandshakeState).HasMaxLength(50);
+                b.Property(p => p.Label).HasMaxLength(100);
                 b.Property(p => p.Classification).HasMaxLength(20);
-                b.Property(p => p.SessionId).HasMaxLength(100);
-                b.Property(p => p.NetworkInterface).HasMaxLength(100);
-                b.Property(p => p.Metadata).HasMaxLength(4000);
-                b.HasIndex(p => p.CapturedAt);
-                b.HasIndex(p => p.SourceIP);
-                b.HasIndex(p => p.DestinationIP);
-                b.HasIndex(p => p.Protocol);
+                b.HasIndex(p => p.Timestamp);
+                b.HasIndex(p => p.SrcIp);
+                b.HasIndex(p => p.DstPort);
                 b.HasIndex(p => p.IsProcessed);
-                b.HasIndex(p => p.Classification);
-                b.HasIndex(p => p.SessionId);
+                b.HasIndex(p => p.Label);
+            });
+
+            // =====================================================
+            // Benign Traffic Table - Stores normal/safe traffic (172 features)
+            // =====================================================
+            builder.Entity<BenignTraffic>(b =>
+            {
+                b.ToTable("Benign_Table");
+                b.HasKey(t => t.Id);
+                b.Property(t => t.SrcIp).HasMaxLength(45);
+                b.Property(t => t.HandshakeState).HasMaxLength(50);
+                b.Property(t => t.Label).HasMaxLength(100);
+                b.Property(t => t.ModelVersion).HasMaxLength(50);
+                b.HasIndex(t => t.Timestamp);
+                b.HasIndex(t => t.SrcIp);
+                b.HasIndex(t => t.DstPort);
+                b.HasIndex(t => t.Label);
+            });
+
+            // =====================================================
+            // Attack Traffic Table - Stores detected attacks (172 features)
+            // =====================================================
+            builder.Entity<AttackTraffic>(b =>
+            {
+                b.ToTable("Attack_Table");
+                b.HasKey(t => t.Id);
+                b.Property(t => t.SrcIp).HasMaxLength(45);
+                b.Property(t => t.HandshakeState).HasMaxLength(50);
+                b.Property(t => t.Label).HasMaxLength(100);
+                b.Property(t => t.AttackType).HasMaxLength(100).IsRequired();
+                b.Property(t => t.AttackCategory).HasMaxLength(50);
+                b.Property(t => t.Severity).HasMaxLength(20).IsRequired();
+                b.Property(t => t.ModelVersion).HasMaxLength(50);
+                b.Property(t => t.AcknowledgedBy).HasMaxLength(450);
+                b.Property(t => t.Notes).HasMaxLength(2000);
+                b.HasIndex(t => t.Timestamp);
+                b.HasIndex(t => t.SrcIp);
+                b.HasIndex(t => t.DstPort);
+                b.HasIndex(t => t.AttackType);
+                b.HasIndex(t => t.Severity);
+                b.HasIndex(t => t.IsAcknowledged);
+                b.HasIndex(t => t.Label);
             });
         }
     }
