@@ -64,10 +64,11 @@ namespace IDS.Pages
 
         /// <summary>
         /// API endpoint to get recent attacks (admin only).
-   /// </summary>
-        [Authorize(Roles = "Admin,Support")]
-        public async Task<JsonResult> OnGetAttacksAsync(int count = 20)
+        /// </summary>
+        public async Task<IActionResult> OnGetAttacksAsync(int count = 20)
         {
+            if (!User.IsInRole("Admin") && !User.IsInRole("Support")) return new ForbidResult();
+
             var attacks = await _liveDetectionService.GetRecentAttacksAsync(count);
             return new JsonResult(attacks);
         }

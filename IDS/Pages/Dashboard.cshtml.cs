@@ -71,11 +71,12 @@ namespace IDS.Pages
           else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
         }
 
-        [Authorize(Roles = Security.AppRoles.Admin)]
- public async Task<JsonResult> OnGetLogsAsync()
-    {
-    var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
-          .Select(l => new {
+        public async Task<IActionResult> OnGetLogsAsync()
+        {
+            if (!User.IsInRole(Security.AppRoles.Admin)) return new ForbidResult();
+
+            var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
+                .Select(l => new {
  l.Timestamp,
          l.Level,
             l.Message,
