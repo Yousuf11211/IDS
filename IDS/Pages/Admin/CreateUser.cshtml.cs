@@ -63,8 +63,7 @@ private readonly AccessControlService _accessControl;
 
         public async Task OnGetAsync()
         {
-            AvailableRoles = AppRoles.All.ToList();
-            await Task.CompletedTask;
+    AvailableRoles = AppRoles.All.ToList();
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -129,6 +128,6 @@ private readonly AccessControlService _accessControl;
             }
 
             return RedirectToPage("/Admin/UserList");
-        }
-    }
+  }
+}
 }
