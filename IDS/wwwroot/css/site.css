@@ -542,11 +542,25 @@ font-weight: 700;
 /* ============================================
    Buttons - ENHANCED
    ============================================ */
-.btn-ids {
+/* Center labels and icons together, including full-width and icon-only buttons. */
+.btn,
+.btn-ids,
+.btn-logout,
+.user-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.user-trigger .user-info {
+  text-align: center;
+}
+
+.btn-ids {
   gap: 0.5rem;
+  line-height: 1.5;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   font-weight: 500;

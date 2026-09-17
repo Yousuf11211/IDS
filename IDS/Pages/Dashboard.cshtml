@@ -196,7 +196,7 @@ flex: 1;
   </div>
      <div class="metric-content">
       <div class="metric-label">Total Activity Logs</div>
- <div class="metric-value count-up" data-target="@Model.TotalLogs">0</div>
+ <div class="metric-value">@Model.TotalLogs.ToString("N0")</div>
      </div>
  </div>
         <div class="metric-card" style="--metric-accent: var(--info);">
@@ -205,7 +205,7 @@ flex: 1;
       </div>
   <div class="metric-content">
 <div class="metric-label">Network Events</div>
-  <div class="metric-value count-up" data-target="@Model.NetworkTotal">0</div>
+  <div class="metric-value">@Model.NetworkTotal.ToString("N0")</div>
           </div>
         </div>
     }
@@ -217,7 +217,7 @@ else
       </div>
      <div class="metric-content">
  <div class="metric-label">Total Events</div>
-    <div class="metric-value count-up" data-target="@Model.TotalLogs">0</div>
+    <div class="metric-value">@Model.TotalLogs.ToString("N0")</div>
      </div>
         </div>
     }
@@ -228,7 +228,7 @@ else
  </div>
      <div class="metric-content">
   <div class="metric-label">Normal Traffic</div>
-   <div class="metric-value count-up" data-target="@Model.NormalCount">0</div>
+   <div class="metric-value">@Model.NormalCount.ToString("N0")</div>
     </div>
     </div>
     
@@ -238,7 +238,7 @@ else
         </div>
      <div class="metric-content">
  <div class="metric-label">Attacks Detected</div>
-      <div class="metric-value count-up" data-target="@Model.AttackCount">0</div>
+      <div class="metric-value">@Model.AttackCount.ToString("N0")</div>
         </div>
     </div>
 </div>
@@ -272,17 +272,15 @@ else
   </div>
    
      <div class="mt-4">
-       <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.75rem;">THREAT LEVEL BREAKDOWN</h4>
+       <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.75rem;">TRAFFIC BREAKDOWN</h4>
       <div class="d-flex flex-column gap-2">
        @foreach (var level in Model.LevelCounts.OrderByDescending(x => x.Value).Take(5))
   {
-   var percentage = Model.TotalLogs > 0 ? (level.Value * 100.0 / Model.TotalLogs) : 0;
+   var percentage = Model.NetworkTotal > 0 ? (level.Value * 100.0 / Model.NetworkTotal) : 0;
    var color = level.Key switch
           {
-         "Error" => "var(--danger)",
-     "Warning" => "var(--warning)",
-    "NetworkAttack" => "var(--danger)",
-    "NetworkNormal" => "var(--success)",
+         "Attacks Detected" => "var(--danger)",
+    "Normal Traffic" => "var(--success)",
      _ => "var(--primary)"
         };
 <div>
@@ -291,7 +289,7 @@ else
      <span class="text-muted">@level.Value</span>
     </div>
      <div style="height: 4px; background: var(--bg-tertiary); border-radius: 2px;">
-<div style="height: 100%; width: @percentage%; background: @color; border-radius: 2px;"></div>
+<div style="height: 100%; width: @(percentage.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%; background: @color; border-radius: 2px;"></div>
 </div>
   </div>
        }
@@ -385,36 +383,22 @@ else
        updateTime();
    setInterval(updateTime, 1000);
 
-   // Count-up animation
-        document.querySelectorAll('.count-up').forEach(el => {
-   const target = parseInt(el.dataset.target) || 0;
-      const duration = 1000;
-  const start = performance.now();
-
-            function step(timestamp) {
-      const progress = Math.min((timestamp - start) / duration, 1);
-                el.textContent = Math.floor(progress * target).toLocaleString();
-  if (progress < 1) {
-        requestAnimationFrame(step);
-    }
-     }
-       requestAnimationFrame(step);
-  });
-
  // Load recent activity
  async function loadRecentActivity() {
     const container = document.getElementById('recentAlertsList');
       try {
    const response = await fetch('?handler=RecentActivity');
+        if (!response.ok) throw new Error('Failed to load activity');
   const data = await response.json();
   
     if (data.length === 0) {
-     container.innerHTML = '<div class="empty-state py-4"><i class="fa-solid fa-check-circle text-success" style="font-size: 2rem;"></i><p class="mt-2 mb-0 text-muted">No recent alerts</p></div>';
+     container.innerHTML = '<div class="empty-state py-4"><i class="fa-solid fa-check-circle text-success" style="font-size: 2rem;"></i><p class="mt-2 mb-0 text-muted">No recent activity</p></div>';
              return;
         }
       
          container.innerHTML = data.map(item => {
-     const severityClass = item.severity?.toLowerCase() || 'low';
+     const severity = item.severity?.toLowerCase();
+     const severityClass = ['critical', 'high', 'medium', 'low'].includes(severity) ? severity : 'low';
      return `
         <div class="alert-item">
       <div class="alert-severity ${severityClass}"></div>
@@ -422,7 +406,7 @@ else
   <div class="alert-message">${escapeHtml(item.message)}</div>
        <div class="alert-meta">
 <span><i class="fa-solid fa-clock me-1"></i>${new Date(item.timestamp).toLocaleString()}</span>
-<span><i class="fa-solid fa-tag me-1"></i>${item.type || 'Activity'}</span>
+<span><i class="fa-solid fa-tag me-1"></i>${escapeHtml(item.type || 'Activity')}</span>
          </div>
  </div>
     </div>

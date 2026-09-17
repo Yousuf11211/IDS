@@ -1,14 +1,11 @@
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 
 namespace IDS.Pages
 {
@@ -19,119 +16,160 @@ namespace IDS.Pages
 
         public DashboardModel(ApplicationDbContext db)
         {
-          _db = db;
+            _db = db;
         }
 
-        public int TotalLogs { get; set; }
-        public Dictionary<string, int> LevelCounts { get; set; } = new();
-        public int NormalCount { get; set; }
-        public int AttackCount { get; set; }
-        public int ActivityTotal { get; set; }
-        public int NetworkTotal { get; set; }
-        public string IdsStatus { get; set; } = "Evaluating";
-        public string IdsStatusClass { get; set; } = "off";
+        public long TotalLogs { get; private set; }
+        public long NormalCount { get; private set; }
+        public long AttackCount { get; private set; }
+        public long NetworkTotal => NormalCount + AttackCount;
+        public Dictionary<string, long> LevelCounts { get; private set; } = new();
+        public string IdsStatus { get; private set; } = "Evaluating";
+        public string IdsStatusClass { get; private set; } = "off";
 
         public async Task OnGetAsync()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            _db.LogFiles.Add(new LogFile { Timestamp = DateTime.UtcNow, Level = "Information", Message = "Dashboard page visited", UserId = userId });
-            await _db.SaveChangesAsync();
+            var cancellationToken = HttpContext.RequestAborted;
 
-         var totalCount = await _db.LogFiles.CountAsync();
-   var grouped = await _db.LogFiles.AsNoTracking()
-            .GroupBy(l => l.Level)
-         .Select(g => new { Level = g.Key, Count = g.Count() })
-      .ToListAsync();
-        LevelCounts = grouped.ToDictionary(x => x.Level ?? "Unknown", x => x.Count);
+            // The detection pipeline writes classified traffic to these tables.
+            // Application logs and raw packets must not inflate the event totals.
+            NormalCount = await _db.BenignTraffic.LongCountAsync(cancellationToken);
+            AttackCount = await _db.AttackTraffic.LongCountAsync(cancellationToken);
+            LevelCounts = new Dictionary<string, long>
+            {
+                ["Normal Traffic"] = NormalCount,
+                ["Attacks Detected"] = AttackCount
+            };
 
-       var netNormal = LevelCounts.TryGetValue("NetworkNormal", out var nn) ? nn : 0;
-    var netAttack = LevelCounts.TryGetValue("NetworkAttack", out var na) ? na : 0;
-            
-         if (na == 0)
-       {
-          netAttack += (LevelCounts.TryGetValue("Error", out var err) ? err : 0) + (LevelCounts.TryGetValue("Warning", out var warn) ? warn : 0);
-          }
-      
-            NormalCount = netNormal;
-            AttackCount = netAttack;
-  NetworkTotal = NormalCount + AttackCount;
-            ActivityTotal = Math.Max(0, totalCount - NetworkTotal);
+            _db.LogFiles.Add(new LogFile
+            {
+                Timestamp = DateTime.UtcNow,
+                Level = "Information",
+                Message = "Dashboard page visited",
+                UserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            });
+            await _db.SaveChangesAsync(cancellationToken);
 
- if (User.IsInRole(Security.AppRoles.Admin))
-  {
-  TotalLogs = totalCount;
+            // Admins have a separate activity-log card; employees see traffic totals.
+            TotalLogs = User.IsInRole(AppRoles.Admin)
+                ? await _db.LogFiles.LongCountAsync(cancellationToken)
+                : NetworkTotal;
+
+            if (AttackCount > 0)
+            {
+                IdsStatus = AttackCount > NormalCount / 2.0 ? "Attention" : "Degraded";
+                IdsStatusClass = "warn";
             }
             else
             {
-                TotalLogs = NetworkTotal;
+                IdsStatus = "Normal";
+                IdsStatusClass = "on";
             }
-
-            if (AttackCount > 0 && (AttackCount > (NormalCount / 2))) { IdsStatus = "Attention"; IdsStatusClass = "warn"; }
-        else if (AttackCount > 0) { IdsStatus = "Degraded"; IdsStatusClass = "warn"; }
-          else { IdsStatus = "Normal"; IdsStatusClass = "on"; }
         }
 
         public async Task<IActionResult> OnGetLogsAsync()
         {
-            if (!User.IsInRole(Security.AppRoles.Admin)) return new ForbidResult();
+            if (!User.IsInRole(AppRoles.Admin))
+            {
+                return new ForbidResult();
+            }
 
-            var data = await _db.LogFiles.AsNoTracking().OrderByDescending(l => l.Timestamp).Take(200)
-                .Select(l => new {
- l.Timestamp,
-         l.Level,
-            l.Message,
-          l.UserId,
-         Classification = l.Level == "NetworkNormal" ? "Normal" : (l.Level == "NetworkAttack" || l.Level == "Error" || l.Level == "Warning" ? "Attack" : "Activity")
-                }).ToListAsync();
+            var data = await _db.LogFiles.AsNoTracking()
+                .OrderByDescending(log => log.Timestamp)
+                .Take(200)
+                .Select(log => new
+                {
+                    log.Timestamp,
+                    log.Level,
+                    log.Message,
+                    log.UserId,
+                    Classification = log.Level == "NetworkNormal" ? "Normal"
+                        : log.Level == "NetworkAttack" || log.Level == "Error" || log.Level == "Warning"
+                            ? "Attack" : "Activity"
+                })
+                .ToListAsync(HttpContext.RequestAborted);
+
             return new JsonResult(data);
         }
 
         public async Task<JsonResult> OnGetRecentActivityAsync()
-  {
-          // Get recent security alerts or log entries
-         var recentLogs = await _db.LogFiles.AsNoTracking()
-  .Where(l => l.Level == "Error" || l.Level == "Warning" || l.Level == "NetworkAttack")
-     .OrderByDescending(l => l.Timestamp)
-      .Take(10)
-     .Select(l => new {
-        l.Timestamp,
-       l.Message,
-    Severity = l.Level == "Error" || l.Level == "NetworkAttack" ? "high" : "medium",
-     Type = l.Level
-    }).ToListAsync();
-
-            // If user is admin, also check security alerts table
-     if (User.IsInRole(Security.AppRoles.Admin))
         {
-     try
-        {
-    var alerts = await _db.SecurityAlerts.AsNoTracking()
-   .Where(a => !a.IsAcknowledged)
-             .OrderByDescending(a => a.Timestamp)
-              .Take(10)
-           .Select(a => new {
-        a.Timestamp,
-               a.Message,
-                 Severity = a.Severity.ToLower(),
-       Type = a.AlertType
-             }).ToListAsync();
+            const int activityLimit = 10;
+            var cancellationToken = HttpContext.RequestAborted;
 
- if (alerts.Any())
-   {
- var combined = recentLogs.Concat(alerts)
-         .OrderByDescending(x => x.Timestamp)
-  .Take(10)
-            .ToList();
-     return new JsonResult(combined);
-      }
-          }
-     catch
- {
-        // SecurityAlerts table might not exist yet
-}
+            // Read each source before merging so the newest ten events are shown,
+            // even when all recent traffic belongs to the same classification.
+            var activity = await _db.AttackTraffic.AsNoTracking()
+                .OrderByDescending(traffic => traffic.Timestamp)
+                .ThenByDescending(traffic => traffic.Id)
+                .Take(activityLimit)
+                .Select(traffic => new DashboardActivity
+                {
+                    Timestamp = traffic.Timestamp,
+                    Message = "Detected " + traffic.AttackType + " traffic",
+                    Severity = traffic.Severity.ToLower(),
+                    Type = traffic.AttackType
+                })
+                .ToListAsync(cancellationToken);
+
+            var normalTraffic = await _db.BenignTraffic.AsNoTracking()
+                .OrderByDescending(traffic => traffic.Timestamp)
+                .ThenByDescending(traffic => traffic.Id)
+                .Take(activityLimit)
+                .Select(traffic => new DashboardActivity
+                {
+                    Timestamp = traffic.Timestamp,
+                    Message = "Normal network traffic detected",
+                    Severity = "low",
+                    Type = "Normal Traffic"
+                })
+                .ToListAsync(cancellationToken);
+            activity.AddRange(normalTraffic);
+
+            // Administrative log messages stay in the admin dashboard.
+            if (User.IsInRole(AppRoles.Admin))
+            {
+                var logs = await _db.LogFiles.AsNoTracking()
+                    .Where(log => log.Level == "Error" || log.Level == "Warning" || log.Level == "NetworkAttack")
+                    .OrderByDescending(log => log.Timestamp)
+                    .Take(activityLimit)
+                    .Select(log => new DashboardActivity
+                    {
+                        Timestamp = log.Timestamp,
+                        Message = log.Message,
+                        Severity = log.Level == "Warning" ? "medium" : "high",
+                        Type = log.Level
+                    })
+                    .ToListAsync(cancellationToken);
+                activity.AddRange(logs);
+
+                var alerts = await _db.SecurityAlerts.AsNoTracking()
+                    .Where(alert => !alert.IsAcknowledged)
+                    .OrderByDescending(alert => alert.Timestamp)
+                    .Take(activityLimit)
+                    .Select(alert => new DashboardActivity
+                    {
+                        Timestamp = alert.Timestamp,
+                        Message = alert.Message,
+                        Severity = alert.Severity.ToLower(),
+                        Type = alert.AlertType
+                    })
+                    .ToListAsync(cancellationToken);
+                activity.AddRange(alerts);
             }
 
-            return new JsonResult(recentLogs);
+            return new JsonResult(activity
+                .OrderByDescending(item => item.Timestamp)
+                .Take(activityLimit)
+                .ToList());
+        }
+
+        public class DashboardActivity
+        {
+            public DateTime Timestamp { get; init; }
+            public string Message { get; init; } = string.Empty;
+            public string Severity { get; init; } = "low";
+            public string Type { get; init; } = string.Empty;
         }
     }
 }

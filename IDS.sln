@@ -5,12 +5,18 @@ VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDS", "IDS\IDS.csproj", "{3DBADB1F-1455-49A7-9936-3FCC47614C0C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDS.Tests", "IDS.Tests\IDS.Tests.csproj", "{AC018E52-815B-45FB-A6B5-8951EAC58076}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC018E52-815B-45FB-A6B5-8951EAC58076}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC018E52-815B-45FB-A6B5-8951EAC58076}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC018E52-815B-45FB-A6B5-8951EAC58076}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC018E52-815B-45FB-A6B5-8951EAC58076}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3DBADB1F-1455-49A7-9936-3FCC47614C0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3DBADB1F-1455-49A7-9936-3FCC47614C0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DBADB1F-1455-49A7-9936-3FCC47614C0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
