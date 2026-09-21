@@ -98,6 +98,14 @@
                 <div class="p-3 rounded" style="background: var(--bg-tertiary); color: var(--text-primary); white-space: pre-wrap;">@Model.Ticket.Description</div>
  </div>
 
+        @if (Model.Ticket.SourceAttackId.HasValue)
+        {
+            <div class="alert-ids alert-ids-info mb-4">
+                <i class="alert-ids-icon fa-solid fa-shield-halved"></i>
+                <div class="alert-ids-content">Escalated from detection #@Model.Ticket.SourceAttackId.Value.</div>
+            </div>
+        }
+
   <div class="row g-3">
   <div class="col-md-4">
    <label class="form-label-ids">Created</label>
@@ -191,7 +199,7 @@ Quick Actions
      </h3>
 </div>
     <div class="card-ids-body">
-         @if (string.IsNullOrEmpty(Model.Ticket.AssignedToUserId))
+         @if (string.IsNullOrEmpty(Model.Ticket.AssignedToUserId) && Model.Ticket.Status != "Closed" && Model.Ticket.Status != "Resolved")
    {
   <form method="post" asp-page-handler="AssignToMe" asp-route-id="@Model.Ticket.Id" class="mb-3">
     <button type="submit" class="btn-ids btn-ids-success w-100">
@@ -199,6 +207,25 @@ Quick Actions
          </button>
   </form>
     }
+
+        @if (Model.Ticket.Status != "Closed" && Model.Ticket.Status != "Resolved")
+        {
+            <form method="post" asp-page-handler="Assign" asp-route-id="@Model.Ticket.Id" class="mb-3">
+                <label asp-for="ResponderId" class="form-label-ids">Assign or reassign responder</label>
+                <div class="d-flex gap-2">
+                    <select asp-for="ResponderId" class="form-control-ids form-select-ids" required>
+                        <option value="">Choose a responder</option>
+                        @foreach (var responder in Model.Responders)
+                        {
+                            <option value="@responder.Id" selected="@(responder.Id == Model.Ticket.AssignedToUserId)">@responder.Name (@responder.Role)</option>
+                        }
+                    </select>
+                    <button type="submit" class="btn-ids btn-ids-primary" title="Assign responder" aria-label="Assign responder">
+                        <i class="fa-solid fa-user-check"></i>
+                    </button>
+                </div>
+            </form>
+        }
       
   <!-- Update Status -->
    <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@Model.Ticket.Id" class="mb-3">

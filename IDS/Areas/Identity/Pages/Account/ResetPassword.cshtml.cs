@@ -80,11 +80,18 @@ namespace IDS.Areas.Identity.Pages.Account
             }
             else
             {
-                Input = new InputModel
+                try
                 {
-                    Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code))
-                };
-                return Page();
+                    Input = new InputModel
+                    {
+                        Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code))
+                    };
+                    return Page();
+                }
+                catch (FormatException)
+                {
+                    return BadRequest("The password link is invalid.");
+                }
             }
         }
 
@@ -102,11 +109,20 @@ namespace IDS.Areas.Identity.Pages.Account
                 return RedirectToPage("./ResetPasswordConfirmation");
             }
 
+            // The link proves control of the invited email address. Clear onboarding only
+            // after Identity validates the token and saves the employee's chosen password.
+            var wasConfirmed = user.EmailConfirmed;
+            var requiredPasswordChange = user.MustChangePassword;
+            user.EmailConfirmed = true;
+            user.MustChangePassword = false;
             var result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);
             if (result.Succeeded)
             {
                 return RedirectToPage("./ResetPasswordConfirmation");
             }
+
+            user.EmailConfirmed = wasConfirmed;
+            user.MustChangePassword = requiredPasswordChange;
 
             foreach (var error in result.Errors)
             {

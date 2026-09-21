@@ -14,6 +14,11 @@ namespace IDS.Pages.Admin
      private readonly ApplicationDbContext _db;
         private readonly IConfiguration _configuration;
         private const int PageSize = 50;
+        // Direct writes are reserved for an explicit development setting.
+        private static readonly HashSet<string> WritableTables = new(StringComparer.Ordinal)
+        {
+            "NetworkEvents", "RawPackets", "Benign_Table", "Attack_Table"
+        };
 
         public DatabaseViewerModel(ApplicationDbContext db, IConfiguration configuration)
       {
@@ -21,6 +26,9 @@ namespace IDS.Pages.Admin
           _configuration = configuration;
         }
 
+        public bool AllowWrites => _configuration.GetValue<bool>("DatabaseViewer:AllowWrites");
+        public bool CanWriteSelectedTable => SelectedTable != null
+            && AllowWrites && WritableTables.Contains(SelectedTable);
         public List<string> AvailableTables { get; set; } = new();
         public Dictionary<string, int> TableRowCounts { get; set; } = new();
   public string? SelectedTable { get; set; }
@@ -182,7 +190,12 @@ namespace IDS.Pages.Admin
 
     public async Task<IActionResult> OnPostAddRowAsync(string tableName, Dictionary<string, string> values)
         {
-            if (string.IsNullOrEmpty(tableName) || values == null || !values.Any())
+            if (!AllowWrites || !WritableTables.Contains(tableName))
+            {
+                return Forbid();
+            }
+
+            if (values == null || values.Count == 0)
        {
                 StatusMessage = "Error: Invalid input data.";
           return RedirectToPage(new { table = tableName });
@@ -194,6 +207,26 @@ namespace IDS.Pages.Admin
             {
           using var connection = new SqlConnection(connectionString);
               await connection.OpenAsync();
+
+                // Column names are SQL identifiers, so validate them against the
+                // database schema before placing them in the statement.
+                var columnsInTable = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                using (var schemaCommand = connection.CreateCommand())
+                {
+                    schemaCommand.CommandText = @"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = @TableName";
+                    schemaCommand.Parameters.AddWithValue("@TableName", tableName);
+                    using var reader = await schemaCommand.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        columnsInTable.Add(reader.GetString(0));
+                    }
+                }
+
+                if (values.Keys.Any(column => !columnsInTable.Contains(column) || column == "Id"))
+                {
+                    return BadRequest("Invalid column name.");
+                }
 
       // Build INSERT statement with parameters
       var columns = string.Join(", ", values.Keys.Select(k => $"[{k}]"));
@@ -224,7 +257,12 @@ namespace IDS.Pages.Admin
 
         public async Task<IActionResult> OnPostDeleteRowAsync(string tableName, string rowId)
    {
-       if (string.IsNullOrEmpty(tableName) || string.IsNullOrEmpty(rowId))
+       if (!AllowWrites || !WritableTables.Contains(tableName))
+       {
+           return Forbid();
+       }
+
+       if (string.IsNullOrEmpty(rowId))
      {
             StatusMessage = "Error: Invalid input data.";
     return RedirectToPage(new { table = tableName });

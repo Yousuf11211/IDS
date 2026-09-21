@@ -1,82 +1,90 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
-
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using IDS.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 
-namespace IDS.Areas.Identity.Pages.Account.Manage
+namespace IDS.Areas.Identity.Pages.Account.Manage;
+
+[Authorize]
+public class GenerateRecoveryCodesModel : PageModel
 {
-    public class GenerateRecoveryCodesModel : PageModel
-    {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<GenerateRecoveryCodesModel> _logger;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ILogger<GenerateRecoveryCodesModel> _logger;
 
-        public GenerateRecoveryCodesModel(
-            UserManager<IdentityUser> userManager,
-            ILogger<GenerateRecoveryCodesModel> logger)
+    public GenerateRecoveryCodesModel(
+        UserManager<ApplicationUser> userManager,
+        ILogger<GenerateRecoveryCodesModel> logger)
+    {
+        _userManager = userManager;
+        _logger = logger;
+    }
+
+    [BindProperty]
+    public InputModel Input { get; set; } = new();
+
+    [TempData]
+    public string[]? RecoveryCodes { get; set; }
+
+    [TempData]
+    public string? StatusMessage { get; set; }
+
+    public class InputModel
+    {
+        [Required]
+        [DataType(DataType.Password)]
+        [Display(Name = "Current password")]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
         {
-            _userManager = userManager;
-            _logger = logger;
+            return RedirectToPage("../Login");
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string[] RecoveryCodes { get; set; }
+        return await _userManager.GetTwoFactorEnabledAsync(user)
+            ? Page()
+            : RedirectToPage("./EnableAuthenticator");
+    }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string StatusMessage { get; set; }
-
-        public async Task<IActionResult> OnGetAsync()
+    public async Task<IActionResult> OnPostAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
+            return RedirectToPage("../Login");
+        }
 
-            var isTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
-            if (!isTwoFactorEnabled)
-            {
-                throw new InvalidOperationException($"Cannot generate recovery codes for user because they do not have 2FA enabled.");
-            }
+        if (!await _userManager.GetTwoFactorEnabledAsync(user))
+        {
+            return RedirectToPage("./EnableAuthenticator");
+        }
 
+        if (!ModelState.IsValid)
+        {
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        if (!await _userManager.CheckPasswordAsync(user, Input.Password))
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
-
-            var isTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
-            var userId = await _userManager.GetUserIdAsync(user);
-            if (!isTwoFactorEnabled)
-            {
-                throw new InvalidOperationException($"Cannot generate recovery codes for user as they do not have 2FA enabled.");
-            }
-
-            var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-            RecoveryCodes = recoveryCodes.ToArray();
-
-            _logger.LogInformation("User with ID '{UserId}' has generated new 2FA recovery codes.", userId);
-            StatusMessage = "You have generated new recovery codes.";
-            return RedirectToPage("./ShowRecoveryCodes");
+            ModelState.AddModelError(string.Empty, "The current password is incorrect.");
+            return Page();
         }
+
+        var codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+        if (codes == null)
+        {
+            ModelState.AddModelError(string.Empty, "Recovery codes could not be generated. Please try again.");
+            return Page();
+        }
+
+        RecoveryCodes = codes.ToArray();
+        _logger.LogInformation("User {UserId} generated new recovery codes.", user.Id);
+        StatusMessage = "Your new recovery codes are ready. Save them now; they will only be shown once.";
+        return RedirectToPage("./ShowRecoveryCodes");
     }
 }

@@ -32,6 +32,8 @@ UserManager<ApplicationUser> userManager,
 
      public SupportTicket? Ticket { get; set; }
         public List<TicketComment> Comments { get; set; } = new();
+        public List<Responder> Responders { get; set; } = new();
+        public sealed record Responder(string Id, string Name, string Role);
         public string[] Statuses => TicketConstants.Statuses;
  public string[] Priorities => TicketConstants.Priorities;
 
@@ -46,6 +48,9 @@ UserManager<ApplicationUser> userManager,
 
         [BindProperty]
   public string? NewComment { get; set; }
+
+        [BindProperty]
+        public string? ResponderId { get; set; }
 
         [TempData]
     public string? StatusMessage { get; set; }
@@ -62,6 +67,8 @@ UserManager<ApplicationUser> userManager,
          .Where(c => c.TicketId == id)
             .OrderBy(c => c.CreatedAt)
    .ToListAsync();
+
+            await LoadRespondersAsync();
 
     return Page();
         }
@@ -242,6 +249,18 @@ if (user == null)
  return NotFound();
             }
 
+            if (ticket.Status == "Closed" || ticket.Status == "Resolved")
+            {
+                StatusMessage = "Error: Reopen this ticket before assigning it.";
+                return RedirectToPage(new { id });
+            }
+
+            if (!string.IsNullOrEmpty(ticket.AssignedToUserId) && ticket.AssignedToUserId != user.Id)
+            {
+                StatusMessage = "Error: This ticket is already assigned. Use Reassign to transfer it.";
+                return RedirectToPage(new { id });
+            }
+
          ticket.AssignedToUserId = user.Id;
    ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
     ? $"{user.FirstName} {user.LastName}"
@@ -262,5 +281,83 @@ if (user == null)
             StatusMessage = "Ticket assigned to you.";
    return RedirectToPage(new { id });
    }
+
+        public async Task<IActionResult> OnPostAssignAsync(int id)
+        {
+            var actor = await _userManager.GetUserAsync(User);
+            if (actor == null) return Challenge();
+
+            var ticket = await _context.SupportTickets.FindAsync(id);
+            if (ticket == null) return NotFound();
+            if (ticket.Status == "Closed" || ticket.Status == "Resolved")
+            {
+                StatusMessage = "Error: Reopen this ticket before reassigning it.";
+                return RedirectToPage(new { id });
+            }
+
+            await LoadRespondersAsync();
+            var responder = Responders.FirstOrDefault(r => r.Id == ResponderId);
+            if (responder == null)
+            {
+                StatusMessage = "Error: Select a Support or Admin responder.";
+                return RedirectToPage(new { id });
+            }
+
+            if (ticket.AssignedToUserId == responder.Id)
+            {
+                StatusMessage = "This ticket is already assigned to that responder.";
+                return RedirectToPage(new { id });
+            }
+
+            var previousAssignee = ticket.AssignedToName ?? "Unassigned";
+            ticket.AssignedToUserId = responder.Id;
+            ticket.AssignedToName = responder.Name;
+            ticket.Status = "InProgress";
+            ticket.UpdatedAt = DateTime.UtcNow;
+
+            // Keep the handoff visible in the ticket and in the audit log.
+            _context.TicketComments.Add(new TicketComment
+            {
+                TicketId = ticket.Id,
+                UserId = actor.Id,
+                UserName = DisplayName(actor),
+                IsFromSupport = true,
+                Content = $"Assigned from {previousAssignee} to {responder.Name} ({responder.Role}).",
+                CreatedAt = ticket.UpdatedAt
+            });
+            _context.AuditLogs.Add(new AuditLog
+            {
+                Timestamp = ticket.UpdatedAt,
+                UserId = actor.Id,
+                UserEmail = actor.Email ?? string.Empty,
+                Action = "AssignTicket",
+                EntityType = "SupportTicket",
+                EntityId = ticket.Id.ToString(),
+                Details = $"{previousAssignee} -> {responder.Name} ({responder.Role})"
+            });
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Ticket {TicketNumber} assigned to {ResponderId} by {ActorId}",
+                ticket.TicketNumber, responder.Id, actor.Id);
+            StatusMessage = $"Ticket assigned to {responder.Name}.";
+            return RedirectToPage(new { id });
+        }
+
+        private async Task LoadRespondersAsync()
+        {
+            var admins = await _userManager.GetUsersInRoleAsync(AppRoles.Admin);
+            var support = await _userManager.GetUsersInRoleAsync(AppRoles.Support);
+            Responders = admins.Select(u => new Responder(u.Id, DisplayName(u), "Admin"))
+                .Concat(support.Select(u => new Responder(u.Id, DisplayName(u), "Support")))
+                .DistinctBy(r => r.Id)
+                .OrderBy(r => r.Name)
+                .ToList();
+        }
+
+        private static string DisplayName(ApplicationUser user)
+        {
+            var name = $"{user.FirstName} {user.LastName}".Trim();
+            return string.IsNullOrEmpty(name) ? user.Email ?? "Responder" : name;
+        }
     }
 }

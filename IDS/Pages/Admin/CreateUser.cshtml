@@ -11,7 +11,7 @@
  Create New User
         </h1>
  <p class="page-header-subtitle">
-      Add a new user to the IDS system. @(Model.EmailEnabled ? "They will receive an email with their temporary credentials." : "Please provide credentials manually (email is disabled).")
+      Add an employee and email them a secure link to choose their password.
         </p>
     </div>
 </div>
@@ -55,15 +55,19 @@
       </div>
         </div>
   
-            <div class="col-md-6">
+  <div class="col-md-6">
       <div class="form-group">
-   <label asp-for="Input.Password" class="form-label-ids">Temporary Password *</label>
-            <input asp-for="Input.Password" class="form-control-ids" type="password" placeholder="••••••••" />
-    <span asp-validation-for="Input.Password" class="form-error"></span>
-  <p class="form-text">User will be required to change this on first login.</p>
-     </div>
-       </div>
- 
+          <label asp-for="Input.Department" class="form-label-ids">Department *</label>
+          <select asp-for="Input.Department" class="form-control-ids form-select-ids">
+              @foreach (var department in IDS.Security.Departments.All)
+              {
+                  <option value="@department">@department</option>
+              }
+          </select>
+          <span asp-validation-for="Input.Department" class="form-error"></span>
+      </div>
+  </div>
+
   <div class="col-md-6">
   <div class="form-group">
        <label asp-for="Input.Role" class="form-label-ids">Role *</label>
@@ -85,8 +89,8 @@
       <a asp-page="/Admin/UserList" class="btn-ids btn-ids-secondary">
      <i class="fa-solid fa-arrow-left me-2"></i> Back to Users
           </a>
-       <button type="submit" class="btn-ids btn-ids-success">
-        <i class="fa-solid fa-user-plus me-2"></i> Create User
+       <button type="submit" class="btn-ids btn-ids-success" disabled="@(!Model.InvitationsReady)">
+        <i class="fa-solid fa-user-plus me-2"></i> Create and Send Invite
       </button>
       </div>
      </form>
@@ -97,7 +101,7 @@
       <div class="card-ids mt-4">
  <div class="card-ids-body">
       <div class="d-flex gap-3">
-    @if (Model.EmailEnabled)
+    @if (Model.InvitationsReady)
        {
         <div class="metric-icon gradient-green" style="width: 40px; height: 40px; font-size: 1rem;">
        <i class="fa-solid fa-envelope-circle-check"></i>
@@ -107,8 +111,7 @@
    <span class="status-badge status-normal">Email Enabled</span>
        </h4>
   <p class="text-muted mb-0" style="font-size: 0.875rem;">
-  The new user will receive a professional email with their login credentials, 
-  temporary password, and instructions for accessing the system.
+  The new user will receive a password setup link. They will then enroll an authenticator before using the dashboard.
       </p>
             </div>
      }
@@ -119,14 +122,13 @@
    </div>
   <div>
     <h4 style="font-size: 1rem; margin-bottom: 0.25rem;">
-    <span class="status-badge status-medium">Email Disabled</span>
+    <span class="status-badge status-medium">Invitations Unavailable</span>
        </h4>
      <p class="text-muted mb-0" style="font-size: 0.875rem;">
-      Email sending is currently disabled. You will need to manually provide 
- the user with their login credentials after account creation.
+      Account invitations require a working email connection and a public application URL.
        <br/><br/>
      <strong>To enable emails:</strong> Set <code>EMAIL_STATUS=true</code> and configure 
- <code>MAILJET_API_KEY</code> and <code>MAILJET_SECRET_KEY</code> in your <code>.env</code> file.
+ <code>MAILJET_API_KEY</code>, <code>MAILJET_SECRET_KEY</code>, and <code>PUBLIC_BASE_URL</code> in your environment.
       </p>
        </div>
     }

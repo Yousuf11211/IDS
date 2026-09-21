@@ -72,6 +72,13 @@
  <label class="form-label-ids">Category</label>
        <p style="color: var(--text-primary);">@Model.Ticket.Category</p>
            </div>
+    @if (Model.Ticket.SourceAttackId.HasValue)
+    {
+        <div class="alert-ids alert-ids-info mb-4">
+            <i class="alert-ids-icon fa-solid fa-shield-halved"></i>
+            <div class="alert-ids-content">Security incident linked to detection #@Model.Ticket.SourceAttackId.Value.</div>
+        </div>
+    }
      <div class="mb-4">
   <label class="form-label-ids">Description</label>
    <div class="p-3 rounded" style="background: var(--bg-tertiary); color: var(--text-primary); white-space: pre-wrap;">@Model.Ticket.Description</div>

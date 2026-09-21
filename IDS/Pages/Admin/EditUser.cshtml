@@ -71,6 +71,18 @@
     </div>
    </div>
        <div class="col-12">
+           <div class="form-group">
+               <label asp-for="Input.Department" class="form-label-ids">Department</label>
+               <select asp-for="Input.Department" class="form-control-ids form-select-ids">
+                   @foreach (var department in IDS.Security.Departments.All)
+                   {
+                       <option value="@department">@department</option>
+                   }
+               </select>
+               <span asp-validation-for="Input.Department" class="form-error"></span>
+           </div>
+       </div>
+       <div class="col-12">
       <div class="form-group">
      <label asp-for="Input.Role" class="form-label-ids"></label>
              <select asp-for="Input.Role" class="form-control-ids form-select-ids">
@@ -84,7 +96,7 @@
   {
         <p class="form-text text-warning">
     <i class="fa-solid fa-triangle-exclamation me-1"></i>
-        Warning: Changing your own role from Admin will revoke your administrative access.
+        You cannot remove your own administrator access.
  </p>
           }
   </div>
@@ -152,8 +164,8 @@
       <div class="card-ids-body">
        <div class="d-flex flex-column gap-2">
 <!-- Reset Password -->
-       <button type="button" class="btn-ids btn-ids-secondary w-100" onclick="showConfirmModal('resetPassword', 'Reset Password', 'Are you sure you want to reset the password for this user? A new temporary password will be sent to their email.')">
-     <i class="fa-solid fa-key me-2"></i> Reset Password
+       <button type="button" class="btn-ids btn-ids-secondary w-100" onclick="showConfirmModal('resetPassword', 'Send Account Link', 'Send a one-time password setup link to this employee? Their current password will remain valid until they use the link.')">
+     <i class="fa-solid fa-key me-2"></i> Send Account Link
        </button>
        
            @if (Model.CurrentRole != "Suspended")

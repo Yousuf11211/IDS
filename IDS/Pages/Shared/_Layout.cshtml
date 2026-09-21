@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -51,7 +52,17 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
   <i class="fa-solid fa-satellite-dish me-1"></i> Live Feed
     </a>
 </li>
-        
+
+@if (Configuration.GetValue<bool>("Chat:Enabled"))
+{
+    <li class="nav-item">
+        <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Chat" ? "active" : "")"
+           asp-area="" asp-page="/Chat">
+            <i class="fa-solid fa-comments me-1"></i> Messages
+        </a>
+    </li>
+}
+
    @if (User.IsInRole("Admin"))
        {
           <li class="nav-item">
@@ -154,45 +165,17 @@ else
  <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    
-    <script>
-      // Theme management
-    (function() {
-   const root = document.documentElement;
-    const LS_KEY = 'ids-theme';
-     const toggle = document.getElementById('themeToggle');
-  const icon = document.getElementById('themeIcon');
- 
-            function applyTheme(theme) {
-      if (theme === 'dark') {
-         root.classList.add('theme-dark');
-           if (icon) {
-  icon.classList.remove('fa-moon');
-   icon.classList.add('fa-sun');
-        }
-       } else {
-   root.classList.remove('theme-dark');
-    if (icon) {
-         icon.classList.remove('fa-sun');
-  icon.classList.add('fa-moon');
-       }
-        }
+    @if (User?.Identity?.IsAuthenticated == true && Configuration.GetValue<bool>("Chat:Enabled"))
+    {
+        <script src="~/js/chat-notifications.js" asp-append-version="true" defer></script>
     }
     
-      // Initialize theme
-    const savedTheme = localStorage.getItem(LS_KEY) || 'dark';
-  applyTheme(savedTheme);
-   
-     // Toggle handler
- if (toggle) {
-   toggle.addEventListener('click', () => {
- const newTheme = root.classList.contains('theme-dark') ? 'light' : 'dark';
- localStorage.setItem(LS_KEY, newTheme);
-      applyTheme(newTheme);
-  });
-       }
- })();
-</script>
+    <script>
+        // Site-wide theme state lives in site.js; this button only invokes it.
+        document.getElementById('themeToggle')?.addEventListener('click', () => {
+            window.IDS.ThemeManager.toggle();
+        });
+    </script>
 
  @await RenderSectionAsync("Scripts", required: false)
 </body>

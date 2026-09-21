@@ -3,6 +3,7 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
 using System.Text;
+using System.Text.Encodings.Web;
 
 namespace IDS.Data.Services
 {
@@ -55,7 +56,8 @@ namespace IDS.Data.Services
 
             // SECURITY: Allows bypassing SSL certificate checks (useful for dev/corporate networks but UNSAFE for production)
             var ignoreSSL = Environment.GetEnvironmentVariable("MAILJET_IGNORE_CERTIFICATE_ERRORS") ?? "false";
-         _ignoreSSLErrors = ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
+         _ignoreSSLErrors = _environment.IsDevelopment() &&
+             ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
   
        // Logo URL - can be set via environment variable or defaults to local path
  // NOTE: For emails, the logo must be publicly accessible. Local files won't work in email clients.
@@ -74,6 +76,30 @@ namespace IDS.Data.Services
         /// Check if email sending is properly configured.
         /// </summary>
         public bool IsConfigured => !string.IsNullOrEmpty(_apiKey) && !string.IsNullOrEmpty(_secretKey) && _emailEnabled;
+
+        /// <summary>
+        /// Sends a password setup link without putting a reusable password in email.
+        /// The reset token is validated by ASP.NET Identity when the recipient opens the link.
+        /// </summary>
+        public Task<(bool Success, string? ErrorMessage)> SendAccountAccessLinkAsync(
+            string toEmail, string userName, string resetUrl, bool isInvitation)
+        {
+            var title = isInvitation ? "Set up your IDS account" : "Reset your IDS password";
+            var action = isInvitation ? "Set your password" : "Reset your password";
+            var encodedName = HtmlEncoder.Default.Encode(userName);
+            var encodedUrl = HtmlEncoder.Default.Encode(resetUrl);
+            var html = $"""
+                <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#172033">
+                  <h1 style="font-size:24px">{title}</h1>
+                  <p>Hello {encodedName},</p>
+                  <p>{(isInvitation ? "An administrator created your IDS account." : "An administrator requested a password reset for your IDS account.")} Use the link below to choose your own password. The link expires after 24 hours.</p>
+                  <p><a href="{encodedUrl}" style="display:inline-block;padding:12px 18px;background:#155eef;color:#fff;text-decoration:none;border-radius:6px">{action}</a></p>
+                  <p>After signing in, complete authenticator setup if prompted. If you did not expect this message, contact your administrator.</p>
+                </div>
+                """;
+            var plainText = $"Hello {userName},\n\n{title}. Open this link within 24 hours to choose your password:\n{resetUrl}\n\nIf you did not expect this message, contact your administrator.";
+            return SendEmailAsync(toEmail, userName, title, html, plainText);
+        }
 
         /// <summary>
         /// Gets the support email address from configuration.
@@ -231,21 +257,6 @@ namespace IDS.Data.Services
         #endregion
 
         #region Template-Based Email Methods
-
-        /// <summary>
-        /// Sends a temporary password email to a new user.
-        /// </summary>
-public async Task<(bool Success, string? ErrorMessage)> SendTempPasswordEmailAsync(string toEmail, string userName, string temporaryPassword, string? loginUrl = null)
-        {
-   var placeholders = GetBasePlaceholders();
-         placeholders["UserName"] = userName ?? "User";
-            placeholders["UserEmail"] = toEmail;
-   placeholders["TempPassword"] = temporaryPassword;  // Fixed: was TemporaryPassword, template uses TempPassword
-   placeholders["LoginUrl"] = loginUrl ?? "/Identity/Account/Login";
-
-            var (htmlBody, textBody) = await LoadTemplateAsync("TempPasswordEmail", placeholders);
-     return await SendEmailAsync(toEmail, userName, "Your Temporary Password - IDS", htmlBody, textBody);
-        }
 
     /// <summary>
    /// Sends a password reset email.

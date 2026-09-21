@@ -428,6 +428,7 @@ let allLogs = [];
   const tbody = document.getElementById('logsTableBody');
     try {
          const response = await fetch('?handler=Logs');
+   if (!response.ok) throw new Error('Failed to load logs');
    allLogs = await response.json();
        renderLogs(allLogs);
          } catch (e) {

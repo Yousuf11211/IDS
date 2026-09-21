@@ -1,67 +1,95 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
-
-using System;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
+using IDS.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
 
-namespace IDS.Areas.Identity.Pages.Account.Manage
+namespace IDS.Areas.Identity.Pages.Account.Manage;
+
+[Authorize]
+public class ResetAuthenticatorModel : PageModel
 {
-    public class ResetAuthenticatorModel : PageModel
-    {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly ILogger<ResetAuthenticatorModel> _logger;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly ILogger<ResetAuthenticatorModel> _logger;
 
-        public ResetAuthenticatorModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            ILogger<ResetAuthenticatorModel> logger)
+    public ResetAuthenticatorModel(
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        ILogger<ResetAuthenticatorModel> logger)
+    {
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _logger = logger;
+    }
+
+    [BindProperty]
+    public InputModel Input { get; set; } = new();
+
+    [TempData]
+    public string? StatusMessage { get; set; }
+
+    public class InputModel
+    {
+        [Required]
+        [DataType(DataType.Password)]
+        [Display(Name = "Current password")]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        return await _userManager.GetUserAsync(User) == null
+            ? RedirectToPage("../Login")
+            : Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _logger = logger;
+            return RedirectToPage("../Login");
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string StatusMessage { get; set; }
-
-        public async Task<IActionResult> OnGet()
+        if (!ModelState.IsValid)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
-
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        if (!await _userManager.CheckPasswordAsync(user, Input.Password))
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
+            ModelState.AddModelError(string.Empty, "The current password is incorrect.");
+            return Page();
+        }
 
-            await _userManager.SetTwoFactorEnabledAsync(user, false);
-            await _userManager.ResetAuthenticatorKeyAsync(user);
-            var userId = await _userManager.GetUserIdAsync(user);
-            _logger.LogInformation("User with ID '{UserId}' has reset their authentication app key.", user.Id);
+        // The enrollment middleware keeps the account on the setup screen until a new code is verified.
+        var disableResult = await _userManager.SetTwoFactorEnabledAsync(user, false);
+        if (!disableResult.Succeeded)
+        {
+            AddErrors(disableResult);
+            return Page();
+        }
 
-            await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Your authenticator app key has been reset, you will need to configure your authenticator app using the new key.";
+        var resetResult = await _userManager.ResetAuthenticatorKeyAsync(user);
+        if (!resetResult.Succeeded)
+        {
+            AddErrors(resetResult);
+            return Page();
+        }
 
-            return RedirectToPage("./EnableAuthenticator");
+        await _signInManager.RefreshSignInAsync(user);
+        _logger.LogInformation("User {UserId} reset their authenticator key.", user.Id);
+        StatusMessage = "Set up your authenticator again to complete the reset.";
+        return RedirectToPage("./EnableAuthenticator");
+    }
+
+    private void AddErrors(IdentityResult result)
+    {
+        foreach (var error in result.Errors)
+        {
+            ModelState.AddModelError(string.Empty, error.Description);
         }
     }
 }

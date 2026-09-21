@@ -300,6 +300,10 @@ overflow: hidden;
            </div>
               <div class="detection-time">
        @evt.Timestamp.ToString("HH:mm:ss")
+       @if (evt.IsAttack && (evt.Severity == "High" || evt.Severity == "Critical"))
+       {
+           <a asp-page="/EscalateAttack" asp-route-id="@evt.Id" class="btn-ids btn-ids-primary btn-ids-sm d-block mt-2">Escalate</a>
+       }
     </div>
      </div>
          }
@@ -415,6 +419,7 @@ overflow: hidden;
    let eventCount = 0;
         let eventsLastSecond = 0;
         let alerts = [];
+        const seenAttackAlerts = new Set();
         
         const connection = new signalR.HubConnectionBuilder()
  .withUrl("/hubs/dashboard")
@@ -440,6 +445,9 @@ overflow: hidden;
       connection.on("NewDetection", (event) => {
      if (isPaused) return;
       addDetectionToFeed(event);
+      if (event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())) {
+          showAttackAlert(event);
+      }
         eventsLastSecond++;
         });
  
@@ -513,6 +521,18 @@ overflow: hidden;
   <div class="detection-time">${time}</div>
   `;
             
+        // The live feed includes attack table IDs, so the same incident can be
+        // opened from a newly arrived detection or from the initial page load.
+        const id = Number(event.id);
+        if (event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())
+            && Number.isSafeInteger(id) && id > 0) {
+            const link = document.createElement('a');
+            link.href = `/EscalateAttack/${id}`;
+            link.className = 'btn-ids btn-ids-primary btn-ids-sm d-block mt-2';
+            link.textContent = 'Escalate';
+            div.querySelector('.detection-time').appendChild(link);
+        }
+
         return div;
         }
         
@@ -527,6 +547,15 @@ overflow: hidden;
         }
  
         function showAttackAlert(attack) {
+            const id = Number(attack.id);
+            const canEscalate = Number.isSafeInteger(id) && id > 0 &&
+                ['high', 'critical'].includes(String(attack.severity).toLowerCase());
+            if (canEscalate && seenAttackAlerts.has(id)) return;
+            if (canEscalate) {
+                seenAttackAlerts.add(id);
+                if (seenAttackAlerts.size > 100) seenAttackAlerts.delete(seenAttackAlerts.values().next().value);
+            }
+
             if (document.getElementById('soundAlerts').checked) {
         playAlertSound();
           }
@@ -547,6 +576,7 @@ overflow: hidden;
      <div class="alert-ids-title">${escapeHtml(attack.attackType)}</div>
               <div>From: ${escapeHtml(attack.srcIp)}</div>
 <div>Severity: ${escapeHtml(attack.severity)}</div>
+${canEscalate ? `<a href="/EscalateAttack/${id}" class="btn-ids btn-ids-primary btn-ids-sm mt-2">Escalate incident</a>` : ''}
            </div>
        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
  `;
@@ -573,6 +603,8 @@ overflow: hidden;
           </div>
              </div>
           <span class="severity-badge severity-${a.severity?.toLowerCase() || 'medium'}">${escapeHtml(a.severity)}</span>
+          ${Number.isSafeInteger(Number(a.id)) && Number(a.id) > 0 && ['high', 'critical'].includes(String(a.severity).toLowerCase())
+              ? `<a href="/EscalateAttack/${Number(a.id)}" class="btn-ids btn-ids-primary btn-ids-sm">Escalate</a>` : ''}
       </div>
    `).join('');
      }

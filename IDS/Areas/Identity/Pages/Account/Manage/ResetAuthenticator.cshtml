@@ -1,24 +1,46 @@
-﻿@page
+@page
 @model ResetAuthenticatorModel
 @{
-    ViewData["Title"] = "Reset authenticator key";
+    ViewData["Title"] = "Reset authenticator";
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
 }
 
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Reset authenticator</h1>
+        <p class="page-header-subtitle">Replace the authenticator app connected to your account.</p>
+    </div>
+</div>
+
 <partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div class="alert alert-warning" role="alert">
-    <p>
-        <span class="glyphicon glyphicon-warning-sign"></span>
-        <strong>If you reset your authenticator key your authenticator app will not work until you reconfigure it.</strong>
-    </p>
-    <p>
-        This process disables 2FA until you verify your authenticator app.
-        If you do not complete your authenticator app configuration you may lose access to your account.
-    </p>
+
+<div class="card-ids" style="max-width: 640px;">
+    <div class="card-ids-body">
+        <div class="alert-ids alert-ids-warning mb-4" role="alert">
+            <i class="alert-ids-icon fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <div class="alert-ids-content">
+                Your current authenticator codes will stop working. You must connect and verify a new authenticator before returning to the app.
+            </div>
+        </div>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+            <div class="form-group">
+                <label asp-for="Input.Password" class="form-label-ids"></label>
+                <input asp-for="Input.Password" class="form-control-ids" autocomplete="current-password" aria-required="true" />
+                <span asp-validation-for="Input.Password" class="form-error"></span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn-ids btn-ids-danger d-inline-flex align-items-center justify-content-center gap-2">
+                    <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+                    <span>Reset authenticator</span>
+                </button>
+                <a asp-page="./TwoFactorAuthentication" class="btn-ids btn-ids-secondary d-inline-flex align-items-center justify-content-center">Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
-<div>
-    <form id="reset-authenticator-form" method="post">
-        <button id="reset-authenticator-button" class="btn btn-danger" type="submit">Reset authenticator key</button>
-    </form>
-</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -53,6 +53,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromHours(24));
+
+// An enrolled account must provide an authenticator code at every login.
+builder.Services.AddScoped<SignInManager<ApplicationUser>, AlwaysChallengeSignInManager>();
 
 // Cookie configuration for session timeout
 builder.Services.ConfigureApplicationCookie(options =>
@@ -85,6 +90,7 @@ builder.Services.AddControllers();
 // Register Application Services
 // =====================================================
 builder.Services.AddScoped<AccessControlService>();
+builder.Services.AddSingleton<AccountLinkBuilder>();
 
 // Register MailjetEmailSender as both IEmailSender and its concrete type
 // This allows injection of either interface or concrete class
@@ -100,6 +106,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 // =====================================================
 builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
 builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
+builder.Services.AddScoped<IChatService, ChatService>();
 
 // Background service to monitor detection tables and push updates via SignalR
 builder.Services.AddHostedService<DetectionMonitorService>();
@@ -136,13 +143,17 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
     var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL") 
         ?? config["AdminUser:Email"] 
         ?? "admin@local";
-    var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") 
-        ?? config["AdminUser:Password"] 
-        ?? "P@ssw0rd!";
+    var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
 
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser == null)
     {
+        if (string.IsNullOrWhiteSpace(adminPassword))
+        {
+            throw new InvalidOperationException(
+                "Set ADMIN_PASSWORD before starting a database without an admin account.");
+        }
+
         adminUser = new ApplicationUser 
         { 
             UserName = adminEmail, 
@@ -221,6 +232,10 @@ app.MapGet("/auth/ping", () => Results.Ok()).RequireAuthorization();
 // Map SignalR Hub for real-time dashboard
 // =====================================================
 app.MapHub<DashboardHub>("/hubs/dashboard");
+if (builder.Configuration.GetValue<bool>("Chat:Enabled"))
+{
+    app.MapHub<ChatHub>("/hubs/chat");
+}
 
 // =====================================================
 // Map API Controllers (read-only detection data)
@@ -228,7 +243,7 @@ app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapControllers();
 
 // =====================================================
-// Enforce First-Time Password Change
+// Complete account setup before any authenticated app page can be used.
 // =====================================================
 app.Use(async (context, next) =>
 {
@@ -236,13 +251,31 @@ app.Use(async (context, next) =>
     {
         var userManager = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.GetUserAsync(context.User);
-        if (user != null && user.MustChangePassword)
+        if (user != null)
         {
+            if (await userManager.IsInRoleAsync(user, AppRoles.Suspended))
+            {
+                await context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>()
+                    .SignOutAsync();
+                context.Response.Redirect("/Identity/Account/Login");
+                return;
+            }
+
             var path = context.Request.Path.Value ?? string.Empty;
-            var allowedPaths = new[] { "/Identity/Account/FirstTimeSetup", "/Account/Logout", "/Identity/Account/Logout" };
-            if (!allowedPaths.Any(p => path.Contains(p, StringComparison.OrdinalIgnoreCase)))
+            var isLogout = path.Equals("/Identity/Account/Logout", StringComparison.OrdinalIgnoreCase);
+            var isFirstTimeSetup = path.Equals("/Identity/Account/FirstTimeSetup", StringComparison.OrdinalIgnoreCase);
+            var isAuthenticatorSetup = path.Equals("/Identity/Account/Manage/EnableAuthenticator", StringComparison.OrdinalIgnoreCase);
+
+            if (user.MustChangePassword && !isFirstTimeSetup && !isLogout)
             {
                 context.Response.Redirect("/Identity/Account/FirstTimeSetup");
+                return;
+            }
+
+            if (!user.MustChangePassword && !await userManager.GetTwoFactorEnabledAsync(user)
+                && !isAuthenticatorSetup && !isLogout)
+            {
+                context.Response.Redirect("/Identity/Account/Manage/EnableAuthenticator");
                 return;
             }
         }

@@ -134,6 +134,7 @@ namespace IDS.Data
                 b.Property(t => t.AssignedToName).HasMaxLength(200);
                 b.Property(t => t.ResolutionNotes).HasMaxLength(4000);
                 b.HasIndex(t => t.TicketNumber).IsUnique();
+                b.HasIndex(t => t.SourceAttackId).IsUnique().HasFilter("[SourceAttackId] IS NOT NULL");
                 b.HasIndex(t => t.SubmittedByUserId);
                 b.HasIndex(t => t.Status);
                 b.HasIndex(t => t.CreatedAt);
@@ -212,6 +213,9 @@ namespace IDS.Data
                 b.HasIndex(t => t.IsAcknowledged);
                 b.HasIndex(t => t.Label);
             });
+
+            // Feature modules keep their mappings close to their models.
+            builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
         }
     }
 }

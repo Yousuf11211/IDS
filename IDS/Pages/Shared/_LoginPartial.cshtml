@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using IDS.Data.Models
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -6,112 +6,127 @@
 @if (SignInManager.IsSignedIn(User))
 {
     var currentUser = await UserManager.GetUserAsync(User);
-    var userRoles = currentUser != null ? await UserManager.GetRolesAsync(currentUser) : new List<string>();
+    var userRoles = currentUser == null ? new List<string>() : await UserManager.GetRolesAsync(currentUser);
     var primaryRole = userRoles.FirstOrDefault() ?? "User";
-    var initials = currentUser?.FirstName?.FirstOrDefault().ToString()?.ToUpper() ?? currentUser?.Email?.FirstOrDefault().ToString()?.ToUpper() ?? "U";
-    var displayName = !string.IsNullOrEmpty(currentUser?.FirstName) ? currentUser.FirstName : currentUser?.Email?.Split('@')[0];
-    
+    var displayName = !string.IsNullOrWhiteSpace(currentUser?.FirstName)
+        ? currentUser.FirstName
+        : currentUser?.Email?.Split('@')[0] ?? "Account";
+    if (string.IsNullOrWhiteSpace(displayName)) displayName = "Account";
+    var initials = displayName[..1].ToUpperInvariant();
+    var needsPassword = currentUser?.MustChangePassword == true;
+    var needsAuthenticator = currentUser != null && !await UserManager.GetTwoFactorEnabledAsync(currentUser);
+    var pendingCount = (needsPassword ? 1 : 0) + (needsAuthenticator ? 1 : 0);
+
     <div class="user-dropdown">
-        <button id="userMenuToggle" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false">
-      <div class="user-avatar">@initials</div>
-   <div class="user-info d-none d-md-block">
-    <div class="user-name">@displayName</div>
-           <div class="user-role">@primaryRole</div>
-         </div>
-            <i class="fa-solid fa-chevron-down ms-2" style="font-size: 0.75rem; opacity: 0.7;"></i>
+        <button id="userMenuToggle" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false"
+                aria-controls="userMenu" aria-label="Account menu@(pendingCount > 0 ? $", {pendingCount} setup steps pending" : string.Empty)">
+            <div class="user-avatar">@initials</div>
+            <div class="user-info d-none d-md-block">
+                <div class="user-name">@displayName</div>
+                <div class="user-role">@primaryRole</div>
+            </div>
+            @if (pendingCount > 0)
+            {
+                <span class="badge rounded-pill bg-warning text-dark ms-2" title="@pendingCount account setup step(s) pending">
+                    @pendingCount pending
+                </span>
+            }
+            <i class="fa-solid fa-chevron-down ms-2" aria-hidden="true"></i>
         </button>
-        
-<div id="userMenu" class="dropdown-panel">
-      <div class="dropdown-header">
-      <div class="user-name">@(currentUser?.FirstName != null ? $"{currentUser.FirstName} {currentUser.LastName}" : currentUser?.Email)</div>
-             <div class="text-muted" style="font-size: 0.8125rem;">@currentUser?.Email</div>
-  </div>
-   
-      <nav class="dropdown-links">
-         <a asp-area="Identity" asp-page="/Account/Manage/Index" class="dropdown-link">
- <i class="fa-solid fa-user"></i> Profile
-          </a>
-       <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="dropdown-link">
-             <i class="fa-solid fa-key"></i> Change Password
-       </a>
-      <a asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication" class="dropdown-link">
-         <i class="fa-solid fa-shield-halved"></i> Two-Factor Auth
-    </a>
-   
-      <div class="dropdown-divider"></div>
-    
-       <a asp-area="Identity" asp-page="/Account/Manage/PersonalData" class="dropdown-link">
-      <i class="fa-solid fa-download"></i> Personal Data
-         </a>
-          <a asp-page="/Help" class="dropdown-link">
-          <i class="fa-solid fa-circle-question"></i> Help & Support
-     </a>
-   </nav>
-            
+
+        <div id="userMenu" class="dropdown-panel">
+            <div class="dropdown-header">
+                <div class="user-name">@displayName</div>
+                <div class="text-muted" style="font-size: 0.8125rem;">@currentUser?.Email</div>
+            </div>
+
+            @if (pendingCount > 0)
+            {
+                <div class="px-3 py-2" role="status">
+                    <div class="fw-semibold text-warning mb-1">Account setup pending</div>
+                    <div class="text-muted small">Complete @pendingCount remaining security step@(pendingCount == 1 ? "" : "s") to access your workspace.</div>
+                    <a asp-area="Identity"
+                       asp-page="@(needsPassword ? "/Account/FirstTimeSetup" : "/Account/Manage/EnableAuthenticator")"
+                       class="btn-ids btn-ids-primary w-100 mt-2 d-flex align-items-center justify-content-center gap-2">
+                        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                        <span>Continue setup</span>
+                    </a>
+                </div>
+                <div class="dropdown-divider"></div>
+            }
+
+            <nav class="dropdown-links" aria-label="Account">
+                <a asp-area="Identity" asp-page="/Account/Manage/Index" class="dropdown-link">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i> Profile
+                </a>
+                <a asp-area="Identity" asp-page="/Account/Manage/ChangePassword" class="dropdown-link">
+                    <i class="fa-solid fa-key" aria-hidden="true"></i> Change password
+                </a>
+                <a asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication" class="dropdown-link">
+                    <i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Two-factor authentication
+                </a>
+                <div class="dropdown-divider"></div>
+                <a asp-area="Identity" asp-page="/Account/Manage/PersonalData" class="dropdown-link">
+                    <i class="fa-solid fa-download" aria-hidden="true"></i> Personal data
+                </a>
+                <a asp-page="/Help" class="dropdown-link">
+                    <i class="fa-solid fa-circle-question" aria-hidden="true"></i> Help and support
+                </a>
+            </nav>
+
             <div class="dropdown-footer">
-            <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
-        <button type="submit" class="btn-logout">
-   <i class="fa-solid fa-right-from-bracket me-2"></i> Sign Out
-       </button>
-     </form>
-        </div>
+                <form method="post" asp-area="Identity" asp-page="/Account/Logout"
+                      asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
+                    <button type="submit" class="btn-logout d-flex align-items-center justify-content-center gap-2 w-100">
+                        <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Sign out
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
-    
+
     <script>
-        (function(){
-   const trigger = document.getElementById('userMenuToggle');
-     const panel = document.getElementById('userMenu');
-   let isOpen = false;
-   
-            function open() {
-        panel.classList.add('open');
-      trigger.setAttribute('aria-expanded', 'true');
-     isOpen = true;
-}
-       
-         function close() {
-         panel.classList.remove('open');
-      trigger.setAttribute('aria-expanded', 'false');
-      isOpen = false;
- }
-      
-      trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-              isOpen ? close() : open();
+        (() => {
+            const trigger = document.getElementById('userMenuToggle');
+            const panel = document.getElementById('userMenu');
+            if (!trigger || !panel) return;
+
+            const closeMenu = () => {
+                panel.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            };
+
+            trigger.addEventListener('click', event => {
+                event.stopPropagation();
+                const isOpen = panel.classList.toggle('open');
+                trigger.setAttribute('aria-expanded', String(isOpen));
+            });
+            document.addEventListener('click', event => {
+                if (!panel.contains(event.target) && !trigger.contains(event.target)) closeMenu();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') closeMenu();
             });
 
-            document.addEventListener('click', (e) => {
-        if (!panel.contains(e.target) && !trigger.contains(e.target)) {
-    close();
-    }
-     });
-       
-      document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') close();
-       });
-            
-    // Inactivity logout (configurable timeout)
-        const INACTIVITY_TIMEOUT = 1800000; // 30 minutes
-        let inactivityTimer;
-       
- function resetInactivityTimer() {
-     clearTimeout(inactivityTimer);
-        inactivityTimer = setTimeout(() => {
-            window.location.href = '/Identity/Account/Logout?handler=Inactivity';
-                }, INACTIVITY_TIMEOUT);
-   }
-        
-       ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
-         document.addEventListener(evt, resetInactivityTimer, { passive: true });
+            // The client timer mirrors the server's 30-minute authentication cookie lifetime.
+            const inactivityTimeoutMs = 30 * 60 * 1000;
+            let inactivityTimer;
+            const resetInactivityTimer = () => {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    window.location.href = '/Identity/Account/Logout?handler=Inactivity';
+                }, inactivityTimeoutMs);
+            };
+            ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(eventName => {
+                document.addEventListener(eventName, resetInactivityTimer, { passive: true });
             });
-      resetInactivityTimer();
+            resetInactivityTimer();
         })();
     </script>
 }
 else
 {
-    <a href="/Identity/Account/Login" class="btn-ids btn-ids-primary">
-  <i class="fa-solid fa-right-to-bracket me-2"></i> Sign In
-  </a>
+    <a asp-area="Identity" asp-page="/Account/Login" class="btn-ids btn-ids-primary d-inline-flex align-items-center justify-content-center gap-2">
+        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Sign in
+    </a>
 }

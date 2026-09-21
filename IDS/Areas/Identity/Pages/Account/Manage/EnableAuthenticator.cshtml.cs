@@ -19,8 +19,9 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
 {
     public class EnableAuthenticatorModel : PageModel
     {
-        // Use ApplicationUser instead of IdentityUser
+        // Use ApplicationUser instead of ApplicationUser
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<EnableAuthenticatorModel> _logger;
         private readonly UrlEncoder _urlEncoder;
 
@@ -28,10 +29,12 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
 
         public EnableAuthenticatorModel(
             UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             ILogger<EnableAuthenticatorModel> logger,
             UrlEncoder urlEncoder)
         {
             _userManager = userManager;
+            _signInManager = signInManager;
             _logger = logger;
             _urlEncoder = urlEncoder;
         }
@@ -126,7 +129,17 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
-            await _userManager.SetTwoFactorEnabledAsync(user, true);
+            var enableResult = await _userManager.SetTwoFactorEnabledAsync(user, true);
+            if (!enableResult.Succeeded)
+            {
+                foreach (var error in enableResult.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                }
+                await LoadSharedKeyAndQrCodeUriAsync(user);
+                return Page();
+            }
+            await _signInManager.RefreshSignInAsync(user);
             var userId = await _userManager.GetUserIdAsync(user);
             _logger.LogInformation("User with ID '{UserId}' has enabled 2FA with an authenticator app.", userId);
 

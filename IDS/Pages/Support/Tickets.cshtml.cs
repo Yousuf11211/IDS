@@ -104,6 +104,18 @@ namespace IDS.Pages.Support
        return RedirectToPage();
             }
 
+            if (ticket.Status == "Closed" || ticket.Status == "Resolved")
+            {
+                StatusMessage = "Error: Reopen this ticket before assigning it.";
+                return RedirectToPage();
+            }
+
+            if (!string.IsNullOrEmpty(ticket.AssignedToUserId))
+            {
+                StatusMessage = "Error: This ticket is already assigned. Open it to reassign.";
+                return RedirectToPage();
+            }
+
             ticket.AssignedToUserId = user.Id;
      ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
       ? $"{user.FirstName} {user.LastName}"

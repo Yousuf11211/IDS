@@ -32,6 +32,7 @@ namespace IDS.Pages.Admin
             public string CurrentRole { get; set; } = string.Empty;
             public string FirstName { get; set; } = string.Empty;
             public string LastName { get; set; } = string.Empty;
+            public string Department { get; set; } = Departments.General;
         }
 
         public List<UserEntry> Users { get; set; } = new();
@@ -40,7 +41,7 @@ namespace IDS.Pages.Admin
         [TempData]
         public string? StatusMessage { get; set; }
 
-        public async Task OnGetAsync(string? role, string? search)
+        public async Task OnGetAsync(string? role, string? search, string? department)
         {
             var allUsers = await _userManager.Users.ToListAsync();
 
@@ -51,6 +52,12 @@ namespace IDS.Pages.Admin
 
                 // Apply role filter
                 if (!string.IsNullOrEmpty(role) && !string.Equals(role, currentRole, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(department)
+                    && !string.Equals(user.Department, department, StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -75,7 +82,8 @@ namespace IDS.Pages.Admin
                     Email = user.Email ?? user.UserName ?? string.Empty,
                     CurrentRole = currentRole,
                     FirstName = user.FirstName ?? string.Empty,
-                    LastName = user.LastName ?? string.Empty
+                    LastName = user.LastName ?? string.Empty,
+                    Department = user.Department
                 });
             }
 

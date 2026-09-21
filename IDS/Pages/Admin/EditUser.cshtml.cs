@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
+using System.Text;
+using Microsoft.AspNetCore.WebUtilities;
 using IDS.Security;
 using IDS.Data.Models;
 using IDS.Data.Services;
@@ -17,19 +19,22 @@ namespace IDS.Pages.Admin
     {
      private readonly UserManager<ApplicationUser> _userManager;
         private readonly AccessControlService _accessControl;
-      private readonly MailjetEmailSender _emailSender;
+        private readonly MailjetEmailSender _emailSender;
+        private readonly AccountLinkBuilder _accountLinks;
         private readonly ILogger<EditUserModel> _logger;
 
         public EditUserModel(
             UserManager<ApplicationUser> userManager,
      AccessControlService accessControl,
   MailjetEmailSender emailSender,
-   ILogger<EditUserModel> logger)
+   ILogger<EditUserModel> logger,
+   AccountLinkBuilder accountLinks)
       {
  _userManager = userManager;
    _accessControl = accessControl;
 _emailSender = emailSender;
 _logger = logger;
+_accountLinks = accountLinks;
         }
 
         [BindProperty]
@@ -55,6 +60,9 @@ _logger = logger;
         [Required]
             [Display(Name = "Role")]
       public string Role { get; set; } = string.Empty;
+
+            [Required, StringLength(80)]
+            public string Department { get; set; } = Departments.General;
    }
 
      public string UserEmail { get; set; } = string.Empty;
@@ -97,7 +105,8 @@ _logger = logger;
          Email = user.Email ?? "",
       FirstName = user.FirstName,
          LastName = user.LastName,
-        Role = CurrentRole
+        Role = CurrentRole,
+        Department = user.Department
     };
 
   return Page();
@@ -105,6 +114,14 @@ _logger = logger;
 
         public async Task<IActionResult> OnPostUpdateAsync()
         {
+   if (!Departments.IsKnown(Input.Department))
+   {
+       ModelState.AddModelError("Input.Department", "Choose a listed department.");
+   }
+   if (!AppRoles.IsManagedRole(Input.Role))
+   {
+       ModelState.AddModelError("Input.Role", "Choose a valid role.");
+   }
    if (!ModelState.IsValid)
             {
        AllRoles = AppRoles.All.ToList();
@@ -115,15 +132,29 @@ _logger = logger;
     if (user == null)
        {
     StatusMessage = "Error: User not found.";
-       return RedirectToPage("/Admin/UserList");
+   return RedirectToPage("/Admin/UserList");
     }
+
+          if (Input.Role == AppRoles.Suspended &&
+              !await _userManager.IsInRoleAsync(user, AppRoles.Suspended))
+          {
+              StatusMessage = "Error: Use Suspend User to suspend an active account.";
+              return RedirectToPage(new { id = Input.UserId });
+          }
 
             var currentUser = await _userManager.GetUserAsync(User);
  IsCurrentUser = currentUser?.Id == Input.UserId;
 
+         if (IsCurrentUser && Input.Role != AppRoles.Admin)
+         {
+             StatusMessage = "Error: You cannot remove your own administrator access.";
+             return RedirectToPage(new { id = Input.UserId });
+         }
+
          // Update user details
         user.FirstName = Input.FirstName ?? "";
     user.LastName = Input.LastName ?? "";
+    user.Department = Input.Department;
 
             // Update email if changed
         if (user.Email != Input.Email)
@@ -157,11 +188,6 @@ _logger = logger;
             if (currentRole != Input.Role && AppRoles.IsManagedRole(Input.Role))
     {
          // Safety: Prevent admin from removing their own admin role
-  if (IsCurrentUser && Input.Role != AppRoles.Admin && currentRole == AppRoles.Admin)
-                {
-      StatusMessage = "Warning: You have changed your own role from Admin. You may lose admin access.";
-    }
-
 await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
           }
 
@@ -174,52 +200,49 @@ await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
         public async Task<IActionResult> OnPostResetPasswordAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-      if (user == null)
+            if (user == null)
             {
                 StatusMessage = "Error: User not found.";
-     return RedirectToPage("/Admin/UserList");
+                return RedirectToPage("/Admin/UserList");
             }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+            if (!_emailSender.IsConfigured || !_accountLinks.IsConfigured)
+            {
+                StatusMessage = "Error: Configure email and PUBLIC_BASE_URL before sending account links.";
+                return RedirectToPage(new { id = userId });
+            }
 
-            // Generate temporary password
-   var tempPassword = GenerateSecurePassword();
+            // Sending a link leaves the current password intact until the user chooses a new one.
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            var link = _accountLinks.PasswordResetLink(Url, encodedToken);
+            if (link == null)
+            {
+                StatusMessage = "Error: Could not build the account link. Check PUBLIC_BASE_URL.";
+                return RedirectToPage(new { id = userId });
+            }
 
-        // Reset the password
-   var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-      var result = await _userManager.ResetPasswordAsync(user, token, tempPassword);
+            var name = string.IsNullOrWhiteSpace(user.FirstName) ? user.Email ?? "Employee" : user.FirstName;
+            var isInvitation = !user.EmailConfirmed;
+            var (sent, error) = await _emailSender.SendAccountAccessLinkAsync(
+                user.Email ?? string.Empty, name, link, isInvitation);
 
-    if (!result.Succeeded)
- {
-          StatusMessage = $"Error: Failed to reset password. {string.Join("; ", result.Errors.Select(e => e.Description))}";
-       return RedirectToPage(new { id = userId });
+            if (sent)
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                _logger.LogInformation("Account link sent to {Email} by admin {AdminEmail}", user.Email, currentUser?.Email);
+                StatusMessage = isInvitation
+                    ? $"Account setup link sent to {user.Email}."
+                    : $"Password reset link sent to {user.Email}.";
+            }
+            else
+            {
+                _logger.LogWarning("Account email failed for {Email}: {Error}", user.Email, error);
+                StatusMessage = $"Error: The account link could not be sent to {user.Email}.";
+            }
+
+            return RedirectToPage(new { id = userId });
         }
-
-  // Mark that user must change password
-          user.MustChangePassword = true;
-            await _userManager.UpdateAsync(user);
-
-          // Send email
- var userName = !string.IsNullOrEmpty(user.FirstName) ? user.FirstName : user.Email?.Split('@')[0] ?? "User";
-            var (success, errorMsg) = await _emailSender.SendTempPasswordEmailAsync(
-        user.Email ?? "",
- userName,
-      tempPassword
- );
-
-            if (success)
-     {
-                _logger.LogInformation("Password reset for {Email} by {AdminEmail}", user.Email, currentUser?.Email);
-    StatusMessage = $"Password reset successfully. Temporary password sent to {user.Email}.";
-            }
-   else
-      {
-       StatusMessage = $"Password reset but email failed: {errorMsg}. Temp password: {tempPassword}";
-             _logger.LogWarning("Password reset email failed for {Email}: {Error}", user.Email, errorMsg);
-   }
-
-     return RedirectToPage(new { id = userId });
-    }
 
    public async Task<IActionResult> OnPostDeleteAsync(string userId)
         {
@@ -302,28 +325,5 @@ await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
     return RedirectToPage(new { id = userId });
         }
 
-        private static string GenerateSecurePassword()
-        {
-     const string upperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-       const string lowerChars = "abcdefghjkmnpqrstuvwxyz";
-   const string digitChars = "23456789";
-            const string specialChars = "!@#$%&*";
-
-      var random = new Random();
-    var password = new char[12];
-
-    password[0] = upperChars[random.Next(upperChars.Length)];
-            password[1] = lowerChars[random.Next(lowerChars.Length)];
-      password[2] = digitChars[random.Next(digitChars.Length)];
-            password[3] = specialChars[random.Next(specialChars.Length)];
-
-         var allChars = upperChars + lowerChars + digitChars + specialChars;
-      for (int i = 4; i < password.Length; i++)
-   {
- password[i] = allChars[random.Next(allChars.Length)];
-     }
-
-     return new string(password.OrderBy(_ => random.Next()).ToArray());
-        }
     }
 }

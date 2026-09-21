@@ -173,10 +173,10 @@ Alert List
    </button>
          </form>
   }
-      <button type="button" class="btn-ids btn-ids-ghost btn-icon btn-icon-sm" title="View Details" 
-      onclick="viewAlertDetails(@alert.Id)">
-  <i class="fa-solid fa-eye"></i>
-     </button>
+      <a asp-page="/Admin/AlertDetails" asp-route-id="@alert.Id"
+         class="btn-ids btn-ids-ghost btn-icon btn-icon-sm" title="View Details" aria-label="View alert details">
+          <i class="fa-solid fa-eye"></i>
+      </a>
        </div>
      </td>
      </tr>
@@ -195,11 +195,3 @@ Alert List
      }
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        function viewAlertDetails(id) {
-     alert('View details for alert ' + id + ' - implement modal as needed');
-        }
-    </script>
-}

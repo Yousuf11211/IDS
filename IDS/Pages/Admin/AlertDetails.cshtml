@@ -1,0 +1,45 @@
+@page "{id:int}"
+@model IDS.Pages.Admin.AlertDetailsModel
+@{
+    ViewData["Title"] = "Alert Details";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title"><i class="fa-solid fa-shield-halved"></i> Alert Details</h1>
+        <p class="page-header-subtitle">Review the recorded event and its response status.</p>
+    </div>
+</div>
+
+<div class="card-ids">
+    <div class="card-ids-header">
+        <h2 class="card-ids-title">@Model.Alert.AlertType</h2>
+        <span class="status-badge @(Model.Alert.IsAcknowledged ? "status-normal" : "status-warning")">
+            @(Model.Alert.IsAcknowledged ? "Acknowledged" : "Pending")
+        </span>
+    </div>
+    <div class="card-ids-body">
+        <p>@Model.Alert.Message</p>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Severity</dt><dd class="col-sm-9">@Model.Alert.Severity</dd>
+            <dt class="col-sm-3">Detected at</dt><dd class="col-sm-9">@Model.Alert.Timestamp.ToString("u")</dd>
+            <dt class="col-sm-3">Source</dt><dd class="col-sm-9">@Model.Alert.SourceIP:@Model.Alert.SourcePort</dd>
+            <dt class="col-sm-3">Destination</dt><dd class="col-sm-9">@Model.Alert.DestinationIP:@Model.Alert.DestinationPort</dd>
+            <dt class="col-sm-3">Protocol</dt><dd class="col-sm-9">@Model.Alert.Protocol</dd>
+            @if (Model.Alert.IsAcknowledged)
+            {
+                <dt class="col-sm-3">Acknowledged at</dt>
+                <dd class="col-sm-9">@Model.Alert.AcknowledgedAt?.ToString("u")</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Alert.Notes))
+            {
+                <dt class="col-sm-3">Notes</dt><dd class="col-sm-9">@Model.Alert.Notes</dd>
+            }
+        </dl>
+    </div>
+    <div class="card-ids-footer">
+        <a asp-page="/Admin/Alerts" class="btn-ids btn-ids-secondary">
+            <i class="fa-solid fa-arrow-left"></i> Back to alerts
+        </a>
+    </div>
+</div>

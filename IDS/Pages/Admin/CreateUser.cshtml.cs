@@ -1,133 +1,119 @@
+using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
+using IDS.Data.Models;
+using IDS.Data.Services;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Threading.Tasks;
-using System.Linq;
-using IDS.Data;
-using IDS.Data.Models;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using IDS.Security;
-using IDS.Data.Services;
+using Microsoft.AspNetCore.WebUtilities;
 
-namespace IDS.Pages.Admin
+namespace IDS.Pages.Admin;
+
+[Authorize(Roles = AppRoles.Admin)]
+public class CreateUserModel : PageModel
 {
-    [Authorize(Roles = "Admin")]
-    public class CreateUserModel : PageModel
-  {
-        private readonly UserManager<ApplicationUser> _userManager;
-     private readonly RoleManager<IdentityRole> _roleManager;
-   private readonly ApplicationDbContext _db;
-private readonly AccessControlService _accessControl;
-   private readonly MailjetEmailSender _emailSender;
-        private readonly IConfiguration _configuration;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly AccessControlService _accessControl;
+    private readonly MailjetEmailSender _emailSender;
+    private readonly AccountLinkBuilder _accountLinks;
 
-        public CreateUserModel(
-            UserManager<ApplicationUser> userManager,
-      RoleManager<IdentityRole> roleManager,
-     ApplicationDbContext db,
+    public CreateUserModel(
+        UserManager<ApplicationUser> userManager,
         AccessControlService accessControl,
-            MailjetEmailSender emailSender,
-            IConfiguration configuration)
-   {
-    _userManager = userManager;
-         _roleManager = roleManager;
-            _db = db;
-   _accessControl = accessControl;
-      _emailSender = emailSender;
-            _configuration = configuration;
-   }
+        MailjetEmailSender emailSender,
+        AccountLinkBuilder accountLinks)
+    {
+        _userManager = userManager;
+        _accessControl = accessControl;
+        _emailSender = emailSender;
+        _accountLinks = accountLinks;
+    }
 
-        [BindProperty]
-        public InputModel Input { get; set; } = new();
+    [BindProperty]
+    public InputModel Input { get; set; } = new();
 
-     public List<string> AvailableRoles { get; set; } = AppRoles.All.ToList();
-   
-        /// <summary>
-     /// Indicates whether email sending is configured and enabled.
-    /// </summary>
-        public bool EmailEnabled => _emailSender.IsConfigured;
+    [TempData]
+    public string? StatusMessage { get; set; }
 
-        [TempData]
-        public string? StatusMessage { get; set; }
+    public IReadOnlyList<string> AvailableRoles =>
+        AppRoles.All.Where(role => role != AppRoles.Suspended).ToArray();
+    public bool InvitationsReady => _emailSender.IsConfigured && _accountLinks.IsConfigured;
 
-        public class InputModel
+    public class InputModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Role { get; set; } = string.Empty;
+
+        [Required, StringLength(100)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required, StringLength(100)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required, StringLength(80)]
+        public string Department { get; set; } = Departments.General;
+    }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        if (!Departments.IsKnown(Input.Department))
+            ModelState.AddModelError("Input.Department", "Choose a listed department.");
+
+        if (!AppRoles.IsManagedRole(Input.Role) || Input.Role == AppRoles.Suspended)
+            ModelState.AddModelError("Input.Role", "Choose a valid role.");
+
+        if (!InvitationsReady)
+            ModelState.AddModelError(string.Empty, "Configure email and PUBLIC_BASE_URL before inviting employees.");
+
+        if (!ModelState.IsValid)
+            return Page();
+
+        var email = Input.Email.Trim();
+        var user = new ApplicationUser
         {
-       public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-       public string Role { get; set; } = string.Empty;
-            public string FirstName { get; set; } = string.Empty;
-      public string LastName { get; set; } = string.Empty;
-  }
+            UserName = email,
+            Email = email,
+            EmailConfirmed = false,
+            FirstName = Input.FirstName.Trim(),
+            LastName = Input.LastName.Trim(),
+            Department = Input.Department,
+            MustChangePassword = true
+        };
 
-        public async Task OnGetAsync()
+        // The employee chooses their password from a single-use Identity link.
+        // A random initial password keeps the account unusable until then.
+        var initialPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
+        var result = await _userManager.CreateAsync(user, initialPassword);
+        if (!result.Succeeded)
         {
-    AvailableRoles = AppRoles.All.ToList();
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error.Description);
+            return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
- {
-       if (!ModelState.IsValid)
-            {
-   await OnGetAsync();
-         return Page();
-   }
-
-    // Create the user
-       var user = new ApplicationUser
-       {
-       UserName = Input.Email,
-           Email = Input.Email,
-    EmailConfirmed = true,
-    FirstName = Input.FirstName,
-      LastName = Input.LastName,
-         MustChangePassword = true // Force password change on first login
-  };
-
-       var result = await _userManager.CreateAsync(user, Input.Password);
-  if (!result.Succeeded)
-          {
-      foreach (var e in result.Errors)
-     {
-        ModelState.AddModelError(string.Empty, e.Description);
-       }
-     await OnGetAsync();
-  return Page();
-  }
-
-         // Assign role
-      if (!string.IsNullOrWhiteSpace(Input.Role))
- {
-      await _accessControl.EnsureRoleExistsAsync(Input.Role);
+        await _accessControl.EnsureRoleExistsAsync(Input.Role);
         await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
- }
 
-            // Send welcome email with temporary password using professional template
-            var loginUrl = $"{Request.Scheme}://{Request.Host}/Identity/Account/Login";
-            var userName = !string.IsNullOrEmpty(Input.FirstName) ? Input.FirstName : Input.Email.Split('@')[0];
-       
-            var (emailSuccess, emailError) = await _emailSender.SendTempPasswordEmailAsync(
-                toEmail: user.Email!,
-                userName: userName,
-                temporaryPassword: Input.Password,
-                loginUrl: loginUrl
-            );
-
-            if (emailSuccess)
-            {
-                StatusMessage = $"User {user.Email} created successfully. A welcome email has been sent.";
-            }
-            else
-            {
-                // If we know email is supposed to be enabled, show the error
-                if (EmailEnabled)
-                    StatusMessage = $"User created, but email failed: {emailError}. Please send credentials manually.";
-                else
-                    StatusMessage = $"User created. Email notifications are disabled: {emailError}";
-            }
-
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        var link = _accountLinks.PasswordResetLink(Url, encodedToken);
+        if (link == null)
+        {
+            StatusMessage = "User created, but the setup link could not be built. Check PUBLIC_BASE_URL and resend the link from the user's page.";
             return RedirectToPage("/Admin/UserList");
-  }
-}
+        }
+
+        var (sent, emailError) = await _emailSender.SendAccountAccessLinkAsync(
+            email, user.FirstName, link, isInvitation: true);
+        StatusMessage = sent
+            ? $"User {email} created. A password setup link was emailed to them."
+            : $"User {email} created, but the setup email failed: {emailError}. Resend the link from the user's page.";
+        return RedirectToPage("/Admin/UserList");
+    }
 }

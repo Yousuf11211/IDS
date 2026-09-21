@@ -192,7 +192,7 @@
           <a asp-page="/Support/ManageTicket" asp-route-id="@ticket.Id" class="btn-ids btn-ids-primary btn-icon btn-icon-sm" title="Manage">
     <i class="fa-solid fa-wrench"></i>
  </a>
-         @if (string.IsNullOrEmpty(ticket.AssignedToUserId))
+         @if (string.IsNullOrEmpty(ticket.AssignedToUserId) && ticket.Status != "Closed" && ticket.Status != "Resolved")
        {
         <form method="post" asp-page-handler="AssignToMe" style="display:inline;">
         <input type="hidden" name="ticketId" value="@ticket.Id" />

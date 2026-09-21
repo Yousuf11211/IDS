@@ -1,0 +1,85 @@
+@page "{id:long}"
+@model IDS.Pages.EscalateAttackModel
+@{
+    ViewData["Title"] = "Escalate Detection";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title"><i class="fa-solid fa-arrow-up-right-dots"></i> Escalate Detection</h1>
+        <p class="page-header-subtitle">Create a security incident for a high or critical detection.</p>
+    </div>
+</div>
+
+@if (Model.Attack != null)
+{
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card-ids">
+                <div class="card-ids-header">
+                    <h2 class="card-ids-title"><i class="fa-solid fa-shield-halved text-danger"></i> Detection details</h2>
+                </div>
+                <div class="card-ids-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Severity</dt><dd class="col-sm-8">@Model.Attack.Severity</dd>
+                        <dt class="col-sm-4">Attack type</dt><dd class="col-sm-8">@Model.Attack.AttackType</dd>
+                        <dt class="col-sm-4">Source</dt><dd class="col-sm-8"><code>@Model.Attack.SrcIp</code></dd>
+                        <dt class="col-sm-4">Destination port</dt><dd class="col-sm-8">@Model.Attack.DstPort</dd>
+                        <dt class="col-sm-4">Detected</dt><dd class="col-sm-8">@Model.Attack.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card-ids">
+                <div class="card-ids-header">
+                    <h2 class="card-ids-title"><i class="fa-solid fa-user-shield text-primary"></i> Incident response</h2>
+                </div>
+                <div class="card-ids-body">
+                    @if (Model.ExistingTicket != null)
+                    {
+                        <div class="alert-ids alert-ids-info">
+                            <div class="alert-ids-content">This detection has already been escalated as @Model.ExistingTicket.TicketNumber.</div>
+                        </div>
+                        @if (Model.ExistingTicket.SubmittedByUserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value || User.IsInRole("Support") || User.IsInRole("Admin"))
+                        {
+                            <a asp-page="/ViewTicket" asp-route-id="@Model.ExistingTicket.Id" class="btn-ids btn-ids-primary w-100">View incident</a>
+                        }
+                    }
+                    else if (Model.Responders.Count == 0)
+                    {
+                        <div class="alert-ids alert-ids-warning">
+                            <div class="alert-ids-content">No Support or Admin responder is available. Contact your administrator.</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <form method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ResponderId" class="form-label-ids">Assign to responder</label>
+                                <select asp-for="Input.ResponderId" class="form-control-ids form-select-ids">
+                                    <option value="">Choose a responder</option>
+                                    @foreach (var responder in Model.Responders)
+                                    {
+                                        <option value="@responder.Id">@responder.Name (@responder.Role)</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.ResponderId" class="text-danger"></span>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Reason" class="form-label-ids">Reason for escalation</label>
+                                <textarea asp-for="Input.Reason" class="form-control-ids" rows="5" maxlength="2000" placeholder="Describe what needs investigation and any impact you observed."></textarea>
+                                <span asp-validation-for="Input.Reason" class="text-danger"></span>
+                            </div>
+                            <button type="submit" class="btn-ids btn-ids-primary w-100">Create and assign incident</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<a asp-page="/LiveDashboard" class="btn-ids btn-ids-secondary mt-4"><i class="fa-solid fa-arrow-left me-2"></i> Back to live feed</a>

@@ -81,7 +81,13 @@ namespace IDS.Data.Models
         /// Name of the support staff assigned.
       /// </summary>
         [MaxLength(200)]
-     public string? AssignedToName { get; set; }
+        public string? AssignedToName { get; set; }
+
+        /// <summary>
+        /// Detection that prompted this ticket, when it was raised from the live feed.
+        /// A unique index ensures one incident ticket per detected attack.
+        /// </summary>
+        public long? SourceAttackId { get; set; }
 
         /// <summary>
   /// When the ticket was created.

@@ -1,25 +1,37 @@
-﻿@page
+@page
 @model ShowRecoveryCodesModel
 @{
-    ViewData["Title"] = "Recovery codes";
-    ViewData["ActivePage"] = "TwoFactorAuthentication";
+    ViewData["Title"] = "Save recovery codes";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
 }
 
-<partial name="_StatusMessage" for="StatusMessage" />
-<h3>@ViewData["Title"]</h3>
-<div class="alert alert-warning" role="alert">
-    <p>
-        <strong>Put these codes in a safe place.</strong>
-    </p>
-    <p>
-        If you lose your device and don't have the recovery codes you will lose access to your account.
-    </p>
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title"><i class="fa-solid fa-key" aria-hidden="true"></i> Save your recovery codes</h1>
+        <p class="page-header-subtitle">Each code can be used once if you cannot access your authenticator.</p>
+    </div>
 </div>
-<div class="row">
-    <div class="col-md-12">
-        @for (var row = 0; row < Model.RecoveryCodes.Length; row += 2)
-        {
-            <code class="recovery-code">@Model.RecoveryCodes[row]</code><text>&nbsp;</text><code class="recovery-code">@Model.RecoveryCodes[row + 1]</code><br />
-        }
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<div class="card-ids" style="max-width: 680px;">
+    <div class="card-ids-body">
+        <div class="alert-ids alert-ids-warning mb-4" role="alert">
+            <i class="alert-ids-icon fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <div class="alert-ids-content">Store these codes in a secure password manager. They will not be shown again.</div>
+        </div>
+
+        <div class="row g-2 mb-4" aria-label="Recovery codes">
+            @foreach (var code in Model.RecoveryCodes)
+            {
+                <div class="col-sm-6">
+                    <code class="d-block p-3 rounded text-center" style="background: var(--bg-tertiary); color: var(--text-primary); font-size: 1rem;">@code</code>
+                </div>
+            }
+        </div>
+
+        <a asp-page="/Index" asp-area="" class="btn-ids btn-ids-primary d-inline-flex align-items-center justify-content-center">
+            Continue to dashboard
+        </a>
     </div>
 </div>

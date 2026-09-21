@@ -1,0 +1,86 @@
+@page
+@model IDS.Pages.ChatModel
+@{
+    ViewData["Title"] = "Employee Chat";
+}
+
+@section HeadContent {
+    <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
+}
+
+<div class="chat-page" data-current-user="@Model.CurrentUserId">
+    <div class="chat-heading">
+        <div>
+            <p class="chat-eyebrow">Employee workspace</p>
+            <h1>Messages</h1>
+            <p>Direct conversations with colleagues, organized by department.</p>
+        </div>
+        <div class="chat-status" id="chatConnectionStatus" role="status">Connecting…</div>
+    </div>
+
+    <div class="chat-notice" role="note">
+        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+        <div><strong>Encrypted chat preview.</strong> Message text is encrypted in this browser before sending.
+            Compare a colleague's key fingerprint using a trusted channel before starting a conversation.
+            Keys remain on this browser; losing browser storage loses access to message history.
+            A security review is required before company rollout.</div>
+    </div>
+
+    <div id="chatError" class="chat-error" role="alert" hidden></div>
+
+    <div class="chat-shell">
+        <aside class="chat-directory" aria-label="Employee directory">
+            <div class="chat-directory-header">
+                <div class="chat-panel-title">
+                    <h2>Colleagues</h2>
+                    <span id="chatUnreadCount" class="chat-count" hidden>0</span>
+                </div>
+                <label for="departmentFilter">Department</label>
+                <select id="departmentFilter" class="form-select" aria-label="Filter employees by department">
+                    <option value="">All departments</option>
+                </select>
+            </div>
+            <div id="chatEmployees" class="chat-employees" role="listbox" aria-label="Employees"></div>
+            <div class="chat-key-info">
+                <span>Your key fingerprint</span>
+                <code id="ownFingerprint">Preparing…</code>
+            </div>
+        </aside>
+
+        <section class="chat-conversation" aria-label="Conversation">
+            <header class="chat-conversation-header">
+                <div>
+                    <h2 id="chatPeerName">Select a colleague</h2>
+                    <span id="chatPeerDepartment">Choose a person from the directory to view messages.</span>
+                </div>
+                <button type="button" id="chatEnableNotifications" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-regular fa-bell" aria-hidden="true"></i> Enable alerts
+                </button>
+            </header>
+
+            <div id="chatVerify" class="chat-verify" hidden>
+                <strong>Verify this colleague's key</strong>
+                <p>Compare this fingerprint with the colleague in person or on another trusted channel:</p>
+                <code id="chatPeerFingerprint"></code>
+                <button type="button" id="chatConfirmFingerprint" class="btn btn-primary btn-sm">I verified this fingerprint</button>
+            </div>
+
+            <div id="chatMessages" class="chat-messages" aria-live="polite">
+                <p class="chat-placeholder">Your conversation will appear here.</p>
+            </div>
+
+            <form id="chatCompose" class="chat-compose">
+                <label class="visually-hidden" for="chatText">Message</label>
+                <textarea id="chatText" class="form-control" maxlength="2000" rows="2"
+                          placeholder="Write a message…" disabled></textarea>
+                <button type="submit" id="chatSend" class="btn btn-primary" disabled>
+                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send
+                </button>
+            </form>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/chat.js" asp-append-version="true" defer></script>
+}

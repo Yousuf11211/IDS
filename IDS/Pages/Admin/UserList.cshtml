@@ -33,7 +33,7 @@
 <div class="card-ids mb-4">
     <div class="card-ids-body">
   <form method="get" class="row g-3 align-items-end">
-  <div class="col-md-4">
+  <div class="col-md-3">
    <label class="form-label-ids">Filter by Role</label>
     <select name="role" class="form-control-ids form-select-ids">
     <option value="">All Roles</option>
@@ -43,11 +43,21 @@
    }
    </select>
  </div>
- <div class="col-md-4">
+ <div class="col-md-3">
+    <label class="form-label-ids">Department</label>
+    <select name="department" class="form-control-ids form-select-ids">
+        <option value="">All Departments</option>
+        @foreach (var department in IDS.Security.Departments.All)
+        {
+            <option value="@department" selected="@(Request.Query["department"] == department)">@department</option>
+        }
+    </select>
+</div>
+<div class="col-md-3">
 <label class="form-label-ids">Search</label>
   <input type="text" name="search" value="@Request.Query["search"]" class="form-control-ids" placeholder="Search by email...">
      </div>
-     <div class="col-md-4 d-flex gap-2">
+     <div class="col-md-3 d-flex gap-2">
  <button type="submit" class="btn-ids btn-ids-primary">
 <i class="fa-solid fa-filter"></i> Apply Filter
     </button>
@@ -127,6 +137,7 @@
 <th style="width: 60px;">Avatar</th>
 <th>User</th>
 <th style="width: 120px;">Role</th>
+<th>Department</th>
 <th style="width: 100px;">Actions</th>
  </tr>
      </thead>
@@ -167,6 +178,7 @@
  <td>
    <span class="role-badge @roleClass">@(!string.IsNullOrEmpty(u.CurrentRole) ? u.CurrentRole : "None")</span>
      </td>
+  <td>@u.Department</td>
   <td onclick="event.stopPropagation();">
     <a asp-page="/Admin/EditUser" asp-route-id="@u.Id" class="btn-ids btn-ids-primary btn-icon btn-icon-sm" title="Edit User">
  <i class="fa-solid fa-pen-to-square"></i>

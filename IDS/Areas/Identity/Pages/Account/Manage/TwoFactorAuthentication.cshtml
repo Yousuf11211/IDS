@@ -81,41 +81,9 @@
    </div>
            }
 
-  <!-- Browser Remembered -->
-   @if (Model.IsMachineRemembered)
-   {
-      <div class="alert-ids alert-ids-info mb-4">
-    <i class="alert-ids-icon fa-solid fa-desktop"></i>
-         <div class="alert-ids-content">
- <strong>This browser is remembered.</strong> You won't be asked for 2FA codes on this device.
-       </div>
-     </div>
-   <form method="post" class="mb-4">
-        <button type="submit" class="btn-ids btn-ids-secondary">
-   <i class="fa-solid fa-eraser me-2"></i>
-    <span>Forget This Browser</span>
-   </button>
-           </form>
-    }
-
        <!-- Action Buttons -->
      <div class="d-flex flex-wrap gap-2">
-        @if (Model.IsAdmin)
-      {
-     <a asp-page="./Disable2fa" class="btn-ids btn-ids-danger">
-   <i class="fa-solid fa-shield-xmark me-2"></i>
-        <span>Disable 2FA</span>
- </a>
-      }
-  else
-    {
-  <div class="alert-ids alert-ids-info mb-0" style="flex: 1 1 100%;">
-     <i class="alert-ids-icon fa-solid fa-info-circle"></i>
-       <div class="alert-ids-content">
-  Only administrators can disable two-factor authentication. Contact an admin if you need to disable 2FA.
-   </div>
-    </div>
-  }
+        <p class="text-muted mb-2" style="flex: 1 1 100%;">Two-factor authentication is required for every account.</p>
  <a asp-page="./GenerateRecoveryCodes" class="btn-ids btn-ids-secondary">
      <i class="fa-solid fa-key me-2"></i>
       <span>Reset Recovery Codes</span>
@@ -141,7 +109,7 @@
       <div class="alert-ids alert-ids-warning mb-4">
     <i class="alert-ids-icon fa-solid fa-lightbulb"></i>
   <div class="alert-ids-content">
-      <strong>Recommended:</strong> Enable 2FA to add an extra layer of security. Even if someone gets your password, they won't be able to access your account without your phone.
+      <strong>Required:</strong> Enable 2FA to protect your company account. Even if someone gets your password, they won't be able to access your account without your phone.
   </div>
  </div>
           }

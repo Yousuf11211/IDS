@@ -14,8 +14,8 @@
             <h1 class="login-title">Two-Factor Authentication</h1>
             <p class="login-subtitle">Enter the 6-digit code from your authenticator app</p>
 
-         <form method="post" asp-route-returnUrl="@Model.ReturnUrl" id="2fa-form">
-<input asp-for="RememberMe" type="hidden" />
+         <form method="post" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" id="2fa-form">
+
         <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-3" role="alert"></div>
 
    <!-- 6 Individual Digit Boxes -->
@@ -32,14 +32,7 @@
     <input asp-for="Input.TwoFactorCode" type="hidden" id="TwoFactorCode" />
         <span asp-validation-for="Input.TwoFactorCode" class="form-error text-center d-block mb-3"></span>
 
-    <div class="form-check mb-4 text-start">
-  <input asp-for="Input.RememberMachine" class="form-check-input" />
-      <label asp-for="Input.RememberMachine" class="form-check-label">
-     Don't ask again on this device
- </label>
-    </div>
-
-      <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100">
+      <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100 d-flex align-items-center justify-content-center">
            <i class="fa-solid fa-unlock me-2"></i>
                <span>Verify & Sign In</span>
         </button>

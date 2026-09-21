@@ -30,14 +30,14 @@
 
  <form id="account" method="post">
     <div class="form-group">
-       <label asp-for="Input.Email" class="form-label-ids">Email Address</label>
+       <label asp-for="Input.Email" class="form-label-ids">Email or username</label>
         <div class="input-group" style="position: relative;">
                 <span class="input-group-text" style="background: var(--bg-tertiary); border-color: var(--border-color); z-index: 1;">
               <i class="fa-solid fa-envelope text-muted"></i>
       </span>
          <input asp-for="Input.Email" class="form-control-ids" 
     style="border-top-left-radius: 0; border-bottom-left-radius: 0; position: relative; z-index: 1;" 
-   autocomplete="username" aria-required="true" placeholder="you@example.com" />
+   autocomplete="username" aria-required="true" placeholder="Email or username" />
   </div>
          <span asp-validation-for="Input.Email" class="form-error"></span>
          </div>
@@ -65,7 +65,7 @@ type="password" autocomplete="current-password" aria-required="true" placeholder
         </a>
                 </div>
 
-     <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100" style="position: relative; z-index: 1;">
+     <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100 d-flex align-items-center justify-content-center" style="position: relative; z-index: 1;">
     <i class="fa-solid fa-right-to-bracket me-2"></i> Sign In
          </button>
             </form>

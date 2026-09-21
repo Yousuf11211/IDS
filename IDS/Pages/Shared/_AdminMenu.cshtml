@@ -1,6 +1,4 @@
 ﻿@* Admin menu partial: shows only for authenticated Admin users *@
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
 
 @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
 {

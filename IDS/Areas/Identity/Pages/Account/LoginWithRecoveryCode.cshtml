@@ -1,26 +1,35 @@
-﻿@page
+@page
 @model LoginWithRecoveryCodeModel
 @{
     ViewData["Title"] = "Recovery code verification";
+    ViewData["NoContainer"] = true;
 }
 
-<h1>@ViewData["Title"]</h1>
-<hr />
-<p>
-    You have requested to log in with a recovery code. This login will not be remembered until you provide
-    an authenticator app code at log in or disable 2FA and log in again.
-</p>
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.RecoveryCode" class="form-control" autocomplete="off" placeholder="RecoveryCode" />
-                <label asp-for="Input.RecoveryCode" class="form-label"></label>
-                <span asp-validation-for="Input.RecoveryCode" class="text-danger"></span>
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-        </form>
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-logo"><i class="fa-solid fa-key" aria-hidden="true"></i></div>
+            <h1 class="login-title">Use a recovery code</h1>
+            <p class="login-subtitle">Enter one of the single-use codes you saved when you set up your authenticator.</p>
+
+            <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
+                <div asp-validation-summary="ModelOnly" class="alert-ids alert-ids-danger mb-3" role="alert"></div>
+                <div class="form-group">
+                    <label asp-for="Input.RecoveryCode" class="form-label-ids">Recovery code</label>
+                    <input asp-for="Input.RecoveryCode" class="form-control-ids" autocomplete="off" aria-required="true" />
+                    <span asp-validation-for="Input.RecoveryCode" class="form-error"></span>
+                </div>
+                <button type="submit" class="btn-ids btn-ids-primary btn-ids-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                    <i class="fa-solid fa-unlock" aria-hidden="true"></i>
+                    <span>Verify and sign in</span>
+                </button>
+            </form>
+
+            <a asp-page="./LoginWith2fa" asp-route-returnUrl="@Model.ReturnUrl"
+               class="btn-ids btn-ids-secondary w-100 mt-3 d-flex align-items-center justify-content-center">
+                Use authenticator code
+            </a>
+        </div>
     </div>
 </div>
 

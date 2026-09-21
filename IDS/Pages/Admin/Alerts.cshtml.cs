@@ -70,7 +70,7 @@ namespace IDS.Pages.Admin
   }
 
             Alerts = await query
-       .OrderByDescending(a => a.Severity == "Critical" ? 0 : a.Severity == "High" ? 1 : 2)
+       .OrderBy(a => a.Severity == "Critical" ? 0 : a.Severity == "High" ? 1 : 2)
         .ThenByDescending(a => a.Timestamp)
        .Take(200)
          .ToListAsync();
