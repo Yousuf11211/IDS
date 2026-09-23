@@ -1,7 +1,24 @@
 # Database Setup Guide for Live Detection Tables
 # ==============================================
 
-## Overview
+## Apply application schema updates
+
+The repository includes the migrations needed by the current application. In Development,
+startup applies pending migrations before querying users or seeding accounts. For a deployed
+database, run this command from the solution directory with the application's database
+configuration, then start the application:
+
+```powershell
+dotnet run --project IDS/IDS.csproj --no-launch-profile -- --migrate-only
+```
+
+This command applies pending EF migrations and exits without seeding accounts or starting
+the web server. `20260920121000_AddEncryptedEmployeeChat` adds `AspNetUsers.Department`
+and assigns `General` to existing employees. It is required even when chat is disabled,
+because departments are also used by employee administration. Do not add the column
+manually or generate another migration for this update.
+
+## Detection data
 
 This IDS web application **reads** from two database tables that are **written to by your external detection pipeline**:
 
@@ -36,8 +53,7 @@ This IDS web application **reads** from two database tables that are **written t
 Run these commands in Visual Studio Package Manager Console:
 
 ```powershell
-Add-Migration AddDetectionTables
-Update-Database
+Update-Database -Project IDS -StartupProject IDS
 ```
 
 ### Option 2: Create Tables Manually (SQL Server)

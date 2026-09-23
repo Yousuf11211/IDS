@@ -144,7 +144,7 @@ namespace IDS.Data.Migrations
                     b.Property<string>("RecipientCiphertext")
                         .IsRequired()
                         .HasMaxLength(8192)
-                        .HasColumnType("nvarchar(8192)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RecipientId")
                         .IsRequired()
@@ -167,7 +167,7 @@ namespace IDS.Data.Migrations
                     b.Property<string>("SenderCiphertext")
                         .IsRequired()
                         .HasMaxLength(8192)
-                        .HasColumnType("nvarchar(8192)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SenderId")
                         .IsRequired()

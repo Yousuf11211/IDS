@@ -41,8 +41,9 @@ public sealed class AddEncryptedEmployeeChat : Migration
                 SenderId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
                 RecipientId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
                 ClientMessageId = table.Column<string>(type: "nvarchar(36)", maxLength: 36, nullable: false),
-                SenderCiphertext = table.Column<string>(type: "nvarchar(8192)", maxLength: 8192, nullable: false),
-                RecipientCiphertext = table.Column<string>(type: "nvarchar(8192)", maxLength: 8192, nullable: false),
+                // SQL Server requires nvarchar(max) for Unicode values longer than 4,000 characters.
+                SenderCiphertext = table.Column<string>(type: "nvarchar(max)", maxLength: 8192, nullable: false),
+                RecipientCiphertext = table.Column<string>(type: "nvarchar(max)", maxLength: 8192, nullable: false),
                 SenderNonce = table.Column<string>(type: "nvarchar(24)", maxLength: 24, nullable: false),
                 RecipientNonce = table.Column<string>(type: "nvarchar(24)", maxLength: 24, nullable: false),
                 SenderKeyFingerprint = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),

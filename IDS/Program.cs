@@ -114,12 +114,43 @@ builder.Services.AddHostedService<DetectionMonitorService>();
 var app = builder.Build();
 
 // =====================================================
-// Seed Roles and Admin User
+// Prepare the database before Identity queries mapped user columns.
 // =====================================================
+var migrateOnly = args.Contains("--migrate-only", StringComparer.OrdinalIgnoreCase);
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    await SeedRolesAndAdminAsync(services);
+    var database = services.GetRequiredService<ApplicationDbContext>().Database;
+
+    // Local development stays in sync with model changes. Deployed databases are
+    // upgraded explicitly with --migrate-only before starting application instances.
+    if (app.Environment.IsDevelopment() || migrateOnly)
+    {
+        await database.MigrateAsync();
+    }
+    else
+    {
+        var pendingMigrations = (await database.GetPendingMigrationsAsync()).ToArray();
+        if (pendingMigrations.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"The IDS database has pending migrations: {string.Join(", ", pendingMigrations)}. " +
+                "Run 'dotnet run --project IDS/IDS.csproj --no-launch-profile -- --migrate-only' " +
+                "from the solution directory before starting the application.");
+        }
+    }
+
+    if (!migrateOnly)
+    {
+        await SeedRolesAndAdminAsync(services);
+    }
+}
+
+if (migrateOnly)
+{
+    app.Logger.LogInformation("IDS database migrations completed successfully.");
+    await app.DisposeAsync();
+    return;
 }
 
 async Task SeedRolesAndAdminAsync(IServiceProvider services)
