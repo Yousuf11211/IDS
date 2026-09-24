@@ -19,6 +19,7 @@ namespace IDS.Data
         public DbSet<DashboardMetrics> DashboardMetrics { get; set; } = null!;
         public DbSet<SupportTicket> SupportTickets { get; set; } = null!;
         public DbSet<TicketComment> TicketComments { get; set; } = null!;
+        public DbSet<SecurityChangeRequest> SecurityChangeRequests { get; set; } = null!;
         
         // Live Detection Tables - populated by external detection pipeline
         public DbSet<BenignTraffic> BenignTraffic { get; set; } = null!;
