@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace IDS.Areas.Identity.Pages.Account.Manage;
 
 [Authorize]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class GenerateRecoveryCodesModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -36,6 +37,9 @@ public class GenerateRecoveryCodesModel : PageModel
         [DataType(DataType.Password)]
         [Display(Name = "Current password")]
         public string Password { get; set; } = string.Empty;
+        [Required, StringLength(7, MinimumLength = 6)]
+        [Display(Name = "Current authenticator code")]
+        public string Code { get; set; } = string.Empty;
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -69,11 +73,16 @@ public class GenerateRecoveryCodesModel : PageModel
             return Page();
         }
 
-        if (!await _userManager.CheckPasswordAsync(user, Input.Password))
+        if (await _userManager.IsLockedOutAsync(user)) return Forbid();
+        if (!await _userManager.CheckPasswordAsync(user, Input.Password) ||
+            !await _userManager.VerifyTwoFactorTokenAsync(user, _userManager.Options.Tokens.AuthenticatorTokenProvider,
+                Input.Code.Replace(" ", "").Replace("-", "")))
         {
-            ModelState.AddModelError(string.Empty, "The current password is incorrect.");
+            await _userManager.AccessFailedAsync(user);
+            ModelState.AddModelError(string.Empty, "The password or authenticator code is incorrect.");
             return Page();
         }
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         var codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
         if (codes == null)
