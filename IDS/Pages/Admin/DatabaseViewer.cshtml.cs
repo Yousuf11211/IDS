@@ -64,17 +64,11 @@ namespace IDS.Pages.Admin
      {
             var tableNames = new List<string>
     {
-             "AspNetUsers",
-       "AspNetRoles",
-     "AspNetUserRoles",
-            "AspNetUserClaims",
-         "AspNetUserLogins",
-                "AspNetUserTokens",
-         "AspNetRoleClaims",
+             // Identity tables contain password hashes, authenticator keys and recovery codes.
+             // Account management exposes only the fields needed by administrators.
      "LogFiles",
           "SecurityAlerts",
      "NetworkEvents",
-       "SystemSettings",
  "AuditLogs",
         "DashboardMetrics",
       "SupportTickets",
