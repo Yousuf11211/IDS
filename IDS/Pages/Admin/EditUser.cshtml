@@ -186,13 +186,8 @@
    </button>
     }
         
-  @if (!Model.IsCurrentUser)
-    {
-  <!-- Delete User -->
-    <button type="button" class="btn-ids btn-ids-danger w-100" onclick="showConfirmModal('delete', 'Delete User', 'Are you sure you want to permanently delete this user? This action cannot be undone.')">
-<i class="fa-solid fa-trash me-2"></i> Delete User
-        </button>
-  }
+  <a asp-page="/Admin/Security" class="btn-ids btn-ids-secondary w-100"><i class="fa-solid fa-shield-halved me-2"></i> Account security controls</a>
+  <p class="small text-muted mb-0">Suspend an account to remove access while retaining its incident and audit history.</p>
         </div>
           </div>
     </div>
