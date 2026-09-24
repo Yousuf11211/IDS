@@ -1,0 +1,145 @@
+@page
+@model IDS.Pages.Admin.SecurityModel
+@using IDS.Security
+@{ ViewData["Title"] = "Security controls"; }
+
+<div class="page-header"><div class="page-header-hero">
+    <h1 class="page-header-title"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Security controls</h1>
+    <p class="page-header-subtitle">Control employee features, recover access, and review changes with another administrator.</p>
+</div></div>
+
+@if (Model.StatusMessage != null)
+{
+    <div class="alert-ids @(Model.StatusMessage.StartsWith("Error:") ? "alert-ids-danger" : "alert-ids-info") mb-4" role="status">@Model.StatusMessage</div>
+}
+@if (Model.EligibleAdministrators < 2)
+{
+    <div class="alert-ids alert-ids-warning mb-4" role="status">
+        Sensitive changes need two separate administrators with completed authenticator setup. Ask the deployment operator to provision a second administrator. Requests remain pending until another eligible administrator approves them.
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-12"><div class="card-ids"><div class="card-ids-body p-4">
+        <h2 class="h5">Employee authenticator testing bypass <span class="badge @(Model.Policy.EmployeeMfaTestBypass ? "bg-warning text-dark" : "bg-secondary")">@(Model.Policy.EmployeeMfaTestBypass ? "Active" : "Off")</span></h2>
+        <p class="text-muted">Skip employee and support authenticator prompts during local testing, including accounts already enrolled. Administrator codes are always required. Authenticator keys and recovery codes are preserved.</p>
+        @if (Model.AllowsTestingBypass)
+        {
+            <form method="post" asp-page-handler="@(Model.Policy.EmployeeMfaTestBypass ? "Disable" : "Request")">
+                <input type="hidden" name="key" value="@SecurityPolicyService.EmployeeMfaBypassKey" />
+                <input type="hidden" name="action" value="@SecurityActions.EnableEmployeeMfaBypass" />
+                <label for="testingReason" class="form-label-ids">Testing reason</label>
+                <textarea id="testingReason" name="reason" class="form-control-ids mb-3" required minlength="10" maxlength="1000" rows="2"></textarea>
+                <button type="submit" class="btn-ids @(Model.Policy.EmployeeMfaTestBypass ? "btn-ids-success" : "btn-ids-warning")">@(Model.Policy.EmployeeMfaTestBypass ? "Restore employee 2FA checks" : "Request testing bypass")</button>
+            </form>
+            <p class="small text-muted mt-3 mb-0">Enabling needs a second administrator's approval. Restoring checks ends sessions created with the bypass and requires unenrolled employees to complete setup.</p>
+        }
+        else
+        {
+            <p class="mb-0">Unavailable in this environment. The bypass works only in Development mode and is ignored in production.</p>
+        }
+    </div></div></div>
+    <div class="col-lg-6"><div class="card-ids h-100"><div class="card-ids-body p-4">
+        <h2 class="h5">Employee messaging <span class="badge @(Model.Policy.MessagingEnabled ? "bg-success" : "bg-secondary")">@(Model.Policy.MessagingEnabled ? "Enabled" : "Disabled")</span></h2>
+        <p class="text-muted">Disable immediately during an incident. Enabling requires approval by a different administrator.</p>
+        <p class="small">Messaging is an encrypted thesis preview. It has no key recovery, multiple-device support, or forward secrecy and needs an independent security review before company use.</p>
+        <form method="post" asp-page-handler="@(Model.Policy.MessagingEnabled ? "Disable" : "Request")">
+            <input type="hidden" name="key" value="@SecurityPolicyService.MessagingKey" />
+            <input type="hidden" name="action" value="@SecurityActions.EnableMessaging" />
+            <label for="messagingReason" class="form-label-ids">Reason</label>
+            <textarea id="messagingReason" name="reason" class="form-control-ids mb-3" required minlength="10" maxlength="1000" rows="2"></textarea>
+            @if (!Model.Policy.MessagingEnabled)
+            {
+                <label class="d-flex align-items-start gap-2 mb-3"><input type="checkbox" name="acceptPreview" value="true" required class="mt-1" />I understand the preview limitations and have reviewed the intended use.</label>
+            }
+            <button type="submit" class="btn-ids @(Model.Policy.MessagingEnabled ? "btn-ids-warning" : "btn-ids-primary")">@(Model.Policy.MessagingEnabled ? "Disable messaging" : "Request messaging access")</button>
+        </form>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card-ids h-100"><div class="card-ids-body p-4">
+        <h2 class="h5">Employee invitations <span class="badge @(Model.Policy.EmployeeInvitationsEnabled ? "bg-success" : "bg-secondary")">@(Model.Policy.EmployeeInvitationsEnabled ? "Enabled" : "Disabled")</span></h2>
+        <p class="text-muted">Pause creation of new employee accounts. Existing accounts and password recovery remain available. Enabling requires a second administrator.</p>
+        <form method="post" asp-page-handler="@(Model.Policy.EmployeeInvitationsEnabled ? "Disable" : "Request")">
+            <input type="hidden" name="key" value="@SecurityPolicyService.InvitationsKey" />
+            <input type="hidden" name="action" value="@SecurityActions.EnableInvitations" />
+            <label for="invitationReason" class="form-label-ids">Reason</label>
+            <textarea id="invitationReason" name="reason" class="form-control-ids mb-3" required minlength="10" maxlength="1000" rows="2"></textarea>
+            <button type="submit" class="btn-ids @(Model.Policy.EmployeeInvitationsEnabled ? "btn-ids-warning" : "btn-ids-primary")">@(Model.Policy.EmployeeInvitationsEnabled ? "Pause invitations" : "Request invitations")</button>
+        </form>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card-ids h-100"><div class="card-ids-body p-4">
+        <h2 class="h5">Authenticator recovery and admin access</h2>
+        <p class="text-muted">Resetting an employee's authenticator invalidates its key, recovery codes, and sessions. The employee must enroll again when the testing bypass is off. Verify the employee's identity through your company recovery process first.</p>
+        <form method="post" asp-page-handler="Request">
+            <label for="accountAction" class="form-label-ids">Action</label>
+            <select id="accountAction" name="action" class="form-control-ids mb-3">
+                <option value="@SecurityActions.ResetAuthenticator">Reset an employee's authenticator</option>
+                <option value="@SecurityActions.GrantAdmin">Grant administrator access</option>
+            </select>
+            <label for="recoveryEmployee" class="form-label-ids">Employee</label>
+            <select id="recoveryEmployee" name="targetId" class="form-control-ids mb-3" required>
+                <option value="">Select an employee</option>
+                @foreach (var employee in Model.Employees) { <option value="@employee.Id">@employee.Email</option> }
+            </select>
+            <label for="recoveryReason" class="form-label-ids">Reason and recovery reference</label>
+            <textarea id="recoveryReason" name="reason" class="form-control-ids mb-3" required minlength="10" maxlength="1000" rows="2" placeholder="Record the ticket/reference, not passwords or identity documents."></textarea>
+            <button type="submit" class="btn-ids btn-ids-primary">Request second-admin approval</button>
+        </form>
+        <p class="small text-muted mt-3 mb-0">Existing administrators cannot be reset, reassigned, or deleted by another administrator through employee management. Administrator recovery is handled by the deployment operator.</p>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card-ids h-100"><div class="card-ids-body p-4">
+        <h2 class="h5">Revoke active sessions</h2>
+        <p class="text-muted">Sign an account out across browsers. Live connections are rechecked every five seconds. This does not prevent a fresh login; suspend an employee account if ongoing access must be blocked.</p>
+        <form method="post" asp-page-handler="Revoke">
+            <label for="sessionEmployee" class="form-label-ids">Account</label>
+            <select id="sessionEmployee" name="targetId" class="form-control-ids mb-3" required>
+                <option value="">Select an account</option>
+                @foreach (var employee in Model.Employees) { <option value="@employee.Id">@employee.Email</option> }
+            </select>
+            <label for="sessionReason" class="form-label-ids">Reason</label>
+            <textarea id="sessionReason" name="reason" class="form-control-ids mb-3" required minlength="10" maxlength="1000" rows="2"></textarea>
+            <button type="submit" class="btn-ids btn-ids-warning">Revoke sessions</button>
+        </form>
+        <hr />
+        <h3 class="h6">Required protections</h3>
+        <p class="small text-muted mb-0">Admin 2FA, five-minute admin verification, approval separation, and security audit history cannot be disabled here.</p>
+    </div></div></div>
+</div>
+
+<div class="card-ids mt-4"><div class="card-ids-body p-4">
+    <h2 class="h5">Change requests</h2>
+    <p class="text-muted">Requests expire after 24 hours. Review the target and reason before approving. A requester cannot approve their own change.</p>
+    <div class="table-responsive"><table class="table align-middle">
+        <thead><tr><th>Change</th><th>Requested by</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead>
+        <tbody>
+        @foreach (var request in Model.Requests)
+        {
+            var pending = request.Status == "Pending" && request.ExpiresAtUtc > DateTime.UtcNow;
+            <tr>
+                <td><strong>@SecurityActions.Label(request.Action)</strong><div class="small">@request.TargetEmail</div><div class="small text-muted">#@request.Id · @request.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</div></td>
+                <td>@request.RequestedByEmail</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">@request.Reason</td>
+                <td>@(request.Status == "Pending" && !pending ? "Expired" : request.Status)</td>
+                <td>@if (pending)
+                {
+                    <form method="post" asp-page-handler="Review" class="d-flex gap-2">
+                        <input type="hidden" name="requestId" value="@request.Id" />
+                        @if (request.RequestedById != Model.ActorId) { <button name="approve" value="true" class="btn-ids btn-ids-success btn-ids-sm">Approve</button> }
+                        <button name="approve" value="false" class="btn-ids btn-ids-secondary btn-ids-sm">@(request.RequestedById == Model.ActorId ? "Cancel" : "Reject")</button>
+                    </form>
+                }</td>
+            </tr>
+        }
+        @if (Model.Requests.Count == 0) { <tr><td colspan="5" class="text-muted">No security changes requested.</td></tr> }
+        </tbody>
+    </table></div>
+</div></div>
+
+<div class="card-ids mt-4"><div class="card-ids-body p-4">
+    <h2 class="h5">Security audit history</h2><p class="text-muted">Latest 100 security events. Audit records cannot be edited from the application.</p>
+    <div class="table-responsive"><table class="table">
+        <thead><tr><th>Time (UTC)</th><th>Administrator</th><th>Action</th><th>Details</th></tr></thead>
+        <tbody>@foreach (var entry in Model.Audit)
+        {
+            <tr><td>@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td><td>@entry.UserEmail</td><td>@entry.Action</td><td style="overflow-wrap:anywhere">@entry.EntityType @entry.EntityId<br />@entry.Details</td></tr>
+        }</tbody>
+    </table></div>
+</div></div>
