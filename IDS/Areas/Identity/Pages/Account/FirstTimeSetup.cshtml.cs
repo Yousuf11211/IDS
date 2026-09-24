@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using IDS.Data.Models;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,13 +13,15 @@ public class FirstTimeSetupModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly SecurityPolicyService _policies;
 
     public FirstTimeSetupModel(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager, SecurityPolicyService policies)
     {
         _userManager = userManager;
         _signInManager = signInManager;
+        _policies = policies;
     }
 
     [BindProperty]
@@ -112,8 +115,8 @@ public class FirstTimeSetupModel : PageModel
 
     private async Task<IActionResult> NextSetupStepAsync(ApplicationUser user)
     {
-        // The account stays in onboarding until an authenticator code has been verified.
-        if (!await _userManager.GetTwoFactorEnabledAsync(user))
+        // Only the development testing policy can skip employee authenticator enrollment.
+        if (!await _userManager.GetTwoFactorEnabledAsync(user) && !await _policies.CanBypassTwoFactorAsync(user))
         {
             return RedirectToPage("./Manage/EnableAuthenticator");
         }
