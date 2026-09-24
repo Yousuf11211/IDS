@@ -2,6 +2,7 @@
 @using IDS.Data.Models
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
+@inject IDS.Security.SecurityPolicyService SecurityPolicies
 
 @if (SignInManager.IsSignedIn(User))
 {
@@ -14,10 +15,15 @@
     if (string.IsNullOrWhiteSpace(displayName)) displayName = "Account";
     var initials = displayName[..1].ToUpperInvariant();
     var needsPassword = currentUser?.MustChangePassword == true;
-    var needsAuthenticator = currentUser != null && !await UserManager.GetTwoFactorEnabledAsync(currentUser);
+    var testingBypass = currentUser != null && await SecurityPolicies.CanBypassTwoFactorAsync(currentUser);
+    var needsAuthenticator = currentUser != null && !testingBypass && !await UserManager.GetTwoFactorEnabledAsync(currentUser);
     var pendingCount = (needsPassword ? 1 : 0) + (needsAuthenticator ? 1 : 0);
 
     <div class="user-dropdown">
+        @if (testingBypass)
+        {
+            <span class="badge bg-warning text-dark me-2">Testing: 2FA bypassed</span>
+        }
         <button id="userMenuToggle" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false"
                 aria-controls="userMenu" aria-label="Account menu@(pendingCount > 0 ? $", {pendingCount} setup steps pending" : string.Empty)">
             <div class="user-avatar">@initials</div>
