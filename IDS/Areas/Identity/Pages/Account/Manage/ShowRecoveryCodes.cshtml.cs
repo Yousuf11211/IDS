@@ -15,6 +15,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
     ///     directly from your code. This API may change or be removed in future releases.
     /// </summary>
     [Authorize]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public class ShowRecoveryCodesModel : PageModel
     {
         /// <summary>
