@@ -17,6 +17,7 @@ using IDS.Data.Models; // Include the namespace for ApplicationUser
 
 namespace IDS.Areas.Identity.Pages.Account.Manage
 {
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public class EnableAuthenticatorModel : PageModel
     {
         // Use ApplicationUser instead of ApplicationUser
@@ -97,6 +98,8 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
+            // Once enrolled, never redisplay the authenticator secret to a session alone.
+            if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
             await LoadSharedKeyAndQrCodeUriAsync(user);
 
             return Page();
@@ -110,6 +113,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
+            if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
             if (!ModelState.IsValid)
             {
                 await LoadSharedKeyAndQrCodeUriAsync(user);
