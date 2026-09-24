@@ -8,6 +8,7 @@ using IDS.Data.Services;
 using IDS.Core.Services;
 using IDS.Hubs;
 using DotNetEnv;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,8 +57,21 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
     options.TokenLifespan = TimeSpan.FromHours(24));
 
-// An enrolled account must provide an authenticator code at every login.
+// Remembered browsers never skip MFA; only the explicit employee testing policy can do so.
 builder.Services.AddScoped<SignInManager<ApplicationUser>, AlwaysChallengeSignInManager>();
+// Revalidate cookies on every request so suspension and session revocation take effect promptly.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.Zero;
+    options.OnRefreshingPrincipal = context =>
+    {
+        // Keep the test-session marker when Identity refreshes the user's role claims.
+        var marker = context.CurrentPrincipal?.FindFirst(SecurityPolicyService.BypassedMfaClaim);
+        if (marker != null && context.NewPrincipal?.Identity is System.Security.Claims.ClaimsIdentity identity)
+            identity.AddClaim(marker);
+        return Task.CompletedTask;
+    };
+});
 
 // Cookie configuration for session timeout
 builder.Services.ConfigureApplicationCookie(options =>
@@ -69,7 +83,8 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
 });
 
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options => options.Conventions.ConfigureFilter(
+    new Microsoft.AspNetCore.Mvc.ServiceFilterAttribute(typeof(AdminVerificationFilter))));
 
 // =====================================================
 // Add SignalR for real-time dashboard updates
@@ -79,6 +94,7 @@ builder.Services.AddSignalR(options =>
     options.EnableDetailedErrors = builder.Environment.IsDevelopment();
     options.KeepAliveInterval = TimeSpan.FromSeconds(15);
     options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    options.AddFilter<RealtimeAccessFilter>();
 });
 
 // =====================================================
@@ -91,6 +107,14 @@ builder.Services.AddControllers();
 // =====================================================
 builder.Services.AddScoped<AccessControlService>();
 builder.Services.AddSingleton<AccountLinkBuilder>();
+builder.Services.AddScoped<SecurityPolicyService>();
+builder.Services.AddScoped<SecurityAdministrationService>();
+builder.Services.AddScoped<AdminVerification>();
+builder.Services.AddScoped<AdminVerificationFilter>();
+builder.Services.AddSingleton<RealtimeSessionRegistry>();
+builder.Services.AddSingleton<RealtimeAccessFilter>();
+builder.Services.AddScoped<RealtimeSessionValidator>();
+builder.Services.AddHostedService<RealtimeSessionMonitor>();
 
 // Register MailjetEmailSender as both IEmailSender and its concrete type
 // This allows injection of either interface or concrete class
@@ -117,6 +141,8 @@ var app = builder.Build();
 // Prepare the database before Identity queries mapped user columns.
 // =====================================================
 var migrateOnly = args.Contains("--migrate-only", StringComparer.OrdinalIgnoreCase);
+var operatorCommand = args.Any(argument => argument.StartsWith("--provision-admin=", StringComparison.Ordinal) ||
+    argument.StartsWith("--recover-admin=", StringComparison.Ordinal) || argument.StartsWith("--suspend-admin=", StringComparison.Ordinal));
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -140,15 +166,19 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    if (!migrateOnly)
+    if (operatorCommand)
+    {
+        await SecurityOperatorCommands.RunAsync(args, services);
+    }
+    else if (!migrateOnly)
     {
         await SeedRolesAndAdminAsync(services);
     }
 }
 
-if (migrateOnly)
+if (migrateOnly || operatorCommand)
 {
-    app.Logger.LogInformation("IDS database migrations completed successfully.");
+    app.Logger.LogInformation("IDS maintenance command completed successfully.");
     await app.DisposeAsync();
     return;
 }
@@ -168,6 +198,13 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
             await roleManager.CreateAsync(new IdentityRole(r));
             logger.LogInformation("Created role: {Role}", r);
         }
+    }
+
+    // Seeding only bootstraps the first administrator. Never restore permissions or
+    // clear lockouts on startup; doing so would undo incident-response actions.
+    if ((await userManager.GetUsersInRoleAsync(AppRoles.Admin)).Count > 0)
+    {
+        return;
     }
 
     // Get admin credentials (environment variables take priority)
@@ -206,32 +243,9 @@ async Task SeedRolesAndAdminAsync(IServiceProvider services)
   string.Join(", ", createResult.Errors.Select(e => e.Description)));
         }
     }
-    else if (!await userManager.IsInRoleAsync(adminUser, AppRoles.Admin))
+    else
     {
-        var currentRoles = await userManager.GetRolesAsync(adminUser);
-        var toRemove = currentRoles.Where(r => AppRoles.IsManagedRole(r) && r != AppRoles.Admin);
-        if (toRemove.Any())
-            await userManager.RemoveFromRolesAsync(adminUser, toRemove);
-        await userManager.AddToRoleAsync(adminUser, AppRoles.Admin);
-    }
-
-    // Ensure admin can sign in
-    if (adminUser != null)
-    {
-        try
-        {
-            if (!adminUser.EmailConfirmed)
-            {
-                adminUser.EmailConfirmed = true;
-                await userManager.UpdateAsync(adminUser);
-            }
-            await userManager.SetLockoutEndDateAsync(adminUser, null);
-            await userManager.ResetAccessFailedCountAsync(adminUser);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Error ensuring admin user state");
-        }
+        throw new InvalidOperationException("No administrator is available. A deployment operator must provision an existing, verified account with --provision-admin=<email>.");
     }
 }
 
@@ -262,11 +276,9 @@ app.MapGet("/auth/ping", () => Results.Ok()).RequireAuthorization();
 // =====================================================
 // Map SignalR Hub for real-time dashboard
 // =====================================================
-app.MapHub<DashboardHub>("/hubs/dashboard");
-if (builder.Configuration.GetValue<bool>("Chat:Enabled"))
-{
-    app.MapHub<ChatHub>("/hubs/chat");
-}
+app.MapHub<DashboardHub>("/hubs/dashboard", options => options.CloseOnAuthenticationExpiration = true);
+// Access is checked against the current policy on every connection and hub call.
+app.MapHub<ChatHub>("/hubs/chat", options => options.CloseOnAuthenticationExpiration = true);
 
 // =====================================================
 // Map API Controllers (read-only detection data)
@@ -284,7 +296,10 @@ app.Use(async (context, next) =>
         var user = await userManager.GetUserAsync(context.User);
         if (user != null)
         {
-            if (await userManager.IsInRoleAsync(user, AppRoles.Suspended))
+            var policies = context.RequestServices.GetRequiredService<SecurityPolicyService>();
+            var bypassTwoFactor = await policies.CanBypassTwoFactorAsync(user);
+            var expiredTestSession = context.User.HasClaim(SecurityPolicyService.BypassedMfaClaim, "true") && !bypassTwoFactor;
+            if (expiredTestSession || await userManager.IsInRoleAsync(user, AppRoles.Suspended) || await userManager.IsLockedOutAsync(user))
             {
                 await context.RequestServices.GetRequiredService<SignInManager<ApplicationUser>>()
                     .SignOutAsync();
@@ -303,7 +318,7 @@ app.Use(async (context, next) =>
                 return;
             }
 
-            if (!user.MustChangePassword && !await userManager.GetTwoFactorEnabledAsync(user)
+            if (!user.MustChangePassword && !bypassTwoFactor && !await userManager.GetTwoFactorEnabledAsync(user)
                 && !isAuthenticatorSetup && !isLogout)
             {
                 context.Response.Redirect("/Identity/Account/Manage/EnableAuthenticator");
