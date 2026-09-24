@@ -19,6 +19,10 @@
 </div>
 
 <partial name="_StatusMessage" for="StatusMessage" />
+@if (Model.TestingBypass)
+{
+    <div class="alert-ids alert-ids-warning mb-4" role="status">Employee authenticator prompts are bypassed for development testing. Your authenticator configuration is preserved and will be used again when the bypass ends.</div>
+}
 
 @{
   var consentFeature = HttpContext.Features.Get<ITrackingConsentFeature>();
@@ -83,7 +87,7 @@
 
        <!-- Action Buttons -->
      <div class="d-flex flex-wrap gap-2">
-        <p class="text-muted mb-2" style="flex: 1 1 100%;">Two-factor authentication is required for every account.</p>
+        <p class="text-muted mb-2" style="flex: 1 1 100%;">@(Model.TestingBypass ? "Authenticator checks will resume when testing ends." : "Two-factor authentication is required for your account.")</p>
  <a asp-page="./GenerateRecoveryCodes" class="btn-ids btn-ids-secondary">
      <i class="fa-solid fa-key me-2"></i>
       <span>Reset Recovery Codes</span>
@@ -109,7 +113,7 @@
       <div class="alert-ids alert-ids-warning mb-4">
     <i class="alert-ids-icon fa-solid fa-lightbulb"></i>
   <div class="alert-ids-content">
-      <strong>Required:</strong> Enable 2FA to protect your company account. Even if someone gets your password, they won't be able to access your account without your phone.
+      <strong>@(Model.TestingBypass ? "Prepare for normal sign-in:" : "Required:")</strong> Set up an authenticator to protect your company account with an additional verification step.
   </div>
  </div>
           }
