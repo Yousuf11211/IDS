@@ -1,329 +1,179 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text;
+using IDS.Data;
+using IDS.Data.Models;
+using IDS.Data.Services;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
-using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-using IDS.Security;
-using IDS.Data.Models;
-using IDS.Data.Services;
 
-namespace IDS.Pages.Admin
+namespace IDS.Pages.Admin;
+
+[Authorize(Roles = AppRoles.Admin)]
+public class EditUserModel(
+    UserManager<ApplicationUser> users,
+    AccessControlService access,
+    MailjetEmailSender emailSender,
+    AccountLinkBuilder accountLinks,
+    ApplicationDbContext database) : PageModel
 {
-  /// <summary>
-    /// Edit User page - allows admin to view and modify a specific user's details.
-    /// </summary>
-    [Authorize(Roles = AppRoles.Admin)]
-    public class EditUserModel : PageModel
+    [BindProperty] public UserEditInput Input { get; set; } = new();
+    [TempData] public string? StatusMessage { get; set; }
+    public string UserEmail { get; private set; } = string.Empty;
+    public string UserFullName { get; private set; } = string.Empty;
+    public string CurrentRole { get; private set; } = string.Empty;
+    public DateTime? LastLogin { get; private set; }
+    public bool IsCurrentUser { get; private set; }
+    public List<string> AllRoles { get; } = new() { AppRoles.Employee, AppRoles.Support, AppRoles.Suspended };
+
+    public class UserEditInput
     {
-     private readonly UserManager<ApplicationUser> _userManager;
-        private readonly AccessControlService _accessControl;
-        private readonly MailjetEmailSender _emailSender;
-        private readonly AccountLinkBuilder _accountLinks;
-        private readonly ILogger<EditUserModel> _logger;
-
-        public EditUserModel(
-            UserManager<ApplicationUser> userManager,
-     AccessControlService accessControl,
-  MailjetEmailSender emailSender,
-   ILogger<EditUserModel> logger,
-   AccountLinkBuilder accountLinks)
-      {
- _userManager = userManager;
-   _accessControl = accessControl;
-_emailSender = emailSender;
-_logger = logger;
-_accountLinks = accountLinks;
-        }
-
-        [BindProperty]
-        public UserEditInput Input { get; set; } = new();
-
- public class UserEditInput
-        {
-            public string UserId { get; set; } = string.Empty;
-
-       [Required]
-   [EmailAddress]
-   [Display(Name = "Email")]
-        public string Email { get; set; } = string.Empty;
-
-          [Display(Name = "First Name")]
-     [StringLength(100)]
-            public string? FirstName { get; set; }
-
-         [Display(Name = "Last Name")]
-         [StringLength(100)]
-            public string? LastName { get; set; }
-
-        [Required]
-            [Display(Name = "Role")]
-      public string Role { get; set; } = string.Empty;
-
-            [Required, StringLength(80)]
-            public string Department { get; set; } = Departments.General;
-   }
-
-     public string UserEmail { get; set; } = string.Empty;
-        public string UserFullName { get; set; } = string.Empty;
- public string CurrentRole { get; set; } = string.Empty;
-     public DateTime? LastLogin { get; set; }
-        public bool IsCurrentUser { get; set; }
-     public List<string> AllRoles { get; set; } = AppRoles.All.ToList();
-
-        [TempData]
-        public string? StatusMessage { get; set; }
-
-        public async Task<IActionResult> OnGetAsync(string id)
-        {
-            if (string.IsNullOrEmpty(id))
-   {
-       return RedirectToPage("/Admin/UserList");
-            }
-
-            var user = await _userManager.FindByIdAsync(id);
-          if (user == null)
-            {
-                return NotFound();
+        [Required] public string UserId { get; set; } = string.Empty;
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [StringLength(100)] public string? FirstName { get; set; }
+        [StringLength(100)] public string? LastName { get; set; }
+        [Required] public string Role { get; set; } = string.Empty;
+        [Required, StringLength(80)] public string Department { get; set; } = Departments.General;
     }
 
-         var currentUser = await _userManager.GetUserAsync(User);
-            IsCurrentUser = currentUser?.Id == id;
-
-   var roles = await _userManager.GetRolesAsync(user);
- CurrentRole = roles.FirstOrDefault(r => AppRoles.IsManagedRole(r)) ?? "None";
-
-        UserEmail = user.Email ?? "";
-            UserFullName = !string.IsNullOrEmpty(user.FirstName) 
-             ? $"{user.FirstName} {user.LastName}" 
-     : user.Email ?? "";
-
-            Input = new UserEditInput
-  {
-            UserId = user.Id,
-         Email = user.Email ?? "",
-      FirstName = user.FirstName,
-         LastName = user.LastName,
-        Role = CurrentRole,
-        Department = user.Department
-    };
-
-  return Page();
-        }
-
-        public async Task<IActionResult> OnPostUpdateAsync()
+    public async Task<IActionResult> OnGetAsync(string id)
+    {
+        var user = await ManageableEmployeeAsync(id);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        await LoadDisplayAsync(user);
+        Input = new UserEditInput
         {
-   if (!Departments.IsKnown(Input.Department))
-   {
-       ModelState.AddModelError("Input.Department", "Choose a listed department.");
-   }
-   if (!AppRoles.IsManagedRole(Input.Role))
-   {
-       ModelState.AddModelError("Input.Role", "Choose a valid role.");
-   }
-   if (!ModelState.IsValid)
-            {
-       AllRoles = AppRoles.All.ToList();
-       return Page();
-            }
-
-          var user = await _userManager.FindByIdAsync(Input.UserId);
-    if (user == null)
-       {
-    StatusMessage = "Error: User not found.";
-   return RedirectToPage("/Admin/UserList");
-    }
-
-          if (Input.Role == AppRoles.Suspended &&
-              !await _userManager.IsInRoleAsync(user, AppRoles.Suspended))
-          {
-              StatusMessage = "Error: Use Suspend User to suspend an active account.";
-              return RedirectToPage(new { id = Input.UserId });
-          }
-
-            var currentUser = await _userManager.GetUserAsync(User);
- IsCurrentUser = currentUser?.Id == Input.UserId;
-
-         if (IsCurrentUser && Input.Role != AppRoles.Admin)
-         {
-             StatusMessage = "Error: You cannot remove your own administrator access.";
-             return RedirectToPage(new { id = Input.UserId });
-         }
-
-         // Update user details
-        user.FirstName = Input.FirstName ?? "";
-    user.LastName = Input.LastName ?? "";
-    user.Department = Input.Department;
-
-            // Update email if changed
-        if (user.Email != Input.Email)
-            {
-       var emailExists = await _userManager.FindByEmailAsync(Input.Email);
-           if (emailExists != null && emailExists.Id != user.Id)
-       {
-               ModelState.AddModelError("Input.Email", "This email is already in use.");
-         AllRoles = AppRoles.All.ToList();
+            UserId = user.Id, Email = user.Email ?? "", FirstName = user.FirstName,
+            LastName = user.LastName, Role = CurrentRole, Department = user.Department
+        };
         return Page();
-          }
-                user.Email = Input.Email;
-    user.UserName = Input.Email;
-        }
+    }
 
-  var updateResult = await _userManager.UpdateAsync(user);
- if (!updateResult.Succeeded)
-  {
-     foreach (var error in updateResult.Errors)
-           {
-         ModelState.AddModelError(string.Empty, error.Description);
-      }
-    AllRoles = AppRoles.All.ToList();
-          return Page();
-}
-
-        // Update role if changed
-            var currentRoles = await _userManager.GetRolesAsync(user);
-  var currentRole = currentRoles.FirstOrDefault(r => AppRoles.IsManagedRole(r));
-
-            if (currentRole != Input.Role && AppRoles.IsManagedRole(Input.Role))
+    public async Task<IActionResult> OnPostUpdateAsync()
     {
-         // Safety: Prevent admin from removing their own admin role
-await _accessControl.SetExclusiveRoleAsync(_userManager, user, Input.Role);
-          }
+        var user = await ManageableEmployeeAsync(Input.UserId);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        await LoadDisplayAsync(user);
+        if (!Departments.IsKnown(Input.Department))
+            ModelState.AddModelError("Input.Department", "Choose a listed department.");
+        if (Input.Role is not (AppRoles.Employee or AppRoles.Support or AppRoles.Suspended))
+            ModelState.AddModelError("Input.Role", "Administrator access requires approval in Security controls.");
+        if (Input.Role == AppRoles.Suspended && CurrentRole != AppRoles.Suspended)
+            ModelState.AddModelError("Input.Role", "Use Suspend User to suspend an account.");
+        if (!ModelState.IsValid) return Page();
 
-         _logger.LogInformation("User {Email} updated by admin {AdminEmail}", user.Email, currentUser?.Email);
-        StatusMessage = $"User {user.Email} has been updated successfully.";
-
-    return RedirectToPage(new { id = Input.UserId });
+        var email = Input.Email.Trim();
+        var duplicate = await users.FindByEmailAsync(email);
+        if (duplicate != null && duplicate.Id != user.Id)
+        {
+            ModelState.AddModelError("Input.Email", "This email is already in use.");
+            return Page();
         }
 
-        public async Task<IActionResult> OnPostResetPasswordAsync(string userId)
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        user.FirstName = Input.FirstName?.Trim() ?? "";
+        user.LastName = Input.LastName?.Trim() ?? "";
+        user.Department = Input.Department;
+        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                StatusMessage = "Error: User not found.";
-                return RedirectToPage("/Admin/UserList");
-            }
+            // Changing the recovery address requires ownership verification again.
+            user.Email = email;
+            user.UserName = email;
+            user.EmailConfirmed = false;
+        }
+        var result = await users.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors) ModelState.AddModelError(string.Empty, error.Description);
+            return Page();
+        }
+        if (CurrentRole != Input.Role) await access.SetExclusiveRoleAsync(users, user, Input.Role);
+        RequireSuccess(await users.UpdateSecurityStampAsync(user));
+        await transaction.CommitAsync();
+        StatusMessage = $"User {email} updated. Existing sessions were revoked.";
+        return RedirectToPage(new { id = user.Id });
+    }
 
-            if (!_emailSender.IsConfigured || !_accountLinks.IsConfigured)
-            {
-                StatusMessage = "Error: Configure email and PUBLIC_BASE_URL before sending account links.";
-                return RedirectToPage(new { id = userId });
-            }
-
-            // Sending a link leaves the current password intact until the user chooses a new one.
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var link = _accountLinks.PasswordResetLink(Url, encodedToken);
-            if (link == null)
-            {
-                StatusMessage = "Error: Could not build the account link. Check PUBLIC_BASE_URL.";
-                return RedirectToPage(new { id = userId });
-            }
-
-            var name = string.IsNullOrWhiteSpace(user.FirstName) ? user.Email ?? "Employee" : user.FirstName;
-            var isInvitation = !user.EmailConfirmed;
-            var (sent, error) = await _emailSender.SendAccountAccessLinkAsync(
-                user.Email ?? string.Empty, name, link, isInvitation);
-
-            if (sent)
-            {
-                var currentUser = await _userManager.GetUserAsync(User);
-                _logger.LogInformation("Account link sent to {Email} by admin {AdminEmail}", user.Email, currentUser?.Email);
-                StatusMessage = isInvitation
-                    ? $"Account setup link sent to {user.Email}."
-                    : $"Password reset link sent to {user.Email}.";
-            }
-            else
-            {
-                _logger.LogWarning("Account email failed for {Email}: {Error}", user.Email, error);
-                StatusMessage = $"Error: The account link could not be sent to {user.Email}.";
-            }
-
+    public async Task<IActionResult> OnPostResetPasswordAsync(string userId)
+    {
+        var user = await ManageableEmployeeAsync(userId);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        if (!emailSender.IsConfigured || !accountLinks.IsConfigured)
+        {
+            StatusMessage = "Error: Configure email and PUBLIC_BASE_URL before sending account links.";
             return RedirectToPage(new { id = userId });
         }
-
-   public async Task<IActionResult> OnPostDeleteAsync(string userId)
+        var token = await users.GeneratePasswordResetTokenAsync(user);
+        var link = accountLinks.PasswordResetLink(Url, WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token)));
+        if (link == null)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-      if (user == null)
-   {
-    StatusMessage = "Error: User not found.";
-        return RedirectToPage("/Admin/UserList");
-      }
-
-    var currentUser = await _userManager.GetUserAsync(User);
-
-            // Prevent self-deletion
-         if (currentUser?.Id == userId)
-            {
-    StatusMessage = "Error: You cannot delete your own account.";
-  return RedirectToPage(new { id = userId });
-          }
-
-            var email = user.Email;
-         var result = await _userManager.DeleteAsync(user);
-
-            if (result.Succeeded)
-            {
- _logger.LogInformation("User {Email} deleted by admin {AdminEmail}", email, currentUser?.Email);
-    StatusMessage = $"User {email} has been deleted.";
-      return RedirectToPage("/Admin/UserList");
-         }
-
- StatusMessage = $"Error: Failed to delete user. {string.Join("; ", result.Errors.Select(e => e.Description))}";
+            StatusMessage = "Error: Could not build the account link.";
+            return RedirectToPage(new { id = userId });
+        }
+        var (sent, _) = await emailSender.SendAccountAccessLinkAsync(user.Email ?? "",
+            string.IsNullOrWhiteSpace(user.FirstName) ? "Employee" : user.FirstName, link, !user.EmailConfirmed);
+        StatusMessage = sent ? $"Account link sent to {user.Email}." : "Error: The account link could not be sent.";
         return RedirectToPage(new { id = userId });
-        }
-
-        public async Task<IActionResult> OnPostSuspendAsync(string userId)
-        {
- var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-       {
-        StatusMessage = "Error: User not found.";
-        return RedirectToPage("/Admin/UserList");
-       }
-
-   var currentUser = await _userManager.GetUserAsync(User);
-
-     // Prevent self-suspension
-  if (currentUser?.Id == userId)
-            {
-    StatusMessage = "Error: You cannot suspend your own account.";
-                return RedirectToPage(new { id = userId });
-       }
-
-         await _accessControl.SetExclusiveRoleAsync(_userManager, user, AppRoles.Suspended);
-
-            _logger.LogInformation("User {Email} suspended by admin {AdminEmail}", user.Email, currentUser?.Email);
-          StatusMessage = $"User {user.Email} has been suspended.";
-
-  return RedirectToPage(new { id = userId });
-        }
-
-    public async Task<IActionResult> OnPostUnsuspendAsync(string userId, string newRole)
-        {
-   var user = await _userManager.FindByIdAsync(userId);
-  if (user == null)
-            {
-       StatusMessage = "Error: User not found.";
-            return RedirectToPage("/Admin/UserList");
-   }
-
-            if (string.IsNullOrEmpty(newRole) || !AppRoles.IsManagedRole(newRole) || newRole == AppRoles.Suspended)
-            {
-   newRole = AppRoles.Employee;
     }
 
-   var currentUser = await _userManager.GetUserAsync(User);
-            await _accessControl.SetExclusiveRoleAsync(_userManager, user, newRole);
+    public async Task<IActionResult> OnPostDeleteAsync(string userId)
+    {
+        var user = await ManageableEmployeeAsync(userId);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        // Keep incident history and encrypted conversations attached to their participants.
+        // Suspension provides immediate access removal without deleting those records.
+        StatusMessage = "Error: Accounts are retained for audit history. Use Suspend User to remove access.";
+        return RedirectToPage(new { id = userId });
+    }
 
-     _logger.LogInformation("User {Email} unsuspended to {Role} by admin {AdminEmail}", user.Email, newRole, currentUser?.Email);
-            StatusMessage = $"User {user.Email} has been unsuspended with role '{newRole}'.";
+    public async Task<IActionResult> OnPostSuspendAsync(string userId)
+    {
+        var user = await ManageableEmployeeAsync(userId);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        await access.SetExclusiveRoleAsync(users, user, AppRoles.Suspended);
+        StatusMessage = $"User {user.Email} suspended and sessions revoked.";
+        return RedirectToPage(new { id = userId });
+    }
 
-    return RedirectToPage(new { id = userId });
+    public async Task<IActionResult> OnPostUnsuspendAsync(string userId, string newRole)
+    {
+        var user = await ManageableEmployeeAsync(userId);
+        if (user == null) return RedirectToPage("/Admin/Security");
+        if (newRole is not (AppRoles.Employee or AppRoles.Support))
+        {
+            StatusMessage = "Error: Select Employee or Support. Administrator access requires a separate approved request.";
+            return RedirectToPage(new { id = userId });
         }
+        await access.SetExclusiveRoleAsync(users, user, newRole);
+        StatusMessage = $"User {user.Email} restored as {newRole}.";
+        return RedirectToPage(new { id = userId });
+    }
 
+    private async Task<ApplicationUser?> ManageableEmployeeAsync(string? id)
+    {
+        var user = string.IsNullOrWhiteSpace(id) ? null : await users.FindByIdAsync(id);
+        if (user == null) { StatusMessage = "Error: User not found."; return null; }
+        if (await users.IsInRoleAsync(user, AppRoles.Admin))
+        {
+            StatusMessage = "Error: Administrator accounts are protected from employee management. Use your own profile for personal changes or contact the deployment operator for recovery.";
+            return null;
+        }
+        return user;
+    }
+
+    private async Task LoadDisplayAsync(ApplicationUser user)
+    {
+        UserEmail = user.Email ?? "";
+        UserFullName = string.IsNullOrWhiteSpace(user.FirstName) ? UserEmail : $"{user.FirstName} {user.LastName}";
+        CurrentRole = (await users.GetRolesAsync(user)).FirstOrDefault(AppRoles.IsManagedRole) ?? "None";
+        IsCurrentUser = users.GetUserId(User) == user.Id;
+    }
+
+    private static void RequireSuccess(IdentityResult result)
+    {
+        if (!result.Succeeded) throw new InvalidOperationException("The employee account changed. Reload before retrying.");
     }
 }
