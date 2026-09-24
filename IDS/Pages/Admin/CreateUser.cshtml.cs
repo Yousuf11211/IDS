@@ -19,17 +19,20 @@ public class CreateUserModel : PageModel
     private readonly AccessControlService _accessControl;
     private readonly MailjetEmailSender _emailSender;
     private readonly AccountLinkBuilder _accountLinks;
+    private readonly SecurityPolicyService _policies;
 
     public CreateUserModel(
         UserManager<ApplicationUser> userManager,
         AccessControlService accessControl,
         MailjetEmailSender emailSender,
-        AccountLinkBuilder accountLinks)
+        AccountLinkBuilder accountLinks,
+        SecurityPolicyService policies)
     {
         _userManager = userManager;
         _accessControl = accessControl;
         _emailSender = emailSender;
         _accountLinks = accountLinks;
+        _policies = policies;
     }
 
     [BindProperty]
@@ -39,8 +42,11 @@ public class CreateUserModel : PageModel
     public string? StatusMessage { get; set; }
 
     public IReadOnlyList<string> AvailableRoles =>
-        AppRoles.All.Where(role => role != AppRoles.Suspended).ToArray();
-    public bool InvitationsReady => _emailSender.IsConfigured && _accountLinks.IsConfigured;
+        new[] { AppRoles.Employee, AppRoles.Support };
+    public bool InvitationsAllowed { get; private set; }
+    public bool InvitationsReady => InvitationsAllowed && _emailSender.IsConfigured && _accountLinks.IsConfigured;
+
+    public async Task OnGetAsync() => InvitationsAllowed = (await _policies.GetAsync()).EmployeeInvitationsEnabled;
 
     public class InputModel
     {
@@ -62,14 +68,17 @@ public class CreateUserModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        await OnGetAsync();
         if (!Departments.IsKnown(Input.Department))
             ModelState.AddModelError("Input.Department", "Choose a listed department.");
 
-        if (!AppRoles.IsManagedRole(Input.Role) || Input.Role == AppRoles.Suspended)
-            ModelState.AddModelError("Input.Role", "Choose a valid role.");
+        if (Input.Role is not (AppRoles.Employee or AppRoles.Support))
+            ModelState.AddModelError("Input.Role", "Create an employee or support account. Administrator access requires a separate approved request.");
 
         if (!InvitationsReady)
-            ModelState.AddModelError(string.Empty, "Configure email and PUBLIC_BASE_URL before inviting employees.");
+            ModelState.AddModelError(string.Empty, InvitationsAllowed
+                ? "Configure email and PUBLIC_BASE_URL before inviting employees."
+                : "Employee invitations are paused in Security controls.");
 
         if (!ModelState.IsValid)
             return Page();
