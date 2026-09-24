@@ -36,6 +36,9 @@ public class ResetAuthenticatorModel : PageModel
         [DataType(DataType.Password)]
         [Display(Name = "Current password")]
         public string Password { get; set; } = string.Empty;
+        [Required, StringLength(7, MinimumLength = 6)]
+        [Display(Name = "Current authenticator code")]
+        public string Code { get; set; } = string.Empty;
     }
 
     public async Task<IActionResult> OnGetAsync()
@@ -58,11 +61,16 @@ public class ResetAuthenticatorModel : PageModel
             return Page();
         }
 
-        if (!await _userManager.CheckPasswordAsync(user, Input.Password))
+        if (await _userManager.IsLockedOutAsync(user)) return Forbid();
+        if (!await _userManager.CheckPasswordAsync(user, Input.Password) ||
+            !await _userManager.VerifyTwoFactorTokenAsync(user, _userManager.Options.Tokens.AuthenticatorTokenProvider,
+                Input.Code.Replace(" ", "").Replace("-", "")))
         {
-            ModelState.AddModelError(string.Empty, "The current password is incorrect.");
+            await _userManager.AccessFailedAsync(user);
+            ModelState.AddModelError(string.Empty, "The password or authenticator code is incorrect.");
             return Page();
         }
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         // The enrollment middleware keeps the account on the setup screen until a new code is verified.
         var disableResult = await _userManager.SetTwoFactorEnabledAsync(user, false);
@@ -79,6 +87,8 @@ public class ResetAuthenticatorModel : PageModel
             return Page();
         }
 
+        await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0);
+        await _userManager.UpdateSecurityStampAsync(user);
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogInformation("User {UserId} reset their authenticator key.", user.Id);
         StatusMessage = "Set up your authenticator again to complete the reset.";
