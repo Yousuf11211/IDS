@@ -1,4 +1,5 @@
 using IDS.Data.Models;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -9,12 +10,12 @@ namespace IDS.Pages;
 [Authorize]
 public sealed class ChatModel : PageModel
 {
-    private readonly IConfiguration _configuration;
+    private readonly SecurityPolicyService _policies;
     private readonly UserManager<ApplicationUser> _users;
 
-    public ChatModel(IConfiguration configuration, UserManager<ApplicationUser> users)
+    public ChatModel(SecurityPolicyService policies, UserManager<ApplicationUser> users)
     {
-        _configuration = configuration;
+        _policies = policies;
         _users = users;
     }
 
@@ -22,7 +23,7 @@ public sealed class ChatModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        if (!_configuration.GetValue<bool>("Chat:Enabled"))
+        if (!(await _policies.GetAsync()).MessagingEnabled)
             return NotFound();
 
         var user = await _users.GetUserAsync(User);
