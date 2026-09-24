@@ -3,6 +3,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using IDS.Data.Models;
+using IDS.Data;
+using System.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace IDS.Security
 {
@@ -56,10 +59,12 @@ namespace IDS.Security
     public class AccessControlService
     {
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ApplicationDbContext _database;
 
-        public AccessControlService(RoleManager<IdentityRole> roleManager)
+        public AccessControlService(RoleManager<IdentityRole> roleManager, ApplicationDbContext database)
         {
             _roleManager = roleManager;
+            _database = database;
         }
 
         public async Task EnsureRoleExistsAsync(string role)
@@ -85,25 +90,38 @@ namespace IDS.Security
         /// <summary>
         /// Enforce exactly one role from AppRoles at any given time.
         /// </summary>
-        public async Task SetExclusiveRoleAsync(UserManager<ApplicationUser> userManager, ApplicationUser user, string role)
+        public async Task SetExclusiveRoleAsync(UserManager<ApplicationUser> userManager, ApplicationUser user, string role,
+            bool allowAdministratorChange = false)
         {
             if (user == null) throw new ArgumentNullException(nameof(user));
             if (string.IsNullOrWhiteSpace(role)) throw new ArgumentNullException(nameof(role));
             if (!AppRoles.IsManagedRole(role)) throw new ArgumentException("Unknown role", nameof(role));
 
+            await using var transaction = _database.Database.CurrentTransaction == null
+                ? await _database.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
             await EnsureRoleExistsAsync(role);
 
             var currentRoles = await userManager.GetRolesAsync(user);
+            if (!allowAdministratorChange && (string.Equals(role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                currentRoles.Contains(AppRoles.Admin)))
+                throw new SecurityChangeException("Administrator role changes require the approved security workflow.");
             var toRemove = currentRoles.Where(r => AppRoles.IsManagedRole(r) && !string.Equals(r, role, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (toRemove.Length > 0)
             {
-                await userManager.RemoveFromRolesAsync(user, toRemove);
+                EnsureSucceeded(await userManager.RemoveFromRolesAsync(user, toRemove));
             }
 
             if (!currentRoles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase)))
             {
-                await userManager.AddToRoleAsync(user, role);
+                EnsureSucceeded(await userManager.AddToRoleAsync(user, role));
             }
+            EnsureSucceeded(await userManager.UpdateSecurityStampAsync(user));
+            if (transaction != null) await transaction.CommitAsync();
+        }
+
+        private static void EnsureSucceeded(IdentityResult result)
+        {
+            if (!result.Succeeded) throw new SecurityChangeException("The account changed. Reload before changing its role.");
         }
 
         public async Task<bool> IsSuspendedAsync(UserManager<ApplicationUser> userManager, ApplicationUser user)
