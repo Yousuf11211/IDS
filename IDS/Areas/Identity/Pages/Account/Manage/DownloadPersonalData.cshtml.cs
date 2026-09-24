@@ -50,7 +50,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
             {
                 personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
             }
-            personalData.Add("Authenticator Key", await _userManager.GetAuthenticatorKeyAsync(user));
+            // Authentication secrets are credentials, not exportable profile data.
             Response.Headers.TryAdd("Content-Disposition", "attachment; filename=PersonalData.json");
             return new FileContentResult(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(personalData), "application/json");
         }
