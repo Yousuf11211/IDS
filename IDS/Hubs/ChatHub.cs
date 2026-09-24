@@ -12,18 +12,18 @@ public sealed class ChatHub : Hub
 {
     private readonly IChatService _chat;
     private readonly UserManager<ApplicationUser> _users;
-    private readonly IConfiguration _configuration;
+    private readonly SecurityPolicyService _policies;
 
-    public ChatHub(IChatService chat, UserManager<ApplicationUser> users, IConfiguration configuration)
+    public ChatHub(IChatService chat, UserManager<ApplicationUser> users, SecurityPolicyService policies)
     {
         _chat = chat;
         _users = users;
-        _configuration = configuration;
+        _policies = policies;
     }
 
     public override async Task OnConnectedAsync()
     {
-        if (!_configuration.GetValue<bool>("Chat:Enabled") || Context.UserIdentifier is null)
+        if (!(await _policies.GetAsync()).MessagingEnabled || Context.UserIdentifier is null)
         {
             Context.Abort();
             return;
@@ -71,7 +71,7 @@ public sealed class ChatHub : Hub
 
     private async Task<T> InvokeAsync<T>(Func<Task<T>> action)
     {
-        if (!_configuration.GetValue<bool>("Chat:Enabled"))
+        if (!(await _policies.GetAsync()).MessagingEnabled)
             throw new HubException("Chat is currently unavailable.");
         try
         {
