@@ -15,14 +15,18 @@
 @if (Model.EligibleAdministrators < 2)
 {
     <div class="alert-ids alert-ids-warning mb-4" role="status">
-        Sensitive changes need two separate administrators with completed authenticator setup. Ask the deployment operator to provision a second administrator. Requests remain pending until another eligible administrator approves them.
+        Sensitive changes need two separate eligible administrators. Authenticator setup is required unless the administrator testing bypass is active. Requests remain pending until another eligible administrator approves them.
     </div>
 }
 
 <div class="row g-4">
     <div class="col-12"><div class="card-ids"><div class="card-ids-body p-4">
+        <h2 class="h5">Administrator authenticator testing bypass <span class="badge @(Model.Policy.AdminMfaTestBypass ? "bg-warning text-dark" : "bg-secondary")">@(Model.Policy.AdminMfaTestBypass ? "Active" : "Off")</span></h2>
+        <p class="mb-0">@(Model.Policy.AdminMfaTestBypass ? "Administrator authenticator prompts are temporarily bypassed for development testing. Password verification and approval by a different administrator still apply." : "Administrators must use their authenticator. The separate administrator testing bypass is managed by the deployment operator and only works in Development mode.")</p>
+    </div></div></div>
+    <div class="col-12"><div class="card-ids"><div class="card-ids-body p-4">
         <h2 class="h5">Employee authenticator testing bypass <span class="badge @(Model.Policy.EmployeeMfaTestBypass ? "bg-warning text-dark" : "bg-secondary")">@(Model.Policy.EmployeeMfaTestBypass ? "Active" : "Off")</span></h2>
-        <p class="text-muted">Skip employee and support authenticator prompts during local testing, including accounts already enrolled. Administrator codes are always required. Authenticator keys and recovery codes are preserved.</p>
+        <p class="text-muted">Skip employee and support authenticator prompts during local testing, including accounts already enrolled. This setting does not affect administrators. Authenticator keys and recovery codes are preserved.</p>
         @if (Model.AllowsTestingBypass)
         {
             <form method="post" asp-page-handler="@(Model.Policy.EmployeeMfaTestBypass ? "Disable" : "Request")">
@@ -101,7 +105,7 @@
         </form>
         <hr />
         <h3 class="h6">Required protections</h3>
-        <p class="small text-muted mb-0">Admin 2FA, five-minute admin verification, approval separation, and security audit history cannot be disabled here.</p>
+        <p class="small text-muted mb-0">Five-minute password verification, approval separation, and security audit history remain required, including during administrator authenticator testing.</p>
     </div></div></div>
 </div>
 
@@ -114,7 +118,7 @@
         @foreach (var request in Model.Requests)
         {
             var pending = request.Status == "Pending" && request.ExpiresAtUtc > DateTime.UtcNow;
-            <tr>
+            <tr id="request-@request.Id">
                 <td><strong>@SecurityActions.Label(request.Action)</strong><div class="small">@request.TargetEmail</div><div class="small text-muted">#@request.Id · @request.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm") UTC</div></td>
                 <td>@request.RequestedByEmail</td><td style="white-space:pre-wrap;overflow-wrap:anywhere">@request.Reason</td>
                 <td>@(request.Status == "Pending" && !pending ? "Expired" : request.Status)</td>
