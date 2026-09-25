@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace IDS.Security;
 
-public sealed record SecurityPolicy(bool MessagingEnabled, bool EmployeeInvitationsEnabled, bool EmployeeMfaTestBypass = false);
+public sealed record SecurityPolicy(bool MessagingEnabled, bool EmployeeInvitationsEnabled, bool EmployeeMfaTestBypass = false,
+    bool AdminMfaTestBypass = false);
 
 public sealed class SecurityPolicyService(ApplicationDbContext database, IConfiguration configuration, IHostEnvironment environment)
 {
@@ -16,11 +17,13 @@ public sealed class SecurityPolicyService(ApplicationDbContext database, IConfig
 
     public async Task<bool> CanBypassTwoFactorAsync(ApplicationUser user)
     {
-        if (!(await GetAsync()).EmployeeMfaTestBypass) return false;
-        return !await (from membership in database.UserRoles
+        var policy = await GetAsync();
+        if (!policy.EmployeeMfaTestBypass && !policy.AdminMfaTestBypass) return false;
+        var isAdmin = await (from membership in database.UserRoles
                        join role in database.Roles on membership.RoleId equals role.Id
                        where membership.UserId == user.Id && role.Name == AppRoles.Admin
                        select membership.UserId).AnyAsync();
+        return isAdmin ? policy.AdminMfaTestBypass : policy.EmployeeMfaTestBypass;
     }
 
     public async Task<SecurityPolicy> GetAsync()
@@ -34,6 +37,7 @@ public sealed class SecurityPolicyService(ApplicationDbContext database, IConfig
         return new SecurityPolicy(
             Read(MessagingKey, configuration.GetValue<bool>("Chat:Enabled")),
             Read(InvitationsKey, true),
-            AllowsTestingBypass && Read(EmployeeMfaBypassKey, false));
+            AllowsTestingBypass && Read(EmployeeMfaBypassKey, false),
+            AllowsTestingBypass && configuration.GetValue<bool>("Security:AdminMfaTestBypass"));
     }
 }
