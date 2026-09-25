@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-users.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-approvals.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/IDS.styles.css" asp-append-version="true" />
 
     @await RenderSectionAsync("HeadContent", required: false)
@@ -132,6 +133,10 @@ else
   <i class="fa-solid fa-moon" id="themeIcon"></i>
        </button>
           
+ @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+ {
+     <partial name="_ApprovalNotifications" />
+ }
  <partial name="_LoginPartial" />
    </div>
   </div>
@@ -171,6 +176,10 @@ else
  <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
+    {
+        <script src="~/js/admin-approvals.js" asp-append-version="true" defer></script>
+    }
     @if (messagingEnabled)
     {
         <script src="~/js/chat-notifications.js" asp-append-version="true" defer></script>
