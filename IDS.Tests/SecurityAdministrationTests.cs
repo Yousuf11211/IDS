@@ -29,6 +29,7 @@ public sealed class SecurityAdministrationTests : IDisposable
     private readonly SecurityPolicyService _policies;
     private readonly TestAuthentication _authentication = new();
     private readonly TestEnvironment _environment = new();
+    private readonly IConfiguration _configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
     public SecurityAdministrationTests()
     {
@@ -36,7 +37,7 @@ public sealed class SecurityAdministrationTests : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDataProtection();
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddSingleton<IConfiguration>(_configuration);
         services.AddSingleton<IHostEnvironment>(_environment);
         services.AddAuthentication();
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_connection));
@@ -48,6 +49,8 @@ public sealed class SecurityAdministrationTests : IDisposable
         services.AddScoped<SecurityAdministrationService>();
         services.AddScoped<RealtimeSessionValidator>();
         services.AddScoped<AdminVerification>();
+        services.AddScoped<TestAdministratorSetup>();
+        services.AddScoped<SecurityApprovalNotifications>();
         services.AddSingleton<IAuthenticationService>(_authentication);
         _provider = services.BuildServiceProvider();
         _scope = _provider.CreateScope();
@@ -334,6 +337,120 @@ public sealed class SecurityAdministrationTests : IDisposable
         await verification.MarkVerifiedAsync(context, user);
         await _users.UpdateSecurityStampAsync(user);
         Assert.False(await verification.IsRecentAsync(context));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AdminBypassAllowsTestingAndIndependentApprovalsWithoutChangingAuthenticator(bool enrolled)
+    {
+        _configuration["Security:AdminMfaTestBypass"] = "true";
+        var first = await AddUserAsync("first", AppRoles.Admin);
+        var second = await AddUserAsync("second", AppRoles.Admin);
+        var employee = await AddUserAsync("employee", AppRoles.Employee);
+        await _users.ResetAuthenticatorKeyAsync(first);
+        await _users.SetTwoFactorEnabledAsync(first, enrolled);
+        await _users.SetTwoFactorEnabledAsync(second, enrolled);
+        var key = await _users.GetAuthenticatorKeyAsync(first);
+        var manager = _scope.ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>();
+        manager.Context = new DefaultHttpContext { RequestServices = _scope.ServiceProvider };
+        Assert.False((await manager.PasswordSignInAsync(first, "WrongPassword1!", false, true)).Succeeded);
+        Assert.True((await manager.PasswordSignInAsync(first, "ExamplePassword1!", false, true)).Succeeded);
+        Assert.True(_authentication.Ticket!.Principal.HasClaim(SecurityPolicyService.BypassedMfaClaim, "true"));
+        Assert.False(await _policies.CanBypassTwoFactorAsync(employee));
+        Assert.Equal(key, await _users.GetAuthenticatorKeyAsync(first));
+        Assert.Equal(enrolled, first.TwoFactorEnabled);
+        var request = await _administration.RequestAsync(first.Id, SecurityActions.EnableMessaging, null,
+            "Test approval with administrator bypass", null);
+        await Assert.ThrowsAsync<SecurityChangeException>(() => _administration.ReviewAsync(first.Id, request.Id, true, null));
+        await _administration.ReviewAsync(second.Id, request.Id, true, null);
+        Assert.True((await _policies.GetAsync()).MessagingEnabled);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    [InlineData("Development")]
+    public async Task EndingAdminBypassRejectsTestSessionsAndPasswordOnlyVerification(string environment)
+    {
+        _configuration["Security:AdminMfaTestBypass"] = "true";
+        var admin = await AddUserAsync("admin", AppRoles.Admin);
+        var principal = PrincipalFor(admin);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(SecurityPolicyService.BypassedMfaClaim, "true"));
+        var session = new RealtimeSession(new TestHubContext(principal), false);
+        var validator = _scope.ServiceProvider.GetRequiredService<RealtimeSessionValidator>();
+        Assert.True(await validator.IsAllowedAsync(session));
+        var context = new DefaultHttpContext { RequestServices = _scope.ServiceProvider, User = principal };
+        _authentication.Ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), IdentityConstants.ApplicationScheme);
+        var verification = _scope.ServiceProvider.GetRequiredService<AdminVerification>();
+        await verification.MarkVerifiedAsync(context, admin);
+        Assert.True(await verification.IsRecentAsync(context));
+        _environment.EnvironmentName = environment;
+        if (environment == "Development") _configuration["Security:AdminMfaTestBypass"] = "false";
+        // An employee bypass cannot keep administrator test sessions alive.
+        _database.SystemSettings.Add(new SystemSetting { Key = SecurityPolicyService.EmployeeMfaBypassKey, Value = "True" });
+        await _database.SaveChangesAsync();
+        Assert.False(await _policies.CanBypassTwoFactorAsync(admin));
+        Assert.False(await verification.IsRecentAsync(context));
+        Assert.False(await validator.IsAllowedAsync(session));
+        Assert.Single(await validator.GetRejectedSessionsAsync(new[] { session }, default));
+    }
+
+    [Fact]
+    public async Task ApprovalNotificationsOnlyShowOtherAdminsPendingUnexpiredRequests()
+    {
+        var first = await AddUserAsync("first", AppRoles.Admin);
+        var second = await AddUserAsync("second", AppRoles.Admin);
+        var employee = await AddUserAsync("employee", AppRoles.Employee);
+        var notifications = _scope.ServiceProvider.GetRequiredService<SecurityApprovalNotifications>();
+        var request = await _administration.RequestAsync(first.Id, SecurityActions.EnableMessaging, null,
+            "Check the other administrator receives this request", null);
+        Assert.Equal(0, (await notifications.GetAsync(first)).Count);
+        var received = await notifications.GetAsync(second);
+        Assert.Equal(1, received.Count);
+        Assert.Equal(first.Email, Assert.Single(received.Requests).RequestedByEmail);
+        Assert.Equal(request.Id, received.Requests[0].Id);
+        await Assert.ThrowsAsync<SecurityChangeException>(() => notifications.GetAsync(employee));
+        await _administration.ReviewAsync(second.Id, request.Id, true, null);
+        Assert.Equal(0, (await notifications.GetAsync(second)).Count);
+        var expired = await _administration.RequestAsync(first.Id, SecurityActions.EnableInvitations, null,
+            "Check expired approvals disappear from notifications", null);
+        expired.ExpiresAtUtc = DateTime.UtcNow.AddMinutes(-1);
+        await _database.SaveChangesAsync();
+        Assert.Equal(0, (await notifications.GetAsync(second)).Count);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task TestAdministratorSetupRefusesNonDevelopmentEnvironments(string environment)
+    {
+        _environment.EnvironmentName = environment;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _scope.ServiceProvider.GetRequiredService<TestAdministratorSetup>().RunAsync());
+        Assert.Empty(await _users.Users.ToListAsync());
+    }
+
+    [Fact]
+    public async Task TestAdministratorSetupCreatesSecondAdminAndSynchronizesPasswordsOnlyWhenExplicitlyRun()
+    {
+        var first = await AddUserAsync("first", AppRoles.Admin);
+        await _users.ResetAuthenticatorKeyAsync(first);
+        var key = await _users.GetAuthenticatorKeyAsync(first);
+        _configuration["TestAdministrators:First:Email"] = first.Email;
+        _configuration["TestAdministrators:First:Password"] = "ConfiguredPassword1!";
+        _configuration["TestAdministrators:Second:Email"] = "second@example.test";
+        _configuration["TestAdministrators:Second:Password"] = "ConfiguredPassword2!";
+        var setup = _scope.ServiceProvider.GetRequiredService<TestAdministratorSetup>();
+        await setup.RunAsync();
+        Assert.Equal(2, (await _users.GetUsersInRoleAsync(AppRoles.Admin)).Count);
+        Assert.True(await _users.CheckPasswordAsync(first, "ConfiguredPassword1!"));
+        Assert.True(await _users.CheckPasswordAsync((await _users.FindByEmailAsync("second@example.test"))!, "ConfiguredPassword2!"));
+        Assert.Equal(key, await _users.GetAuthenticatorKeyAsync(first));
+        Assert.True(first.TwoFactorEnabled);
+        var stamp = first.SecurityStamp;
+        await setup.RunAsync();
+        Assert.Equal(stamp, first.SecurityStamp);
+        Assert.Equal(2, await _database.AuditLogs.CountAsync(log => log.Action == "Security.TestAdministratorSetup"));
     }
 
     private ClaimsPrincipal PrincipalFor(ApplicationUser user) => new(new ClaimsIdentity(new[]
