@@ -8,7 +8,7 @@ namespace IDS.Security;
 
 /// <summary>
 /// Requires an authenticator challenge on every password login for enrolled users,
-/// except non-admin accounts using the approved Development-only test bypass.
+/// except accounts covered by their role's Development-only test bypass.
 /// Existing "remember this browser" cookies never bypass the second factor.
 /// </summary>
 public sealed class AlwaysChallengeSignInManager : SignInManager<ApplicationUser>
