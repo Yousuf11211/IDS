@@ -22,7 +22,7 @@
     <div class="user-dropdown">
         @if (testingBypass)
         {
-            <span class="badge bg-warning text-dark me-2">Testing: 2FA bypassed</span>
+            <span class="badge bg-warning text-dark me-2">@(userRoles.Contains("Admin") ? "Testing: admin 2FA bypassed" : "Testing: employee 2FA bypassed")</span>
         }
         <button id="userMenuToggle" class="user-trigger" type="button" aria-haspopup="true" aria-expanded="false"
                 aria-controls="userMenu" aria-label="Account menu@(pendingCount > 0 ? $", {pendingCount} setup steps pending" : string.Empty)">
