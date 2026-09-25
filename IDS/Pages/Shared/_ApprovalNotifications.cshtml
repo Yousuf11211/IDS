@@ -1,0 +1,19 @@
+<details id="approvalNotifications" class="approval-notifications"
+         data-endpoint="@Url.Content("~/api/admin/approvals")" data-review-url="@Url.Page("/Admin/Security", new { area = "" })">
+    <summary class="btn-ids btn-ids-secondary" aria-label="Approval notifications">
+        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+        <span class="d-none d-lg-inline">Approvals</span>
+        <span id="approvalCount" class="badge bg-danger" hidden>0</span>
+    </summary>
+    <div class="approval-notifications-panel">
+        <strong>Requests awaiting your review</strong>
+        <p id="approvalStatus" class="small text-muted mt-2" role="status">Checking requests…</p>
+        <ul id="approvalList" class="list-unstyled mb-2"></ul>
+        <a asp-area="" asp-page="/Admin/Security" class="btn-ids btn-ids-secondary btn-ids-sm">View security controls</a>
+    </div>
+</details>
+<div id="approvalNotice" class="approval-notice alert-ids alert-ids-info" role="status" hidden>
+    <span id="approvalNoticeText"></span>
+    <a id="approvalNoticeLink" class="ms-2">Review request</a>
+    <button id="dismissApprovalNotice" class="btn-close ms-2" type="button" aria-label="Dismiss notification"></button>
+</div>
