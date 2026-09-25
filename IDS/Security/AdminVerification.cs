@@ -8,10 +8,11 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace IDS.Security;
 
-public sealed class AdminVerification(UserManager<ApplicationUser> users)
+public sealed class AdminVerification(UserManager<ApplicationUser> users, SecurityPolicyService policies)
 {
     private const string VerifiedAtKey = "ids.adminVerifiedAt";
     private const string VerifiedStampKey = "ids.adminVerifiedStamp";
+    private const string VerifiedWithBypassKey = "ids.adminVerifiedWithMfaBypass";
 
     public async Task<bool> IsRecentAsync(HttpContext context)
     {
@@ -22,7 +23,9 @@ public sealed class AdminVerification(UserManager<ApplicationUser> users)
             !DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ||
             at > DateTimeOffset.UtcNow || DateTimeOffset.UtcNow - at > TimeSpan.FromMinutes(5)) return false;
         var user = await users.GetUserAsync(context.User);
-        return user != null && user.TwoFactorEnabled && !user.MustChangePassword &&
+        var bypass = user != null && await policies.CanBypassTwoFactorAsync(user);
+        if (items.TryGetValue(VerifiedWithBypassKey, out var usedBypass) && usedBypass == "true" && !bypass) return false;
+        return user != null && user.EmailConfirmed && (user.TwoFactorEnabled || bypass) && !user.MustChangePassword &&
             await users.IsInRoleAsync(user, AppRoles.Admin) && !await users.IsInRoleAsync(user, AppRoles.Suspended) &&
             !await users.IsLockedOutAsync(user) &&
             items.TryGetValue(VerifiedStampKey, out var stamp) && stamp == user.SecurityStamp;
@@ -36,6 +39,7 @@ public sealed class AdminVerification(UserManager<ApplicationUser> users)
         // Authentication properties are encrypted with the cookie and belong to this session only.
         authentication.Properties.Items[VerifiedAtKey] = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         authentication.Properties.Items[VerifiedStampKey] = user.SecurityStamp;
+        authentication.Properties.Items[VerifiedWithBypassKey] = await policies.CanBypassTwoFactorAsync(user) ? "true" : "false";
         await context.SignInAsync(IdentityConstants.ApplicationScheme,
             authentication.Principal, authentication.Properties);
     }
