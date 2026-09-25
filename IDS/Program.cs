@@ -32,6 +32,14 @@ else
 // =====================================================
 // Database Configuration
 // =====================================================
+// DotNetEnv loads after the builder's environment provider, so map these local
+// testing settings explicitly. The consuming services also require Development.
+builder.Configuration["Security:AdminMfaTestBypass"] = Environment.GetEnvironmentVariable("ADMIN_MFA_TEST_BYPASS") ?? "false";
+builder.Configuration["TestAdministrators:First:Email"] = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+builder.Configuration["TestAdministrators:First:Password"] = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+builder.Configuration["TestAdministrators:Second:Email"] = Environment.GetEnvironmentVariable("ADMIN2_EMAIL");
+builder.Configuration["TestAdministrators:Second:Password"] = Environment.GetEnvironmentVariable("ADMIN2_PASSWORD");
+
 var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") 
     ?? builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -111,6 +119,8 @@ builder.Services.AddScoped<SecurityPolicyService>();
 builder.Services.AddScoped<SecurityAdministrationService>();
 builder.Services.AddScoped<AdminVerification>();
 builder.Services.AddScoped<AdminVerificationFilter>();
+builder.Services.AddScoped<TestAdministratorSetup>();
+builder.Services.AddScoped<SecurityApprovalNotifications>();
 builder.Services.AddSingleton<RealtimeSessionRegistry>();
 builder.Services.AddSingleton<RealtimeAccessFilter>();
 builder.Services.AddScoped<RealtimeSessionValidator>();
@@ -141,6 +151,9 @@ var app = builder.Build();
 // Prepare the database before Identity queries mapped user columns.
 // =====================================================
 var migrateOnly = args.Contains("--migrate-only", StringComparer.OrdinalIgnoreCase);
+var setupTestAdmins = args.Contains("--setup-test-admins", StringComparer.Ordinal);
+if (setupTestAdmins && !app.Environment.IsDevelopment())
+    throw new InvalidOperationException("Test administrator setup is available only in Development mode.");
 var operatorCommand = args.Any(argument => argument.StartsWith("--provision-admin=", StringComparison.Ordinal) ||
     argument.StartsWith("--recover-admin=", StringComparison.Ordinal) || argument.StartsWith("--suspend-admin=", StringComparison.Ordinal));
 using (var scope = app.Services.CreateScope())
@@ -166,7 +179,11 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    if (operatorCommand)
+    if (setupTestAdmins)
+    {
+        await services.GetRequiredService<TestAdministratorSetup>().RunAsync();
+    }
+    else if (operatorCommand)
     {
         await SecurityOperatorCommands.RunAsync(args, services);
     }
@@ -176,7 +193,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (migrateOnly || operatorCommand)
+if (migrateOnly || operatorCommand || setupTestAdmins)
 {
     app.Logger.LogInformation("IDS maintenance command completed successfully.");
     await app.DisposeAsync();
