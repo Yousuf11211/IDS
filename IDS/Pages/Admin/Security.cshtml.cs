@@ -27,17 +27,22 @@ public sealed class SecurityModel(
     [TempData] public string? StatusMessage { get; set; }
     public sealed record EmployeeOption(string Id, string Email);
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(long? requestId = null)
     {
         Policy = await policies.GetAsync();
         Requests = await database.SecurityChangeRequests.AsNoTracking()
             .OrderByDescending(request => request.Id).Take(100).ToListAsync();
+        if (requestId.HasValue && Requests.All(request => request.Id != requestId.Value))
+        {
+            var selected = await database.SecurityChangeRequests.AsNoTracking().SingleOrDefaultAsync(request => request.Id == requestId.Value);
+            if (selected != null) Requests.Insert(0, selected);
+        }
         Audit = await database.AuditLogs.AsNoTracking().Where(log => log.Action.StartsWith("Security."))
             .OrderByDescending(log => log.Id).Take(100).ToListAsync();
         Employees = await users.Users.AsNoTracking().OrderBy(user => user.Email)
             .Select(user => new EmployeeOption(user.Id, user.Email ?? user.UserName ?? user.Id)).ToListAsync();
         var admins = await users.GetUsersInRoleAsync(AppRoles.Admin);
-        EligibleAdministrators = admins.Count(user => user.EmailConfirmed && user.TwoFactorEnabled &&
+        EligibleAdministrators = admins.Count(user => user.EmailConfirmed && (user.TwoFactorEnabled || Policy.AdminMfaTestBypass) &&
             !user.MustChangePassword && (!user.LockoutEnabled || user.LockoutEnd == null || user.LockoutEnd <= DateTimeOffset.UtcNow));
     }
 
