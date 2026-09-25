@@ -53,7 +53,7 @@ public sealed class RealtimeSessionValidator(
             var id = session.Context.UserIdentifier;
             return (session.IsChat && !policy.MessagingEnabled) || id == null ||
                 !accounts.TryGetValue(id, out var user) || suspendedIds.Contains(id) ||
-                !HasValidCredentials(session, user, policy.EmployeeMfaTestBypass && !adminIds.Contains(id));
+                !HasValidCredentials(session, user, adminIds.Contains(id) ? policy.AdminMfaTestBypass : policy.EmployeeMfaTestBypass);
         }).ToArray();
     }
 
@@ -69,7 +69,7 @@ public sealed class RealtimeSessionValidator(
                        where membership.UserId == id
                        select role.Name).ToListAsync();
         return !roles.Contains(AppRoles.Suspended) &&
-            HasValidCredentials(session, user, policy.EmployeeMfaTestBypass && !roles.Contains(AppRoles.Admin));
+            HasValidCredentials(session, user, roles.Contains(AppRoles.Admin) ? policy.AdminMfaTestBypass : policy.EmployeeMfaTestBypass);
     }
 
     private bool HasValidCredentials(RealtimeSession session, IDS.Data.Models.ApplicationUser user, bool bypassTwoFactor)
