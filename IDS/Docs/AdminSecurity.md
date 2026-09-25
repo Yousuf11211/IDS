@@ -1,6 +1,8 @@
 # Administrator security controls
 
-Open **Admin → Security controls** (`/Admin/Security`). Admin pages require the current password and an authenticator code every five minutes. This verification is tied to the browser session and account security stamp, so changing credentials or revoking sessions invalidates it.
+Open **Admin → Security controls** (`/Admin/Security`). Admin pages require the current password and an authenticator code every five minutes, except for the explicit Development administrator testing bypass described below. This verification is tied to the browser session and account security stamp, so changing credentials or revoking sessions invalidates it.
+
+Administrators have an **Approvals** bell in the site header. While the page is visible, it checks for requests from other administrators every ten seconds and displays the requester's email and requested action. Pending requests also appear after signing in again; notifications do not depend on both people being online at the same time. Choose **Review request** to see the target and reason, then **Approve** or **Reject**. Expired, reviewed, and self-requested changes are excluded from the notification list. Approval still requires recent administrator verification. The notification endpoint is read-only and restricted to eligible administrators.
 
 ## Available actions
 
@@ -17,13 +19,27 @@ Open **Admin → Security controls** (`/Admin/Security`). Admin pages require th
 
 Requests expire after 24 hours. A change to the requester's credentials, or the target account's credentials/email, makes an earlier request unusable. Emergency disabling cancels outstanding requests to enable that feature. Changes and their audit records are committed together.
 
-Administrator MFA cannot be switched off. Employee authenticator recovery invalidates the old key, recovery codes and login sessions, then requires fresh enrollment before application access unless the development testing bypass is active. Administrators cannot reset another administrator through employee management. Self-service authenticator replacement and recovery-code generation require both the password and current authenticator code.
+Administrator MFA cannot be switched off through the web interface. Employee authenticator recovery invalidates the old key, recovery codes and login sessions, then requires fresh enrollment before application access unless the development testing bypass is active. Administrators cannot reset another administrator through employee management. Self-service authenticator replacement and recovery-code generation require both the password and current authenticator code, even during testing.
+
+## Two local test administrators and separate admin bypass
+
+The ignored `IDS/.env` file contains `ADMIN_EMAIL` / `ADMIN_PASSWORD` for the first account and `ADMIN2_EMAIL` / `ADMIN2_PASSWORD` for the second. They are temporary readable test credentials; the database stores Identity password hashes. Normal startup does not synchronize these passwords. To explicitly apply both configured passwords (or create missing test administrators), run from `IDS/` in a Development environment:
+
+```sh
+dotnet run --launch-profile http -- --setup-test-admins
+```
+
+The command exits without starting the server. It refuses Production and Staging, duplicate email addresses, existing non-admin accounts, and restricted accounts. It does not reset authenticator keys or clear lockouts. Password changes invalidate existing sessions and are audited. Repeating it with matching passwords does not change security stamps.
+
+Set `ADMIN_MFA_TEST_BYPASS=true` in `IDS/.env` and restart the Development server to skip administrator authenticator prompts and enrollment during testing. This is separate from the employee bypass. Admin sign-in still requires the password; admin pages still require password verification every five minutes; sensitive changes still require a different administrator's approval. The account header and security page show that the bypass is active. Existing authenticator keys, recovery codes, and enrollment state are preserved.
+
+When testing ends, set `ADMIN_MFA_TEST_BYPASS=false` (or remove it) and restart. Test login sessions and password-only admin verification are then rejected; enrolled administrators must use their authenticator and unenrolled administrators must enroll. Production and Staging ignore the flag even when it is true. Remove the temporary credentials and rotate any passwords retained beyond local testing. Two accounts owned by one person are suitable for exercising the UI, not independent production approval.
 
 ## Skip employee codes during local testing
 
 In **Admin → Security**, use **Request testing bypass**, enter a reason, and have the second administrator approve it. This bypasses authenticator prompts for all non-admin accounts, including enrolled employees and support staff. It also lets unenrolled employees test the app without being redirected into authenticator setup. Passwords, account confirmation, lockout and suspension still apply. Existing authenticator keys and recovery codes are not changed.
 
-The bypass is off by default and only takes effect when the application environment is `Development`. The supplied local launch profiles already use that environment. Production and Staging ignore a stored bypass setting and refuse requests to enable it; never deploy a company service in Development mode. Administrators always need their authenticator code and the usual admin re-verification.
+The employee bypass is off by default and only takes effect when the application environment is `Development`. The supplied local launch profiles already use that environment. Production and Staging ignore a stored bypass setting and refuse requests to enable it; never deploy a company service in Development mode. The employee setting does not affect administrators; their separate testing flag is described above.
 
 Use **Restore employee 2FA checks** when testing ends. Sessions created through the bypass are marked in their protected login cookies. Restoring checks, or running outside Development, ends those sessions on the next HTTP request or live-connection check. Enrolled employees must enter a code on their next login; unenrolled employees must complete enrollment. A visible account-menu badge identifies the active test bypass. This setting uses the existing `SystemSettings` table and does not require a new migration.
 
