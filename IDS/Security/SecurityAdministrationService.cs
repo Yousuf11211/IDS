@@ -179,7 +179,8 @@ public sealed class SecurityAdministrationService(
     private async Task<ApplicationUser> RequireAdminAsync(string id)
     {
         var user = await users.FindByIdAsync(id);
-        if (user == null || !user.EmailConfirmed || user.MustChangePassword || !user.TwoFactorEnabled ||
+        if (user == null || !user.EmailConfirmed || user.MustChangePassword ||
+            (!user.TwoFactorEnabled && !await policies.CanBypassTwoFactorAsync(user)) ||
             await users.IsLockedOutAsync(user) || !await users.IsInRoleAsync(user, AppRoles.Admin) ||
             await users.IsInRoleAsync(user, AppRoles.Suspended))
             throw new SecurityChangeException("An active administrator with verified two-factor authentication is required.");
