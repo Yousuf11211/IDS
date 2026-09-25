@@ -15,25 +15,34 @@ public sealed class VerifyModel(
     UserManager<ApplicationUser> users,
     SignInManager<ApplicationUser> signIn,
     AdminVerification verification,
-    ApplicationDbContext database) : PageModel
+    ApplicationDbContext database,
+    SecurityPolicyService policies) : PageModel
 {
     [BindProperty] public InputModel Input { get; set; } = new();
     public string ReturnUrl { get; private set; } = "/Admin/Security";
+    public bool TestingBypass { get; private set; }
 
     public sealed class InputModel
     {
         [Required, DataType(DataType.Password)] public string Password { get; set; } = string.Empty;
-        [Required, StringLength(7, MinimumLength = 6)] public string Code { get; set; } = string.Empty;
+        public string? Code { get; set; }
     }
 
-    public void OnGet(string? returnUrl) => ReturnUrl = SafeReturnUrl(returnUrl);
+    public async Task OnGetAsync(string? returnUrl)
+    {
+        ReturnUrl = SafeReturnUrl(returnUrl);
+        TestingBypass = (await policies.GetAsync()).AdminMfaTestBypass;
+    }
 
     public async Task<IActionResult> OnPostAsync(string? returnUrl)
     {
         ReturnUrl = SafeReturnUrl(returnUrl);
+        TestingBypass = (await policies.GetAsync()).AdminMfaTestBypass;
+        if (!TestingBypass && string.IsNullOrWhiteSpace(Input.Code))
+            ModelState.AddModelError("Input.Code", "Enter your current authenticator code.");
         if (!ModelState.IsValid) return Page();
         var user = await users.GetUserAsync(User);
-        if (user == null || !user.TwoFactorEnabled || user.MustChangePassword ||
+        if (user == null || !user.EmailConfirmed || (!user.TwoFactorEnabled && !TestingBypass) || user.MustChangePassword ||
             !await users.IsInRoleAsync(user, AppRoles.Admin) || await users.IsInRoleAsync(user, AppRoles.Suspended))
             return Forbid();
         if (await users.IsLockedOutAsync(user))
@@ -42,13 +51,14 @@ public sealed class VerifyModel(
             return RedirectToPage("/Account/Lockout", new { area = "Identity" });
         }
 
-        var code = Input.Code.Replace(" ", "").Replace("-", "");
+        var code = Input.Code?.Replace(" ", "").Replace("-", "") ?? string.Empty;
         var valid = await users.CheckPasswordAsync(user, Input.Password) &&
-            await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, code);
+            (TestingBypass || await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, code));
         database.AuditLogs.Add(new AuditLog
         {
             UserId = user.Id, UserEmail = user.Email ?? "", EntityType = "Authentication",
             Action = valid ? "Security.AdminVerified" : "Security.AdminVerificationFailed",
+            Details = TestingBypass ? "Development administrator authenticator bypass active." : null,
             Timestamp = DateTime.UtcNow, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString()
         });
         await database.SaveChangesAsync();
@@ -59,7 +69,8 @@ public sealed class VerifyModel(
         if (!valid)
         {
             await users.AccessFailedAsync(user);
-            ModelState.AddModelError(string.Empty, "Verification failed. Check your password and current authenticator code.");
+            ModelState.AddModelError(string.Empty, TestingBypass ? "Verification failed. Check your password." :
+                "Verification failed. Check your password and current authenticator code.");
             return Page();
         }
         await users.ResetAccessFailedCountAsync(user);
