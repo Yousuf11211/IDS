@@ -16,9 +16,9 @@
     </div>
 </div>
 
-<div class="row g-4">
+<div class="help-grid">
     <!-- Quick Start Guide -->
-    <div class="col-lg-8">
+    <div class="help-main">
         <div class="card-ids">
  <div class="card-ids-header">
          <h2 class="card-ids-title">
@@ -30,7 +30,7 @@ Quick Start Guide
 <div class="accordion" id="quickStartAccordion">
         <div class="accordion-item">
          <h3 class="accordion-header">
- <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+ <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
 <i class="fa-solid fa-gauge me-2 text-primary"></i>
     Using the Dashboard
     </button>
@@ -49,7 +49,7 @@ Quick Start Guide
     
     <div class="accordion-item">
      <h3 class="accordion-header">
-     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
     <i class="fa-solid fa-bell me-2 text-warning"></i>
               Understanding Alerts
        </button>
@@ -70,7 +70,7 @@ Quick Start Guide
               
    <div class="accordion-item">
        <h3 class="accordion-header">
- <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+ <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
 <i class="fa-solid fa-user-gear me-2 text-info"></i>
        Managing Your Profile
      </button>
@@ -80,6 +80,7 @@ Quick Start Guide
   <p>Access your profile settings through the user menu in the top-right corner:</p>
    <ul>
         <li><strong>Profile</strong> - Update your name and contact information.</li>
+        <li><strong>Appearance</strong> - Choose Light, Dark, or System in Settings or Profile. Your choice applies across all pages in this browser.</li>
              <li><strong>Change Password</strong> - Update your password regularly for security.</li>
     <li><strong>Two-Factor Authentication</strong> - Enable 2FA for additional account security.</li>
     <li><strong>Personal Data</strong> - Download or delete your personal data.</li>
@@ -92,7 +93,7 @@ Quick Start Guide
        {
    <div class="accordion-item">
        <h3 class="accordion-header">
-   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
      <i class="fa-solid fa-users-gear me-2" style="color: #a855f7;"></i>
           Admin Features
    </button>
@@ -127,7 +128,7 @@ Quick Start Guide
   <div class="accordion" id="faqAccordion">
      <div class="accordion-item">
   <h3 class="accordion-header">
-   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="false" aria-controls="faq1">
       What types of attacks can the IDS detect?
        </button>
   </h3>
@@ -147,7 +148,7 @@ Quick Start Guide
     
      <div class="accordion-item">
         <h3 class="accordion-header">
-          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
            How often are metrics updated?
        </button>
     </h3>
@@ -160,7 +161,7 @@ Quick Start Guide
     
         <div class="accordion-item">
     <h3 class="accordion-header">
-   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+   <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
       What should I do if I receive a critical alert?
 </button>
      </h3>
@@ -180,7 +181,7 @@ Quick Start Guide
  
           <div class="accordion-item">
  <h3 class="accordion-header">
-       <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+       <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4" aria-expanded="false" aria-controls="faq4">
      Why was my account suspended?
        </button>
         </h3>
@@ -201,8 +202,9 @@ Quick Start Guide
    </div>
     </div>
     
+ </div>
  <!-- Sidebar -->
-    <div class="col-lg-4">
+    <aside class="help-sidebar" aria-label="Support resources">
     <!-- Contact Support -->
       <div class="card-ids">
   <div class="card-ids-header">
@@ -277,5 +279,5 @@ Quick Start Guide
       </ul>
             </div>
         </div>
-    </div>
+    </aside>
 </div>
