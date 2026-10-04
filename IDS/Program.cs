@@ -16,7 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Load environment variables from .env file
 // This should be done early, before other configuration
 // =====================================================
-var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
 if (File.Exists(envPath))
 {
     // Use DotNetEnv for robust .env parsing (handles quotes, multiline, etc.)
