@@ -284,6 +284,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseMiddleware<PrivateResponseCacheMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
