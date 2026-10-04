@@ -1,21 +1,39 @@
-﻿@page
+@page
 @model LogoutModel
 @{
-    ViewData["Title"] = "Log out";
+    ViewData["Title"] = "Sign out";
 }
 
-<header>
-    <h1>@ViewData["Title"]</h1>
-    @{
-        if (User.Identity?.IsAuthenticated ?? false)
-        {
-            <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
-                <button type="submit" class="nav-link btn btn-link text-dark">Click here to Logout</button>
-            </form>
-        }
-        else
-        {
-            <p>You have successfully logged out of the application.</p>
-        }
-    }
-</header>
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <section class="card-ids">
+            <div class="card-ids-header">
+                <h1 class="card-ids-title"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Sign out</h1>
+            </div>
+            <div class="card-ids-body">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    @if (Model.Retry)
+                    {
+                        <div class="alert-ids alert-ids-warning" role="alert">
+                            Your sign-out form expired. You are still signed in. Confirm below to finish signing out.
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Sign out of IDS on this browser?</p>
+                    }
+                    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                        <button type="submit" class="btn-ids btn-ids-primary">Sign out</button>
+                    </form>
+                }
+                else
+                {
+                    <p role="status">You are signed out. Sign in again to access your workspace.</p>
+                    <a asp-area="Identity" asp-page="/Account/Login" class="btn-ids btn-ids-primary">Sign in</a>
+                    <a asp-area="" asp-page="/Index" class="btn-ids btn-ids-secondary">Go to home</a>
+                }
+            </div>
+        </section>
+    </div>
+</div>
