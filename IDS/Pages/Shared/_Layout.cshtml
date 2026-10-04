@@ -9,6 +9,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - IDS Security</title>
     
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -129,8 +131,8 @@ else
    
     <div class="d-flex align-items-center gap-3">
     <!-- Theme Toggle -->
-  <button id="themeToggle" class="btn btn-icon btn-ids-ghost" aria-label="Toggle theme" title="Toggle dark/light mode">
-  <i class="fa-solid fa-moon" id="themeIcon"></i>
+  <button id="themeToggle" type="button" class="btn btn-icon btn-ids-ghost" aria-label="Toggle theme" title="Toggle dark/light mode">
+  <i class="fa-solid fa-moon" id="themeIcon" aria-hidden="true"></i>
        </button>
           
  @if (User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin"))
@@ -185,12 +187,6 @@ else
         <script src="~/js/chat-notifications.js" asp-append-version="true" defer></script>
     }
     
-    <script>
-        // Site-wide theme state lives in site.js; this button only invokes it.
-        document.getElementById('themeToggle')?.addEventListener('click', () => {
-            window.IDS.ThemeManager.toggle();
-        });
-    </script>
 
  @await RenderSectionAsync("Scripts", required: false)
 </body>
