@@ -17,7 +17,7 @@
     </div>
 </div>
 
-<partial name="_StatusMessage" />
+<partial name="_StatusMessage" for="StatusMessage" />
 
 <div class="row g-4">
   <div class="col-lg-8">
@@ -94,6 +94,9 @@
     </div>
     
     <div class="col-lg-4">
+        <div class="mb-4">
+            <partial name="/Pages/Shared/_AppearanceSettings.cshtml" />
+        </div>
         <!-- Quick Links -->
    <div class="card-ids">
    <div class="card-ids-header">
@@ -103,7 +106,10 @@
        </h3>
  </div>
   <div class="card-ids-body p-0">
- <nav class="sidebar-nav">
+ <nav class="sidebar-nav" aria-label="Account settings">
+   <a asp-area="" asp-page="/Settings" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+    <i class="fa-solid fa-gear"></i> Settings
+   </a>
    <a asp-page="./ChangePassword" class="sidebar-nav-link" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
     <i class="fa-solid fa-key"></i> Change Password
         </a>
