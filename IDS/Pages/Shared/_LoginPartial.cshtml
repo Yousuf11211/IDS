@@ -84,7 +84,7 @@
             </nav>
 
             <div class="dropdown-footer">
-                <form method="post" asp-area="Identity" asp-page="/Account/Logout"
+                <form id="signOutForm" method="post" asp-area="Identity" asp-page="/Account/Logout"
                       asp-route-returnUrl="@Url.Page("/Index", new { area = "" })">
                     <button type="submit" class="btn-logout d-flex align-items-center justify-content-center gap-2 w-100">
                         <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Sign out
@@ -123,7 +123,11 @@
             const resetInactivityTimer = () => {
                 clearTimeout(inactivityTimer);
                 inactivityTimer = setTimeout(() => {
-                    window.location.href = '/Identity/Account/Logout?handler=Inactivity';
+                    const form = document.getElementById('signOutForm');
+                    const action = new URL(form.action);
+                    action.searchParams.set('handler', 'Inactivity');
+                    form.action = action.href;
+                    form.requestSubmit();
                 }, inactivityTimeoutMs);
             };
             ['click', 'mousemove', 'keydown', 'scroll', 'touchstart'].forEach(eventName => {
