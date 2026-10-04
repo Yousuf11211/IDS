@@ -164,9 +164,12 @@
       <div class="card-ids-body">
        <div class="d-flex flex-column gap-2">
 <!-- Reset Password -->
-       <button type="button" class="btn-ids btn-ids-secondary w-100" onclick="showConfirmModal('resetPassword', 'Send Account Link', 'Send a one-time password setup link to this employee? Their current password will remain valid until they use the link.')">
+       <button type="button" class="btn-ids btn-ids-secondary w-100" disabled="@(!Model.AccountLinksReady)" aria-describedby="account-link-status" onclick="showConfirmModal('resetPassword', 'Send Account Link', 'Send a one-time password setup link to this employee? Their current password will remain valid until they use the link.')">
      <i class="fa-solid fa-key me-2"></i> Send Account Link
        </button>
+       <p id="account-link-status" class="small text-secondary mb-2" role="status">
+           @(Model.AccountLinksReady ? "Email and account-link settings are configured." : Model.AccountLinksUnavailableReason)
+       </p>
        
            @if (Model.CurrentRole != "Suspended")
   {
