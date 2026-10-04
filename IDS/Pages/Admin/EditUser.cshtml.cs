@@ -27,6 +27,12 @@ public class EditUserModel(
     public string CurrentRole { get; private set; } = string.Empty;
     public DateTime? LastLogin { get; private set; }
     public bool IsCurrentUser { get; private set; }
+    public bool AccountLinksReady => emailSender.IsConfigured && accountLinks.IsConfigured;
+    public string AccountLinksUnavailableReason => !emailSender.IsConfigured
+        ? "Email delivery is disabled or Mailjet credentials are missing. Configure email delivery and restart the application."
+        : !accountLinks.IsConfigured
+            ? "The application URL for account links is missing or invalid. Configure PUBLIC_BASE_URL or Application:PublicBaseUrl and restart the application."
+            : string.Empty;
     public List<string> AllRoles { get; } = new() { AppRoles.Employee, AppRoles.Support, AppRoles.Suspended };
 
     public class UserEditInput
@@ -101,9 +107,9 @@ public class EditUserModel(
     {
         var user = await ManageableEmployeeAsync(userId);
         if (user == null) return RedirectToPage("/Admin/Security");
-        if (!emailSender.IsConfigured || !accountLinks.IsConfigured)
+        if (!AccountLinksReady)
         {
-            StatusMessage = "Error: Configure email and PUBLIC_BASE_URL before sending account links.";
+            StatusMessage = "Error: " + AccountLinksUnavailableReason;
             return RedirectToPage(new { id = userId });
         }
         var token = await users.GeneratePasswordResetTokenAsync(user);
