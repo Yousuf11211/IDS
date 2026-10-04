@@ -44,7 +44,16 @@ public class CreateUserModel : PageModel
     public IReadOnlyList<string> AvailableRoles =>
         new[] { AppRoles.Employee, AppRoles.Support };
     public bool InvitationsAllowed { get; private set; }
-    public bool InvitationsReady => InvitationsAllowed && _emailSender.IsConfigured && _accountLinks.IsConfigured;
+    public bool EmailConfigured => _emailSender.IsConfigured;
+    public bool AccountLinksConfigured => _accountLinks.IsConfigured;
+    public bool InvitationsReady => InvitationsAllowed && EmailConfigured && AccountLinksConfigured;
+    public string InvitationsUnavailableReason => !InvitationsAllowed
+        ? "Employee invitations are paused in Security controls."
+        : !EmailConfigured
+            ? "Email delivery is disabled or Mailjet credentials are missing. Configure email delivery and restart the application."
+            : !AccountLinksConfigured
+                ? "The application URL for account links is missing or invalid. Configure PUBLIC_BASE_URL or Application:PublicBaseUrl and restart the application."
+                : string.Empty;
 
     public async Task OnGetAsync() => InvitationsAllowed = (await _policies.GetAsync()).EmployeeInvitationsEnabled;
 
@@ -76,9 +85,7 @@ public class CreateUserModel : PageModel
             ModelState.AddModelError("Input.Role", "Create an employee or support account. Administrator access requires a separate approved request.");
 
         if (!InvitationsReady)
-            ModelState.AddModelError(string.Empty, InvitationsAllowed
-                ? "Configure email and PUBLIC_BASE_URL before inviting employees."
-                : "Employee invitations are paused in Security controls.");
+            ModelState.AddModelError(string.Empty, InvitationsUnavailableReason);
 
         if (!ModelState.IsValid)
             return Page();
