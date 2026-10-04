@@ -11,7 +11,7 @@
   min-height: calc(100vh - var(--header-height) - 80px);
             display: flex;
      align-items: center;
-background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
             position: relative;
             overflow: hidden;
         }
@@ -45,7 +45,7 @@ background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
         background: rgba(59, 130, 246, 0.1);
    border: 1px solid rgba(59, 130, 246, 0.2);
         border-radius: var(--radius-full);
-            color: var(--primary-light);
+            color: var(--primary);
             font-size: 0.875rem;
             font-weight: 500;
      margin-bottom: 1.5rem;
@@ -54,7 +54,7 @@ background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
         .hero-title {
        font-size: 3.5rem;
          font-weight: 800;
-    color: white;
+    color: var(--text-primary);
           line-height: 1.1;
      margin-bottom: 1.5rem;
         }
@@ -68,7 +68,7 @@ background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
      
         .hero-description {
             font-size: 1.25rem;
-    color: #94a3b8;
+    color: var(--text-secondary);
             max-width: 600px;
      margin-bottom: 2rem;
             line-height: 1.7;
@@ -111,19 +111,19 @@ color: white;
         gap: 0.75rem;
          padding: 1rem 2rem;
        background: transparent;
-      color: white;
+      color: var(--text-primary);
  font-weight: 600;
             font-size: 1rem;
             border-radius: var(--radius-lg);
  text-decoration: none;
-         border: 1px solid rgba(255, 255, 255, 0.2);
+         border: 1px solid var(--border-color);
          transition: all var(--transition-normal);
         }
         
         .btn-hero-secondary:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.3);
-          color: white;
+        background: var(--bg-tertiary);
+        border-color: var(--text-muted);
+          color: var(--text-primary);
      }
         
    .features-section {
@@ -133,7 +133,7 @@ color: white;
         
         .features-grid {
      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
             gap: 2rem;
      max-width: 1200px;
        margin: 0 auto;
