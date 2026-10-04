@@ -3,13 +3,14 @@
     var messagingEnabled = User?.Identity?.IsAuthenticated == true && (await SecurityPolicies.GetAsync()).MessagingEnabled;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-authenticated="@(User?.Identity?.IsAuthenticated == true ? "true" : "false")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - IDS Security</title>
     
     <script src="~/js/theme.js" asp-append-version="true"></script>
+    <script src="~/js/session-history.js" asp-append-version="true" defer></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
