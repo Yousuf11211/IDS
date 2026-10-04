@@ -13,41 +13,7 @@
     // ============================================
     // Theme Management
     // ============================================
-    const ThemeManager = {
-        STORAGE_KEY: 'ids-theme',
-    
-        init() {
-            const savedTheme = localStorage.getItem(this.STORAGE_KEY) || 'dark';
-            this.apply(savedTheme);
-        },
-        
-   apply(theme) {
-            const root = document.documentElement;
-const icon = document.getElementById('themeIcon');
-          
-    if (theme === 'dark') {
-       root.classList.add('theme-dark');
-   if (icon) {
-          icon.classList.remove('fa-moon');
-      icon.classList.add('fa-sun');
-  }
-          } else {
-           root.classList.remove('theme-dark');
-      if (icon) {
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
-        }
-}
-        },
-        
-   toggle() {
-       const isDark = document.documentElement.classList.contains('theme-dark');
-            const newTheme = isDark ? 'light' : 'dark';
-          localStorage.setItem(this.STORAGE_KEY, newTheme);
-            this.apply(newTheme);
-      }
-    };
-
+    const ThemeManager = window.IDS.ThemeManager;
     // ============================================
     // Utility Functions
     // ============================================
@@ -178,7 +144,8 @@ if (!text) return '';
         init() {
  document.addEventListener('keydown', (e) => {
            // Don't trigger if user is typing in an input
-           if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+           if (e.defaultPrevented || e.repeat || e.ctrlKey || e.metaKey || e.altKey ||
+               e.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) {
    return;
 }
            
@@ -209,7 +176,6 @@ if (!text) return '';
     // Initialize on DOM Ready
     // ============================================
     document.addEventListener('DOMContentLoaded', () => {
-        ThemeManager.init();
         FormValidation.init();
       KeyboardShortcuts.init();
         
@@ -221,6 +187,7 @@ if (!text) return '';
 
     // Export to global scope for use in pages
     window.IDS = {
+        ...window.IDS,
      Utils,
         ThemeManager,
     CountUp
