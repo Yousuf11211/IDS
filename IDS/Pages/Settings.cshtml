@@ -1,0 +1,27 @@
+@page
+@model IDS.Pages.SettingsModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="page-header">
+    <div class="page-header-hero">
+        <h1 class="page-header-title"><i class="fa-solid fa-gear" aria-hidden="true"></i> Settings</h1>
+        <p class="page-header-subtitle">Personalize your workspace and manage your account.</p>
+    </div>
+</div>
+
+<div class="settings-grid">
+    <partial name="_AppearanceSettings" />
+    <section class="card-ids">
+        <div class="card-ids-header">
+            <h2 class="card-ids-title"><i class="fa-solid fa-user-shield text-primary" aria-hidden="true"></i> Account &amp; security</h2>
+        </div>
+        <nav class="card-ids-body sidebar-nav" aria-label="Account settings">
+            <a class="sidebar-nav-link" asp-area="Identity" asp-page="/Account/Manage/Index"><i class="fa-solid fa-user" aria-hidden="true"></i> Profile information</a>
+            <a class="sidebar-nav-link" asp-area="Identity" asp-page="/Account/Manage/ChangePassword"><i class="fa-solid fa-key" aria-hidden="true"></i> Change password</a>
+            <a class="sidebar-nav-link" asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Two-factor authentication</a>
+            <a class="sidebar-nav-link" asp-area="Identity" asp-page="/Account/Manage/PersonalData"><i class="fa-solid fa-download" aria-hidden="true"></i> Personal data</a>
+        </nav>
+    </section>
+</div>
