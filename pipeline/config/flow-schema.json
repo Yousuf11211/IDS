@@ -1,0 +1,696 @@
+{
+  "version": 1,
+  "columns": [
+    {
+      "name": "Timestamp",
+      "type": "DateTime"
+    },
+    {
+      "name": "SrcIp",
+      "type": "string",
+      "max_length": 45
+    },
+    {
+      "name": "DstPort",
+      "type": "int"
+    },
+    {
+      "name": "Duration",
+      "type": "double"
+    },
+    {
+      "name": "PacketsCount",
+      "type": "int"
+    },
+    {
+      "name": "FwdPacketsCount",
+      "type": "int"
+    },
+    {
+      "name": "BwdPacketsCount",
+      "type": "int"
+    },
+    {
+      "name": "TotalPayloadBytes",
+      "type": "long"
+    },
+    {
+      "name": "FwdTotalPayloadBytes",
+      "type": "long"
+    },
+    {
+      "name": "BwdTotalPayloadBytes",
+      "type": "long"
+    },
+    {
+      "name": "PayloadBytesMax",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesMean",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesStd",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesVariance",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesMedian",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesSkewness",
+      "type": "double"
+    },
+    {
+      "name": "PayloadBytesCov",
+      "type": "double"
+    },
+    {
+      "name": "FwdPayloadBytesMax",
+      "type": "double"
+    },
+    {
+      "name": "FwdPayloadBytesStd",
+      "type": "double"
+    },
+    {
+      "name": "FwdPayloadBytesMedian",
+      "type": "double"
+    },
+    {
+      "name": "FwdPayloadBytesSkewness",
+      "type": "double"
+    },
+    {
+      "name": "FwdPayloadBytesCov",
+      "type": "double"
+    },
+    {
+      "name": "BwdPayloadBytesMax",
+      "type": "double"
+    },
+    {
+      "name": "BwdPayloadBytesStd",
+      "type": "double"
+    },
+    {
+      "name": "BwdPayloadBytesMedian",
+      "type": "double"
+    },
+    {
+      "name": "TotalHeaderBytes",
+      "type": "long"
+    },
+    {
+      "name": "MeanHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "StdHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "VarianceHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "FwdTotalHeaderBytes",
+      "type": "long"
+    },
+    {
+      "name": "FwdMeanHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "BwdTotalHeaderBytes",
+      "type": "long"
+    },
+    {
+      "name": "BwdMeanHeaderBytes",
+      "type": "double"
+    },
+    {
+      "name": "FwdAvgSegmentSize",
+      "type": "double"
+    },
+    {
+      "name": "AvgSegmentSize",
+      "type": "double"
+    },
+    {
+      "name": "FwdInitWinBytes",
+      "type": "int"
+    },
+    {
+      "name": "BwdInitWinBytes",
+      "type": "int"
+    },
+    {
+      "name": "ActiveMin",
+      "type": "double"
+    },
+    {
+      "name": "ActiveMax",
+      "type": "double"
+    },
+    {
+      "name": "ActiveMean",
+      "type": "double"
+    },
+    {
+      "name": "ActiveStd",
+      "type": "double"
+    },
+    {
+      "name": "ActiveMedian",
+      "type": "double"
+    },
+    {
+      "name": "ActiveSkewness",
+      "type": "double"
+    },
+    {
+      "name": "ActiveCov",
+      "type": "double"
+    },
+    {
+      "name": "ActiveMode",
+      "type": "double"
+    },
+    {
+      "name": "ActiveVariance",
+      "type": "double"
+    },
+    {
+      "name": "IdleMin",
+      "type": "double"
+    },
+    {
+      "name": "IdleMax",
+      "type": "double"
+    },
+    {
+      "name": "IdleMean",
+      "type": "double"
+    },
+    {
+      "name": "IdleStd",
+      "type": "double"
+    },
+    {
+      "name": "IdleMedian",
+      "type": "double"
+    },
+    {
+      "name": "IdleSkewness",
+      "type": "double"
+    },
+    {
+      "name": "IdleCov",
+      "type": "double"
+    },
+    {
+      "name": "IdleMode",
+      "type": "double"
+    },
+    {
+      "name": "IdleVariance",
+      "type": "double"
+    },
+    {
+      "name": "BytesRate",
+      "type": "double"
+    },
+    {
+      "name": "FwdBytesRate",
+      "type": "double"
+    },
+    {
+      "name": "BwdBytesRate",
+      "type": "double"
+    },
+    {
+      "name": "PacketsRate",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsRate",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsRate",
+      "type": "double"
+    },
+    {
+      "name": "DownUpRate",
+      "type": "double"
+    },
+    {
+      "name": "AvgBwdBulkRate",
+      "type": "double"
+    },
+    {
+      "name": "BwdBulkStateCount",
+      "type": "int"
+    },
+    {
+      "name": "BwdBulkDuration",
+      "type": "double"
+    },
+    {
+      "name": "FinFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "PshFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "UrgFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "EceFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "SynFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "AckFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "CwrFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "RstFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdFinFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdPshFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdUrgFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdSynFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdAckFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "FwdRstFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "BwdFinFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "BwdUrgFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "BwdSynFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "BwdAckFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "BwdRstFlagCounts",
+      "type": "int"
+    },
+    {
+      "name": "SynFlagPercentageInTotal",
+      "type": "double"
+    },
+    {
+      "name": "AckFlagPercentageInTotal",
+      "type": "double"
+    },
+    {
+      "name": "RstFlagPercentageInTotal",
+      "type": "double"
+    },
+    {
+      "name": "FwdAckFlagPercentageInTotal",
+      "type": "double"
+    },
+    {
+      "name": "BwdAckFlagPercentageInTotal",
+      "type": "double"
+    },
+    {
+      "name": "FwdAckFlagPercentageInFwdPackets",
+      "type": "double"
+    },
+    {
+      "name": "BwdAckFlagPercentageInBwdPackets",
+      "type": "double"
+    },
+    {
+      "name": "PacketsIatMean",
+      "type": "double"
+    },
+    {
+      "name": "PacketIatStd",
+      "type": "double"
+    },
+    {
+      "name": "PacketIatMax",
+      "type": "double"
+    },
+    {
+      "name": "PacketIatMin",
+      "type": "double"
+    },
+    {
+      "name": "PacketIatTotal",
+      "type": "double"
+    },
+    {
+      "name": "PacketsIatMedian",
+      "type": "double"
+    },
+    {
+      "name": "PacketsIatCov",
+      "type": "double"
+    },
+    {
+      "name": "PacketsIatMode",
+      "type": "double"
+    },
+    {
+      "name": "PacketsIatVariance",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatMean",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatStd",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatMax",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatMin",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatTotal",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatMedian",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatSkewness",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatCov",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatMode",
+      "type": "double"
+    },
+    {
+      "name": "FwdPacketsIatVariance",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatMean",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatStd",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatMax",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatMin",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatTotal",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatMedian",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatMode",
+      "type": "double"
+    },
+    {
+      "name": "BwdPacketsIatVariance",
+      "type": "double"
+    },
+    {
+      "name": "SubflowFwdPackets",
+      "type": "int"
+    },
+    {
+      "name": "SubflowBwdPackets",
+      "type": "int"
+    },
+    {
+      "name": "SubflowFwdBytes",
+      "type": "long"
+    },
+    {
+      "name": "SubflowBwdBytes",
+      "type": "long"
+    },
+    {
+      "name": "DeltaStart",
+      "type": "double"
+    },
+    {
+      "name": "HandshakeDuration",
+      "type": "double"
+    },
+    {
+      "name": "HandshakeState",
+      "type": "string?",
+      "max_length": 50
+    },
+    {
+      "name": "MaxBwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MeanPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "ModePacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "VariancePacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "StdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MeanBwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessBwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "CovBwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MinFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MaxFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MeanFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "ModeFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "StdFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MedianFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "CovFwdPacketsDeltaTime",
+      "type": "double"
+    },
+    {
+      "name": "MeanPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "ModePacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MedianPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MaxBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "ModeBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MedianBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovBwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanFwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "ModeFwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MedianFwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "SkewnessFwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovFwdPacketsDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MaxHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanBwdHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovBwdHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanFwdHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "CovFwdHeaderBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MinPayloadBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MaxPayloadBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "MeanPayloadBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "ModePayloadBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "ModeFwdPayloadBytesDeltaLen",
+      "type": "double"
+    },
+    {
+      "name": "Label",
+      "type": "string",
+      "max_length": 100
+    }
+  ]
+}

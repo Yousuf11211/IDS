@@ -1,0 +1,18 @@
+# Paths are relative to the pipeline directory, regardless of working directory.
+[worker]
+batch_size = 500
+poll_seconds = 5
+max_attempts = 5
+retry_seconds = 10
+# Producer creates traffic.csv.ready AFTER finishing traffic.csv.
+require_ready_marker = true
+
+[database]
+backend = "sqlserver"
+# Set an ODBC connection string in this environment variable. Never put secrets here.
+connection_env = "IDS_PIPELINE_CONNECTION_STRING"
+sqlite_path = "data/demo.sqlite3"
+
+[models]
+adapter = "placeholder"
+manifest = "config/model-release.json"

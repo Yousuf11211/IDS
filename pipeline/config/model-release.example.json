@@ -1,0 +1,23 @@
+{
+  "release": "replace-with-release-id",
+  "gatekeeper_threshold": 0.5,
+  "multiclass_threshold": 0.6,
+  "gatekeeper": {
+    "version": "gatekeeper-v1",
+    "artifact": "models/gatekeeper/model.joblib",
+    "sha256": "REPLACE_WITH_SHA256",
+    "features": ["Duration", "PacketsCount"],
+    "attack_label": "Attack",
+    "benign_label": "Benign"
+  },
+  "multiclass": {
+    "version": "multiclass-v1",
+    "artifact": "models/multiclass/model.joblib",
+    "sha256": "REPLACE_WITH_SHA256",
+    "features": ["Duration", "PacketsCount"],
+    "labels": {
+      "DoS": {"attack_type": "DoS", "category": "DoS", "severity": "High"},
+      "PortScan": {"attack_type": "PortScan", "category": "Probe", "severity": "Medium"}
+    }
+  }
+}
