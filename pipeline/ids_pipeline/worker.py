@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime, timezone
 import hashlib
 import json
 import logging
@@ -51,6 +52,7 @@ class Worker:
 
     def stage_file(self, path, digest, checkpoint):
         batch = []
+        timestamp = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).replace(tzinfo=None)
         with path.open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.reader(stream, strict=True)
             names = headers(next(reader, None))
@@ -60,7 +62,7 @@ class Worker:
                 try:
                     if len(values) != len(names):
                         raise ValueError("CSV record has an incorrect column count")
-                    features = validate(dict(zip(names, values, strict=True)))
+                    features = validate(dict(zip(names, values, strict=True)), timestamp=timestamp)
                     batch.append((number, features, None))
                 except ValueError as error:
                     batch.append((number, None, str(error)))
@@ -81,7 +83,7 @@ class Worker:
                 self.move(path, "duplicates")
             return
         if job["Fingerprint"] != self.models.fingerprint:
-            LOG.error("Import %s requires its original model manifest; leaving it pending", digest[:12])
+            LOG.error("Import %s requires its original model release; leaving it pending", digest[:12])
             return
         if job["Status"] == "failed" or job["NextAttempt"] > time.time():
             return
@@ -99,7 +101,9 @@ class Worker:
             while rows := self.store.pending(digest, self.config.batch_size):
                 predictions = self.models.predict(rows)
                 self.store.complete_batch(digest, rows, predictions, self.models.release)
-                LOG.info("Import %s committed %d predictions", digest[:12], len(rows))
+                LOG.info("Import %s committed %d predictions (%d benign, %d attacks)",
+                         digest[:12], len(rows), sum(not p.attack for p in predictions),
+                         sum(p.attack for p in predictions))
             counts = self.store.counts(digest)
             state = "completed_with_errors" if counts.get("rejected", 0) else "completed"
             self.store.update(digest, Status=state, LastError=None, NextAttempt=0)
@@ -109,7 +113,7 @@ class Worker:
             # Model output ValueErrors are retryable inference errors, not CSV schema failures.
             current = self.store.job(digest)
             if current["Status"] in ("staging", "retry_staging"):
-                self.store.update(digest, Status="rejected", LastError="Invalid CSV structure or header")
+                self.store.update(digest, Status="rejected", LastError=str(error)[:1000] if isinstance(error, ValueError) else "Invalid CSV encoding or quoting")
                 self.move(path, "quarantine")
                 LOG.error("Import %s rejected (%s); inspect CSV contract", digest[:12], type(error).__name__)
             else:
@@ -135,5 +139,5 @@ class Worker:
         target = self.data / "heartbeat.json"
         temporary = target.with_suffix(".tmp")
         temporary.write_text(json.dumps({"last_scan_unix": time.time(), "release": self.models.release,
-                                         "backend": self.config.backend}) + "\n")
+                                         "backend": "sqlserver"}) + "\n")
         temporary.replace(target)
