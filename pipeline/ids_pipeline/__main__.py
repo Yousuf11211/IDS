@@ -15,8 +15,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="IDS CSV pipeline")
     parser.add_argument("--config", type=Path, default=ROOT / "config/pipeline.toml")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("init-db", help="Create pipeline metadata (and isolated demo tables for SQLite)")
+    sub.add_parser("init-db", help="Create pipeline metadata in the web app database")
     sub.add_parser("check", help="Verify schema and load/validate models without consuming files")
+    sub.add_parser("check-models", help="Validate both UBJ models without opening the database")
     sub.add_parser("status", help="Show import progress")
     retry = sub.add_parser("retry", help="Reset a failed job after fixing its cause")
     retry.add_argument("file_hash")
@@ -26,10 +27,13 @@ def main(argv=None):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     config = Config.load(args.config)
     # Fail before DB access/file movement when production model setup is missing.
-    models = load_models(config) if args.command in ("run", "check", "retry") else None
+    models = load_models(config) if args.command in ("run", "check", "check-models", "retry") else None
+    if args.command == "check-models":
+        print(f"Model release {models.release} verified: 119 CSV features + 1 unused training feature; 2 gatekeeper / 14 attack labels")
+        return 0
     store = Store(config)
     try:
-        if args.command != "status":
+        if args.command in ("init-db", "run", "retry"):
             store.acquire_lock()
         if args.command == "init-db":
             store.initialize()
