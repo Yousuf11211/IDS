@@ -131,7 +131,6 @@ builder.Services.AddHostedService<RealtimeSessionMonitor>();
 builder.Services.AddSingleton<MailjetEmailSender>();
 builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<MailjetEmailSender>());
 
-builder.Services.AddScoped<IDetectionService, DetectionService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
 // =====================================================
