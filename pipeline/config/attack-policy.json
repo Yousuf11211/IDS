@@ -1,0 +1,58 @@
+{
+  "Attack": {
+    "category": "Unspecified",
+    "severity": "Medium"
+  },
+  "Bot": {
+    "category": "Botnet",
+    "severity": "High"
+  },
+  "Brute_Force_FTP": {
+    "category": "Brute Force",
+    "severity": "High"
+  },
+  "Brute_Force_SSH": {
+    "category": "Brute Force",
+    "severity": "High"
+  },
+  "Brute_Force_Web": {
+    "category": "Brute Force",
+    "severity": "High"
+  },
+  "Brute_Force_XSS": {
+    "category": "Web Attack",
+    "severity": "High"
+  },
+  "DDoS_HOIC": {
+    "category": "DDoS",
+    "severity": "High"
+  },
+  "DDoS_LOIC_HTTP": {
+    "category": "DDoS",
+    "severity": "High"
+  },
+  "DoS_Golden_Eye": {
+    "category": "DoS",
+    "severity": "High"
+  },
+  "DoS_HULK": {
+    "category": "DoS",
+    "severity": "High"
+  },
+  "DoS_SlowHTTP": {
+    "category": "DoS",
+    "severity": "High"
+  },
+  "DoS_Slowloris": {
+    "category": "DoS",
+    "severity": "High"
+  },
+  "Infiltration": {
+    "category": "Intrusion",
+    "severity": "Critical"
+  },
+  "SQL_Injection": {
+    "category": "Web Attack",
+    "severity": "High"
+  }
+}
