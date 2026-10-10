@@ -1,18 +1,25 @@
-# Paths are relative to the pipeline directory, regardless of working directory.
+# All paths are relative to pipeline/, regardless of the working directory.
 [worker]
+data_dir = "data"
 batch_size = 500
-poll_seconds = 5
+poll_seconds = 2
 max_attempts = 5
 retry_seconds = 10
-# Producer creates traffic.csv.ready AFTER finishing traffic.csv.
+# Generate/copy the CSV completely, then create filename.csv.ready.
 require_ready_marker = true
 
 [database]
-backend = "sqlserver"
-# Set an ODBC connection string in this environment variable. Never put secrets here.
-connection_env = "IDS_PIPELINE_CONNECTION_STRING"
-sqlite_path = "data/demo.sqlite3"
+# Read the SAME connection configuration as IDS/Program.cs; no separate database.
+webapp_dir = "../IDS"
+environment = "Development"
+odbc_driver = "auto" # Prefer installed Driver 18, otherwise Driver 17.
 
 [models]
-adapter = "placeholder"
-manifest = "config/model-release.json"
+gatekeeper = "models/gatekeeper/gatekeeper_combined_full_features.ubj"
+gatekeeper_labels = "models/gatekeeper/gatekeeper_label_mapping.txt"
+multiclass = "models/multiclass/attack_multiclass_full_features.ubj"
+multiclass_labels = "models/multiclass/attack_multiclass_label_mapping.txt"
+attack_policy = "config/attack-policy.json"
+gatekeeper_threshold = 0.5
+# 0 uses the highest-scoring mapped attack class; increase to enable UnknownAttack.
+multiclass_threshold = 0.0
