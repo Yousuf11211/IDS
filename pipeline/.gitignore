@@ -1,12 +1,9 @@
 .venv/
+.idea/
 __pycache__/
 *.pyc
 .env
 config/local.toml
-config/model-release.json
-models/**/*.joblib
-models/**/*.pkl
-models/**/*.onnx
 data/**/*
 !data/**/
 !data/**/.gitkeep
