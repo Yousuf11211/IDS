@@ -127,13 +127,40 @@ overflow: hidden;
       50% { opacity: 0.5; transform: scale(1.2); }
      }
         
-        .attack-alert {
-   position: fixed;
+        .attack-alert-container {
+            position: fixed;
             top: 80px;
-    right: 20px;
+            right: 16px;
             z-index: 1050;
-       max-width: 400px;
-    animation: slideInRight 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: min(400px, calc(100vw - 32px));
+            max-height: calc(100vh - 96px);
+            max-height: calc(100dvh - 96px);
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .attack-alert-container:empty {
+            display: none;
+        }
+
+        .attack-alert {
+            position: relative;
+            flex-shrink: 0;
+            margin: 0;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .attack-alert .alert-ids-content {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .attack-alert > .btn-close {
+            flex-shrink: 0;
         }
         
         @@keyframes slideInRight {
@@ -404,7 +431,8 @@ overflow: hidden;
 </div>
 
 <!-- Attack Alert Toast Container -->
-<div id="alertContainer"></div>
+<div id="alertContainer" class="attack-alert-container" role="region"
+     aria-label="Attack notifications" aria-live="polite" aria-relevant="additions"></div>
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
@@ -578,7 +606,7 @@ overflow: hidden;
 <div>Severity: ${escapeHtml(attack.severity)}</div>
 ${canEscalate ? `<a href="/EscalateAttack/${id}" class="btn-ids btn-ids-primary btn-ids-sm mt-2">Escalate incident</a>` : ''}
            </div>
-       <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+       <button type="button" class="btn-close" aria-label="Dismiss attack notification" onclick="this.parentElement.remove()"></button>
  `;
         container.appendChild(alert);
             
