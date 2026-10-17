@@ -1,0 +1,96 @@
+@page "{id:long}"
+@model IDS.Pages.InspectAttackModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Incident inspection";
+    var incident = Model.Report;
+}
+@section HeadContent {
+    <link rel="stylesheet" href="~/css/attack-inspection.css" asp-append-version="true" />
+}
+<div class="inspection" id="inspection" data-endpoint="@Url.Content($"~/api/detection/{incident.Id}/inspection")">
+    <header class="inspection-heading">
+        <div>
+            <a asp-page="/LiveDashboard" class="inspection-back">← Detection feed</a>
+            <p class="eyebrow">SECURITY OPERATIONS / DECISION INTELLIGENCE</p>
+            <h1>Incident <span>#@incident.Id</span></h1>
+            <p class="inspection-muted">Recorded network evidence and model decision analysis</p>
+        </div>
+        <div class="inspection-actions">
+            <span class="incident-badge">@incident.Severity severity</span>
+            @if (incident.Severity is "High" or "Critical")
+            {
+                <a asp-page="/EscalateAttack" asp-route-id="@incident.Id" class="btn-ids btn-ids-primary">Escalate</a>
+            }
+            <button type="button" id="refreshInspection" class="btn-ids btn-ids-ghost">Refresh report</button>
+        </div>
+    </header>
+    <div id="inspectionNotice" class="inspection-notice" role="status" aria-live="polite">Loading decision analysis…</div>
+    <section class="inspection-panel" aria-labelledby="summaryTitle">
+        <div class="panel-heading"><h2 id="summaryTitle"><span>01</span> Incident summary</h2><span class="record-tag">STORED DETECTION</span></div>
+        <dl class="incident-facts">
+            <div><dt>Predicted category</dt><dd>@incident.AttackType</dd></div>
+            <div><dt>Flow timestamp · UTC</dt><dd>@incident.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</dd></div>
+            <div><dt>Source IP</dt><dd>@(incident.SourceIp ?? "Unavailable")</dd></div>
+            <div><dt>Destination port</dt><dd>@incident.DestinationPort</dd></div>
+            <div><dt>Destination IP / source port / protocol</dt><dd class="inspection-muted">Not stored in this flow schema</dd></div>
+            <div><dt>Response status</dt><dd>@(incident.IsEscalated ? "Escalated" : incident.IsAcknowledged ? "Acknowledged" : "Not acknowledged")</dd></div>
+            <div><dt>Binary attack probability</dt><dd id="summaryBinary">Unavailable</dd></div>
+            <div><dt>Selected category probability</dt><dd id="summaryMulticlass">@incident.CategoryProbability.ToString("P2")</dd></div>
+        </dl>
+    </section>
+    <section aria-labelledby="decisionTitle">
+        <h2 class="section-title" id="decisionTitle"><span>02</span> Model decision analysis</h2>
+        <div id="modelCards" class="model-cards"></div>
+    </section>
+    <section class="inspection-panel" aria-labelledby="shapTitle">
+        <div class="panel-heading"><h2 id="shapTitle"><span>03</span> Decision contributions</h2><span class="record-tag">TREE SHAP</span></div>
+        <div class="chart-controls">
+            <label>Model stage<select id="stageSelect"><option value="gatekeeper">Binary XGBoost</option><option value="multiclass">Multiclass XGBoost</option></select></label>
+            <label>Features<select id="featureCount"><option value="5">Top 5</option><option value="10" selected>Top 10</option><option value="all">All</option></select></label>
+            <label>Sort by<select id="featureSort"><option value="magnitude">Absolute contribution</option><option value="positive">Contribution · high to low</option><option value="name">Feature name</option></select></label>
+        </div>
+        <p id="contributionCaption" class="inspection-muted"></p>
+        <div class="chart-legend"><span class="legend-positive">Increases selected output</span><span class="legend-negative">Decreases selected output</span></div>
+        <p class="mobile-chart-hint inspection-muted">Swipe charts horizontally to explore the full axis. Keyboard-accessible evidence follows below.</p>
+        <div id="shapEmpty" class="chart-empty" role="status"></div>
+        <div id="shapContent" hidden>
+            <div class="chart-scroll"><div id="shapBar" class="inspection-chart" role="img" aria-label="Feature SHAP contributions. Equivalent keyboard details follow below."></div></div>
+            <h3>From model baseline to decision</h3>
+            <p class="inspection-muted">The waterfall includes the sum of omitted features, so it reconstructs the full model margin.</p>
+            <div class="chart-scroll"><div id="shapWaterfall" class="inspection-chart" role="img" aria-label="Waterfall from base value to raw model output"></div></div>
+            <p id="additivity" class="metadata-line"></p>
+            <div class="feature-detail" id="featureDetail" role="status" aria-live="polite">Select a bar or focus a feature below to examine the evidence.</div>
+            <details open><summary>Accessible feature evidence</summary>
+                <div class="table-scroll"><table class="evidence-table"><thead><tr><th>Feature · select for details</th><th>Observed input</th><th>SHAP contribution</th><th>Benign median</th></tr></thead><tbody id="featureEvidence"></tbody></table></div>
+            </details>
+        </div>
+    </section>
+    <section class="inspection-panel" aria-labelledby="referenceTitle">
+        <div class="panel-heading"><h2 id="referenceTitle"><span>04</span> Benign reference comparison</h2></div>
+        <p id="referenceCaption" class="inspection-muted">Reference unavailable</p>
+        <p class="inspection-muted">Each feature has its own numeric axis in its model input units. A benign reference range describes typical traffic; it does not define an attack.</p>
+        <div class="chart-legend"><span class="legend-range">Benign 5th–95th percentile</span><span class="legend-negative">Benign median</span><span class="legend-positive">Observed flow</span></div>
+        <div id="referenceChart" role="img" aria-label="Independent feature ranges, benign medians and observed values"></div>
+    </section>
+    <section class="inspection-panel" aria-labelledby="pipelineTitle">
+        <div class="panel-heading"><h2 id="pipelineTitle"><span>05</span> Detection pipeline</h2></div>
+        <ol class="inspection-pipeline" id="pipelineSteps"></ol>
+        <p class="inspection-muted">Stage timings are shown only when recorded. The CSV worker consumes extracted features; packet extraction is upstream.</p>
+    </section>
+    <section class="inspection-panel" aria-labelledby="technicalTitle">
+        <div class="panel-heading"><h2 id="technicalTitle"><span>06</span> Technical evidence</h2></div>
+        <details><summary>Model versions and explanation metadata</summary><div id="explanationMetadata" class="metadata-grid"></div></details>
+        <details><summary>Stored flow fields</summary>
+            <p class="inspection-muted">Storage fields can include defaults for optional, non-model columns. Exact values consumed by the model appear in feature evidence above.</p>
+            <label class="flow-search">Search flow fields<input id="flowSearch" type="search" placeholder="e.g. packets, payload, port" /></label>
+            <div class="table-scroll"><table class="evidence-table"><thead><tr><th>Stored field</th><th>Value</th></tr></thead><tbody id="flowFields"></tbody></table></div>
+        </details>
+    </section>
+    <aside class="inspection-panel investigation-note"><h2>Investigation guidance</h2><p>Correlate this recorded flow with firewall, endpoint and service logs around the stored timestamp. Validate expected service behavior and review the strongest model contributions before taking response action. These are general recommendations, not additional observed evidence.</p><a asp-page="/LiveDashboard" class="inspection-back">← Return to detection feed</a></aside>
+</div>
+<script id="inspectionData" type="application/json">@Html.Raw(JsonSerializer.Serialize(incident, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
+@section Scripts {
+    <script src="~/lib/plotly/plotly-basic-3.1.0.min.js" asp-append-version="true" defer></script>
+    <script src="~/js/attack-inspection.js" asp-append-version="true" defer></script>
+}
