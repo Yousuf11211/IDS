@@ -221,7 +221,7 @@ class MemoryStore:
     def pending(self, digest, size):
         return [{**row['features'], 'RowNumber': n, 'RawId': n} for (d, n), row in self.rows.items()
                 if d == digest and row['state'] == 'pending'][:size]
-    def complete_batch(self, digest, rows, predictions, release):
+    def complete_batch(self, digest, rows, predictions, release, models=None):
         for row, prediction in zip(rows, predictions, strict=True):
             self.results.append(prediction)
             self.rows[digest, row['RowNumber']]['state'] = 'completed'
@@ -295,12 +295,12 @@ class WorkerTests(unittest.TestCase):
         digest = file_hash(path)
         complete = self.store.complete_batch
         calls = 0
-        def fail_second_batch(*args):
+        def fail_second_batch(*args, **kwargs):
             nonlocal calls
             calls += 1
             if calls == 2:
                 raise RuntimeError('transient failure')
-            return complete(*args)
+            return complete(*args, **kwargs)
         with patch.object(self.store, 'complete_batch', side_effect=fail_second_batch):
             self.worker.scan()
         self.assertEqual(len(self.store.results), 7)

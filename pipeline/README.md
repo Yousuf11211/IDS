@@ -43,6 +43,8 @@ python -m ids_pipeline check
 ```
 
 Start the web app first so its EF migrations create the detection tables.
+The SHAP inspection integration requires the additive `AddFlowExplanations` EF
+migration before either worker starts. See [the complete inspection guide](../IDS/Docs/ShapInspection.md).
 `init-db` adds only `PipelineImports` and `PipelineRows` to the same database.
 It needs table-creation permission; the worker needs SELECT/INSERT/UPDATE access
 on those tables and `RawPackets`, `Benign_Table`, and `Attack_Table`.
@@ -59,6 +61,25 @@ Start the worker:
 ```powershell
 python -m ids_pipeline run
 ```
+
+In a separate terminal, run the independent explanation worker:
+
+```powershell
+python -m ids_pipeline explain
+```
+
+Detection commits freeze model inputs and enqueue per-stage work. Only the
+explanation process runs SHAP. Admin/Support users can select **Inspect** beside
+an attack in the live feed. Existing attacks require verified backfilling:
+
+```powershell
+python -m ids_pipeline backfill-explanations --limit 100
+python -m ids_pipeline explain
+```
+
+Stop the explanation process before backfilling or resetting failed explanations;
+they use the same session lock. After fixing a failure, use
+`python -m ids_pipeline retry-explanations ATTACK_TABLE_ID` and restart it.
 
 In another terminal, from `pipeline/` with the environment activated:
 

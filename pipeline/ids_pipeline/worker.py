@@ -100,7 +100,7 @@ class Worker:
                 self.store.update(digest, Status="classifying", LastError=None)
             while rows := self.store.pending(digest, self.config.batch_size):
                 predictions = self.models.predict(rows)
-                self.store.complete_batch(digest, rows, predictions, self.models.release)
+                self.store.complete_batch(digest, rows, predictions, self.models.release, models=self.models)
                 LOG.info("Import %s committed %d predictions (%d benign, %d attacks)",
                          digest[:12], len(rows), sum(not p.attack for p in predictions),
                          sum(p.attack for p in predictions))

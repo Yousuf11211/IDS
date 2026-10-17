@@ -23,3 +23,5 @@ attack_policy = "config/attack-policy.json"
 gatekeeper_threshold = 0.5
 # 0 uses the highest-scoring mapped attack class; increase to enable UnknownAttack.
 multiclass_threshold = 0.0
+# Optional artifact built from verified labeled training/reference data; never detection CSVs.
+# reference_profile = "config/benign-reference.json"

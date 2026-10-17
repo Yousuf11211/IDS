@@ -1,6 +1,9 @@
 """Transactional persistence in the same SQL Server database as the IDS web app."""
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import json
+import logging
+import time
 
 from .connection import connection_string
 from .schema import NAMES, SQL_TO_CSV
@@ -73,6 +76,8 @@ class Store:
             "Attack_Table": NAMES + ["Id", "ConfidenceScore", "ModelVersion", "AttackType", "AttackCategory", "Severity", "IsAcknowledged"],
             "PipelineImports": ["FileHash", "Fingerprint", "Status", "LastRow", "Attempts", "NextAttempt"],
             "PipelineRows": ["FileHash", "RowNumber", "RawId", "State", "GateScore", "TypeScore", "ResultId"],
+            "FlowExplanations": ["Id", "AttackTrafficId", "RawPacketId", "Stage", "ModelVersion",
+                                 "Fingerprint", "ContextJson", "Status", "PayloadJson"],
         }
         for table, names in required.items():
             self.conn.execute(f"SELECT {','.join('[' + name + ']' for name in names)} FROM {self.table(table)} WHERE 1=0")
@@ -137,7 +142,7 @@ class Store:
             FROM {self.table('PipelineRows')} p JOIN {self.table('RawPackets')} r ON r.Id=p.RawId
             WHERE p.FileHash=? AND p.State='pending' ORDER BY p.RowNumber""", (digest,))
 
-    def complete_batch(self, digest, rows, predictions, release):
+    def complete_batch(self, digest, rows, predictions, release, models=None):
         if len(rows) != len(predictions):
             raise ValueError("Prediction count does not match batch")
         with self.transaction():
@@ -158,6 +163,97 @@ class Store:
                     SET State='completed',GateScore=?,TypeScore=?,ResultId=?,ProcessedAt=?
                     WHERE FileHash=? AND RowNumber=? AND State='pending'""",
                     (prediction.gate_score, prediction.type_score, result_id, utcnow(), digest, row["RowNumber"]))
+                if prediction.attack and models is not None:
+                    self.enqueue_explanations(result_id, row["RawId"], row, prediction, models)
+
+    def enqueue_explanations(self, attack_id, raw_id, row, prediction, models):
+        """Called in detection/backfill transaction; only freezes inputs, never runs SHAP."""
+        for stage, version in (("gatekeeper", models.gate_version), ("multiclass", models.type_version)):
+            context = models.explanation_context(stage, row, prediction)
+            self.conn.execute("""INSERT INTO dbo.FlowExplanations
+                (AttackTrafficId,RawPacketId,Stage,ModelVersion,Fingerprint,ContextJson,Status,
+                 Attempts,NextAttempt,CreatedAt,UpdatedAt)
+                SELECT ?,?,?,?,?,?,'pending',0,0,?,?
+                WHERE NOT EXISTS (SELECT 1 FROM dbo.FlowExplanations WITH (UPDLOCK,HOLDLOCK)
+                                  WHERE AttackTrafficId=? AND Stage=? AND ModelVersion=?)""",
+                (attack_id, raw_id, stage, version, models.fingerprint,
+                 json.dumps(context, allow_nan=False), utcnow(), utcnow(), attack_id, stage, version))
+
+    def acquire_explanation_lock(self):
+        result = self.conn.execute("""SET NOCOUNT ON; DECLARE @result int;
+            EXEC @result=sys.sp_getapplock @Resource='IDS.SHAP.v1',@LockMode='Exclusive',
+                @LockOwner='Session',@LockTimeout=0; SELECT @result;""").fetchone()[0]
+        self.conn.commit()
+        if result < 0:
+            raise RuntimeError("Another explanation worker owns this database")
+        # Exclusive session ownership proves the previous worker no longer owns a lease.
+        with self.transaction():
+            self.conn.execute("UPDATE dbo.FlowExplanations SET Status='pending',UpdatedAt=? WHERE Status='processing'",
+                              (utcnow(),))
+
+    def claim_explanation(self, fingerprint):
+        with self.transaction():
+            cursor = self.conn.execute(""";WITH next_job AS (
+                SELECT TOP(1) * FROM dbo.FlowExplanations WITH (UPDLOCK,READPAST,ROWLOCK)
+                WHERE Status='pending' AND Fingerprint=? AND NextAttempt<=?
+                ORDER BY Id)
+                UPDATE next_job SET Status='processing',Attempts=Attempts+1,UpdatedAt=? OUTPUT INSERTED.*""",
+                (fingerprint, time.time(), utcnow()))
+            names = [item[0] for item in cursor.description]
+            row = cursor.fetchone()
+            return dict(zip(names, row)) if row else None
+
+    def finish_explanation(self, explanation_id, payload):
+        with self.transaction():
+            self.conn.execute("""UPDATE dbo.FlowExplanations SET Status='completed',PayloadJson=?,
+                LastError=NULL,UpdatedAt=? WHERE Id=? AND Status='processing'""",
+                (json.dumps(payload, allow_nan=False), utcnow(), explanation_id))
+
+    def fail_explanation(self, explanation_id, error):
+        # Do not persist SQL driver exceptions/connection strings in a browser-readable field.
+        message = f"{type(error).__name__}: " + (str(error) if isinstance(error,
+                    (ValueError, TypeError, ImportError, AssertionError)) else "SHAP generation failed; consult worker logs")
+        logging.getLogger(__name__).error("Explanation %s failed: %s", explanation_id, message[:1000])
+        with self.transaction():
+            self.conn.execute("""UPDATE dbo.FlowExplanations SET
+                Status=CASE WHEN Attempts>=? THEN 'failed' ELSE 'pending' END,
+                LastError=?,NextAttempt=?,UpdatedAt=? WHERE Id=? AND Status='processing'""",
+                (self.config.max_attempts, message[:1000], time.time()+self.config.retry_seconds,
+                 utcnow(), explanation_id))
+
+    def retry_explanations(self, fingerprint, attack_id):
+        with self.transaction():
+            self.conn.execute("""UPDATE dbo.FlowExplanations SET Status='pending',Attempts=0,
+                NextAttempt=0,LastError=NULL,UpdatedAt=?
+                WHERE Fingerprint=? AND AttackTrafficId=? AND Status='failed'""",
+                (utcnow(), fingerprint, attack_id))
+
+    def backfill_explanations(self, models, limit=100):
+        """Only original pipeline rows whose exact release and original score can be verified."""
+        fields = ','.join(f'r.[{name}] AS [{SQL_TO_CSV[name]}]' for name in NAMES)
+        rows = self.fetch(f"""SELECT TOP ({int(limit)}) a.Id AS AttackId,p.RawId,p.GateScore,p.TypeScore,
+            a.AttackType,a.ConfidenceScore,{fields}
+            FROM dbo.PipelineRows p JOIN dbo.PipelineImports i ON i.FileHash=p.FileHash
+            JOIN dbo.RawPackets r ON r.Id=p.RawId
+            JOIN dbo.Attack_Table a ON a.Id=p.ResultId AND a.ModelVersion=i.Release
+            WHERE p.State='completed' AND r.Classification='Attack' AND r.ClassifiedRecordId=a.Id
+                AND i.Fingerprint=? AND NOT EXISTS
+                (SELECT 1 FROM dbo.FlowExplanations e WHERE e.AttackTrafficId=a.Id)
+            ORDER BY a.Id""", (models.fingerprint,))
+        count = 0
+        for row in rows:
+            prediction = models.predict([row])[0]
+            if (not prediction.attack or prediction.attack_type != row["AttackType"] or
+                    row["GateScore"] is None or row["TypeScore"] is None or
+                    abs(prediction.gate_score-row["GateScore"]) > 1e-6 or
+                    abs(prediction.type_score-row["TypeScore"]) > 1e-6 or
+                    abs(prediction.type_score-row["ConfidenceScore"]) > 1e-6):
+                logging.getLogger(__name__).warning("Cannot reproduce historical attack %s", row["AttackId"])
+                continue
+            with self.transaction():
+                self.enqueue_explanations(row["AttackId"], row["RawId"], row, prediction, models)
+            count += 1
+        return count
 
     def counts(self, digest):
         rows = self.fetch(f"SELECT State,COUNT(*) AS Total FROM {self.table('PipelineRows')} WHERE FileHash=? GROUP BY State", (digest,))

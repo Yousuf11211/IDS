@@ -15,6 +15,9 @@ class Prediction:
     attack_type: str | None = None
     category: str | None = None
     severity: str = "Medium"
+    class_index: int | None = None
+    selected_label: str | None = None
+    top_probabilities: tuple = ()
 
 
 def read_labels(path):
@@ -86,18 +89,31 @@ class XGBoostModels:
         self.release = "ubj-" + self.fingerprint[:20]
         self.gate_version, self.type_version = versions["gatekeeper"], versions["multiclass"]
 
-    def probabilities(self, stage, rows):
+    def input_values(self, stage, rows):
+        """Single adapter shared by prediction and explanation; float32 is model input."""
         import numpy as np
-        import xgboost as xgb
-        model = self.loaded[stage]
+        rows = [{normalize(key): value for key, value in row.items()} for row in rows]
         data = np.asarray([[0.0 if name == "delta_start_incomplete_handshake" else row[name]
                             for name in self.features[stage]] for row in rows], dtype=np.float32)
         if not np.isfinite(data).all():
             raise ValueError("Nonfinite model input")
-        matrix = xgb.DMatrix(data, feature_names=model.feature_names, nthread=2)
-        best = model.attr("best_iteration")
+        return data
+
+    def input_matrix(self, stage, rows):
+        import xgboost as xgb
+        data = self.input_values(stage, rows)
+        return data, xgb.DMatrix(data, feature_names=self.loaded[stage].feature_names, nthread=2)
+
+    def iteration_range(self, stage):
+        best = self.loaded[stage].attr("best_iteration")
+        return (0, int(best) + 1) if best is not None else (0, 0)
+
+    def probabilities(self, stage, rows):
+        import numpy as np
+        model = self.loaded[stage]
+        _, matrix = self.input_matrix(stage, rows)
         scores = model.predict(matrix, validate_features=True, strict_shape=True,
-                               iteration_range=(0, int(best) + 1) if best is not None else (0, 0))
+                               iteration_range=self.iteration_range(stage))
         expected = 1 if stage == "gatekeeper" else len(self.labels[stage])
         if (scores.shape != (len(rows), expected) or not np.isfinite(scores).all()
                 or (scores < 0).any() or (scores > 1).any()):
@@ -119,13 +135,32 @@ class XGBoostModels:
             for i, probabilities in zip(indices, scores, strict=True):
                 best = max(range(len(probabilities)), key=lambda j: probabilities[j])
                 confidence = float(probabilities[best])
-                label = self.labels["multiclass"][best]
+                label = selected_label = self.labels["multiclass"][best]
                 meta = self.policy[label]
                 if confidence < self.config.multiclass_threshold:
                     label, meta = "UnknownAttack", {"category": "Unspecified", "severity": "Medium"}
                 predictions[i] = Prediction(True, gate_scores[i], confidence,
-                                            label, meta["category"], meta["severity"])
+                                            label, meta["category"], meta["severity"], best, selected_label,
+                                            tuple((self.labels["multiclass"][j], float(probabilities[j]))
+                                                  for j in sorted(range(len(probabilities)),
+                                                                  key=lambda j: -probabilities[j])[:3]))
         return predictions
+
+    def explanation_context(self, stage, row, prediction):
+        data = self.input_values(stage, [row])
+        binary = stage == "gatekeeper"
+        return {
+            "schemaVersion": 1, "release": self.release, "fingerprint": self.fingerprint,
+            "featureNames": self.features[stage], "featureValues": data[0].tolist(),
+            "classIndex": 1 if binary else prediction.class_index,
+            "explainedClass": "Attack" if binary else prediction.selected_label,
+            "predictedLabel": ("Attack" if prediction.attack else "Benign") if binary else prediction.attack_type,
+            "probability": prediction.gate_score if binary else prediction.type_score,
+            "threshold": self.config.gatekeeper_threshold if binary else self.config.multiclass_threshold,
+            "topProbabilities": [] if binary else [dict(label=label, probability=value)
+                                                    for label, value in prediction.top_probabilities],
+            "adapterNote": "119 supplied features; unused delta_start_incomplete_handshake=0; float32 input",
+        }
 
 
 def load_models(config):

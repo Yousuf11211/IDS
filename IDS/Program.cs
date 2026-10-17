@@ -139,6 +139,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 // =====================================================
 builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
 builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
+builder.Services.AddScoped<AttackInspectionService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
 // Background service to monitor detection tables and push updates via SignalR

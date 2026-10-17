@@ -1,0 +1,247 @@
+{
+  "sourceCommit": "d5f7d89c67d10423527741bcab18f20bb3ecc5b2",
+  "release": "ubj-55e5e7e8be3742d91b9d",
+  "fixture": "test_pipeline.fixture(index), indices 0..29",
+  "predictions": [
+    {
+      "attack": false,
+      "gate_score": 0.00029393809381872416,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.009460080415010452,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.00858562346547842,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.011769676581025124,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0059192366898059845,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0018575150752440095,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.02315625362098217,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.003923237323760986,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.008339657448232174,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.037084005773067474,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.4467194974422455,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.00803025159984827,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.032627273350954056,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": true,
+      "gate_score": 0.5776827335357666,
+      "type_score": 0.37650930881500244,
+      "attack_type": "DoS_HULK",
+      "category": "DoS",
+      "severity": "High"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0035445289686322212,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.03308083117008209,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0016869337996467948,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.3244197964668274,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.00013895283336751163,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.00023109428002499044,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.024765443056821823,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.008782690390944481,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.484874427318573,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0008319307817146182,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.012446986511349678,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.0013984270626679063,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.002200647024437785,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.14947982132434845,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    },
+    {
+      "attack": true,
+      "gate_score": 0.8351477980613708,
+      "type_score": 0.645586371421814,
+      "attack_type": "DoS_HULK",
+      "category": "DoS",
+      "severity": "High"
+    },
+    {
+      "attack": false,
+      "gate_score": 0.1903897076845169,
+      "type_score": null,
+      "attack_type": null,
+      "category": null,
+      "severity": "Medium"
+    }
+  ]
+}

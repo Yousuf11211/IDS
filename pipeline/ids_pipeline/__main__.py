@@ -23,11 +23,18 @@ def main(argv=None):
     retry.add_argument("file_hash")
     run = sub.add_parser("run", help="Watch incoming/ and resume processing/")
     run.add_argument("--once", action="store_true", help="One scan; exit nonzero if incomplete imports remain")
+    explain = sub.add_parser("explain", help="Run the independent durable SHAP worker")
+    explain.add_argument("--once", action="store_true", help="Drain currently eligible jobs and exit")
+    backfill = sub.add_parser("backfill-explanations", help="Queue reproducible historical pipeline attacks")
+    backfill.add_argument("--limit", type=int, default=100)
+    retry_explain = sub.add_parser("retry-explanations", help="Retry failed stages for an attack using its original model")
+    retry_explain.add_argument("attack_id", type=int)
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     config = Config.load(args.config)
     # Fail before DB access/file movement when production model setup is missing.
-    models = load_models(config) if args.command in ("run", "check", "check-models", "retry") else None
+    models = load_models(config) if args.command in ("run", "check", "check-models", "retry",
+                                                  "explain", "backfill-explanations", "retry-explanations") else None
     if args.command == "check-models":
         print(f"Model release {models.release} verified: 119 CSV features + 1 unused training feature; 2 gatekeeper / 14 attack labels")
         return 0
@@ -41,6 +48,31 @@ def main(argv=None):
             print("Database schema initialized and verified")
             return 0
         store.verify()
+        if args.command in ("explain", "backfill-explanations", "retry-explanations"):
+            store.acquire_explanation_lock()
+            if args.command == "backfill-explanations":
+                if not 1 <= args.limit <= 10000:
+                    raise ValueError("Backfill limit must be between 1 and 10000")
+                print(f"Queued {store.backfill_explanations(models, args.limit)} verified historical attacks")
+                return 0
+            if args.command == "retry-explanations":
+                if args.attack_id <= 0:
+                    raise ValueError("Attack ID must be positive")
+                store.retry_explanations(models.fingerprint, args.attack_id)
+                return 0
+            from .explanations import ExplanationService, ExplanationWorker
+            from .reference import load_reference
+            explanation_worker = ExplanationWorker(store, models, ExplanationService(models, load_reference(config)))
+            stopped = threading.Event()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                signal.signal(sig, lambda *_: stopped.set())
+            while not stopped.is_set():
+                worked = explanation_worker.once()
+                if not worked:
+                    if args.once:
+                        return 0
+                    stopped.wait(config.poll_seconds)
+            return 0
         if args.command == "check":
             print(f"Database and model release {models.release} verified")
             return 0

@@ -25,6 +25,7 @@ namespace IDS.Data
         public DbSet<BenignTraffic> BenignTraffic { get; set; } = null!;
         public DbSet<AttackTraffic> AttackTraffic { get; set; } = null!;
         public DbSet<RawPacket> RawPackets { get; set; } = null!;
+        public DbSet<FlowExplanation> FlowExplanations { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

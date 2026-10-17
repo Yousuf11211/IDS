@@ -25,6 +25,7 @@ class Config:
     attack_policy: str = "config/attack-policy.json"
     gatekeeper_threshold: float = 0.5
     multiclass_threshold: float = 0.0
+    reference_profile: str = ""
 
     @classmethod
     def load(cls, path: Path):
@@ -39,7 +40,8 @@ class Config:
         if not 0 < config.gatekeeper_threshold < 1 or not 0 <= config.multiclass_threshold <= 1:
             raise ValueError("Invalid model confidence thresholds")
         for value in (config.data_dir, config.gatekeeper, config.multiclass,
-                      config.gatekeeper_labels, config.multiclass_labels, config.attack_policy):
+                      config.gatekeeper_labels, config.multiclass_labels, config.attack_policy,
+                      config.reference_profile):
             if not (config.root / value).resolve().is_relative_to(config.root.resolve()):
                 raise ValueError("Data and model paths must stay inside pipeline/")
         return config

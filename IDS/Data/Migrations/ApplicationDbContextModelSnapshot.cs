@@ -1431,6 +1431,82 @@ namespace IDS.Data.Migrations
                     b.ToTable("DashboardMetrics", (string)null);
                 });
 
+            modelBuilder.Entity("IDS.Data.Models.FlowExplanation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AttackTrafficId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ContextJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ModelVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<double>("NextAttempt")
+                        .HasColumnType("float");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("RawPacketId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RawPacketId");
+
+                    b.HasIndex("AttackTrafficId", "Stage", "ModelVersion")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "Fingerprint", "NextAttempt", "Id");
+
+                    b.ToTable("FlowExplanations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FlowExplanations_Attempts", "[Attempts] >= 0");
+
+                            t.HasCheckConstraint("CK_FlowExplanations_Stage", "[Stage] IN ('gatekeeper','multiclass')");
+
+                            t.HasCheckConstraint("CK_FlowExplanations_Status", "[Status] IN ('pending','processing','completed','failed')");
+                        });
+                });
+
             modelBuilder.Entity("IDS.Data.Models.LogFile", b =>
                 {
                     b.Property<int>("Id")
@@ -2549,6 +2625,20 @@ namespace IDS.Data.Migrations
                         .HasForeignKey("IDS.Data.Models.ChatPublicKey", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("IDS.Data.Models.FlowExplanation", b =>
+                {
+                    b.HasOne("IDS.Data.Models.AttackTraffic", null)
+                        .WithMany()
+                        .HasForeignKey("AttackTrafficId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IDS.Data.Models.RawPacket", null)
+                        .WithMany()
+                        .HasForeignKey("RawPacketId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
