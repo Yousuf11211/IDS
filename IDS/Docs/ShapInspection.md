@@ -136,13 +136,13 @@ their original scores while explanations are pending. The page polls pending
 work with a bounded backoff and provides a manual Refresh action.
 
 Historical attacks can show stored summary/flow details immediately after migration.
-They need explanation backfill for charts. Stop `explain` before these commands:
+They need explanation backfill for charts. Backfill can run alongside `explain`:
 
 ```powershell
 python -m ids_pipeline backfill-explanations --limit 100
 python -m ids_pipeline explain
 
-# After resolving a terminal failure, stop explain, then:
+# After resolving a terminal failure, stop explain before retrying:
 python -m ids_pipeline retry-explanations 123
 python -m ids_pipeline explain
 ```
@@ -154,6 +154,14 @@ backfill does not duplicate jobs. Unlinked records or unavailable releases are
 left unavailable; no synthetic explanation is inserted. `--limit` bounds a scan
 to 1–10,000 candidates. Backfill reports queued attacks; incompatible records are
 logged. An operator must restore the original artifacts/config for older releases.
+
+After a Python code update, restart the existing `run` and `explain` processes.
+An already running detector retains its old code and can keep saving predictions
+without queueing the newly introduced explanation jobs. A current detector logs
+`SHAP job enqueueing is enabled`; the explanation worker logs each completed stage.
+If a new incident shows both stage probabilities unavailable and no stage metadata,
+restart the detector and run verified backfill for the missed jobs. Backfill inserts
+idempotent work through a separate connection and does not interrupt explanations.
 
 ## Benign reference profile
 
@@ -241,6 +249,8 @@ python -m ids_pipeline check-models
 python -m unittest discover -s tests -v
 python -m pip install -r requirements-test.txt
 python tests/run_sql_verification.py --browser
+# If matching test binaries are already built and the application is running:
+python tests/run_sql_verification.py --browser --no-build
 # Optional UI review captures only:
 python tests/run_sql_verification.py --browser --screenshots
 ```

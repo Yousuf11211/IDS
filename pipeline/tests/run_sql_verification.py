@@ -20,6 +20,7 @@ from ids_pipeline.connection import webapp_connection
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--browser', action='store_true')
+    parser.add_argument('--no-build', action='store_true', help='Use existing test binaries while the web app is running')
     parser.add_argument('--screenshots', action='store_true', help='Optional UI review captures in ignored TestResults/')
     args = parser.parse_args()
     environment = dict(os.environ)
@@ -30,9 +31,12 @@ def main():
     if args.screenshots:
         environment['IDS_SHAP_SCREENSHOTS'] = str(ROOT.parent / 'IDS.Tests/TestResults')
     print('Dedicated verification database: ' + database, flush=True)
-    result = subprocess.run([shutil.which('dotnet') or 'dotnet', 'test', str(ROOT.parent / 'IDS.Tests/IDS.Tests.csproj'),
+    command = [shutil.which('dotnet') or 'dotnet', 'test', str(ROOT.parent / 'IDS.Tests/IDS.Tests.csproj'),
         '--no-restore', '--filter', 'FullyQualifiedName~SqlServerExplanationIntegrationTests',
-        '--logger', 'console;verbosity=normal'], cwd=ROOT.parent, env=environment)
+        '--logger', 'console;verbosity=normal']
+    if args.no_build:
+        command.append('--no-build')
+    result = subprocess.run(command, cwd=ROOT.parent, env=environment)
     print('The dedicated database is retained for review: ' + database, flush=True)
     return result.returncode
 

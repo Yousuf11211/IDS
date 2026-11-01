@@ -1,6 +1,7 @@
 """Exact Tree SHAP of the deployed model, never a substitute prediction path."""
 from datetime import datetime, timezone
 import json
+import logging
 import time
 
 import numpy as np
@@ -109,6 +110,8 @@ class ExplanationWorker:
             payload = self.service.generate(job["Stage"], context, attack_id=job["AttackTrafficId"],
                                             raw_id=job["RawPacketId"])
             self.store.finish_explanation(job["Id"], payload)
+            logging.getLogger(__name__).info("SHAP completed for attack %s, stage %s (%.1f ms)",
+                job["AttackTrafficId"], job["Stage"], payload["generationMs"])
         except Exception as error:
             # Explainability failure never rolls back the original incident.
             self.store.fail_explanation(job["Id"], error)

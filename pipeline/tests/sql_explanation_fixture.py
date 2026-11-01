@@ -46,8 +46,14 @@ def main():
             # Remove only this disposable fixture's jobs to exercise historical replay.
             with store.transaction():
                 store.conn.execute('DELETE FROM dbo.FlowExplanations WHERE AttackTrafficId=?', (first['AttackTrafficId'],))
-            assert store.backfill_explanations(models) == 1
-            assert store.backfill_explanations(models) == 0
+            # A separate backfill connection must work while the explanation
+            # worker still owns its exclusive application lock.
+            backfill_store = Store(config)
+            try:
+                assert backfill_store.backfill_explanations(models) == 1
+                assert backfill_store.backfill_explanations(models) == 0
+            finally:
+                backfill_store.close()
             service = ExplanationService(models)
             explainer = ExplanationWorker(store, models, service)
             while explainer.once():

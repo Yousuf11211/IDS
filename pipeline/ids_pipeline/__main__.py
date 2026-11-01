@@ -49,12 +49,14 @@ def main(argv=None):
             return 0
         store.verify()
         if args.command in ("explain", "backfill-explanations", "retry-explanations"):
-            store.acquire_explanation_lock()
             if args.command == "backfill-explanations":
                 if not 1 <= args.limit <= 10000:
                     raise ValueError("Backfill limit must be between 1 and 10000")
                 print(f"Queued {store.backfill_explanations(models, args.limit)} verified historical attacks")
                 return 0
+            # Backfill only inserts idempotent jobs and is safe while the worker
+            # consumes them. Claim/recovery and failed-job resets need exclusivity.
+            store.acquire_explanation_lock()
             if args.command == "retry-explanations":
                 if args.attack_id <= 0:
                     raise ValueError("Attack ID must be positive")
@@ -63,6 +65,8 @@ def main(argv=None):
             from .explanations import ExplanationService, ExplanationWorker
             from .reference import load_reference
             explanation_worker = ExplanationWorker(store, models, ExplanationService(models, load_reference(config)))
+            logging.info("SHAP worker ready for %s; waiting for queued explanations", models.release)
+            logging.info("Restart the detection worker after installing code updates so it queues SHAP jobs")
             stopped = threading.Event()
             for sig in (signal.SIGINT, signal.SIGTERM):
                 signal.signal(sig, lambda *_: stopped.set())
@@ -90,6 +94,7 @@ def main(argv=None):
             store.update(args.file_hash, Status="retry_staging", Attempts=0, NextAttempt=0, LastError=None)
             return 0
         worker = Worker(config, store, models)
+        logging.info("Detection worker ready for %s; SHAP job enqueueing is enabled", models.release)
         stopped = threading.Event()
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, lambda *_: stopped.set())

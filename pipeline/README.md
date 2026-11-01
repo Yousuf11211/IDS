@@ -77,8 +77,11 @@ python -m ids_pipeline backfill-explanations --limit 100
 python -m ids_pipeline explain
 ```
 
-Stop the explanation process before backfilling or resetting failed explanations;
-they use the same session lock. After fixing a failure, use
+Backfill can run while the explanation process stays running. Restart both workers
+after updating Python code: an existing process retains its previously loaded code.
+The detector should log `SHAP job enqueueing is enabled` on startup; the explanation
+worker logs each completed attack/stage. Stop the explanation process before
+resetting failed explanations. After fixing a failure, use
 `python -m ids_pipeline retry-explanations ATTACK_TABLE_ID` and restart it.
 
 In another terminal, from `pipeline/` with the environment activated:
