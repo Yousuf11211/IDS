@@ -95,6 +95,20 @@ class SchemaTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing required model features: delta_start"):
             validate({**row, HANDSHAKE: 1})
 
+    def test_exporter_timezone_and_fractional_subflows(self):
+        zone = Config(source_timezone="America/Chicago").timestamp_zone()
+        row = {**fixture(), 'timestamp': '2026-11-09 16:09:36.419285',
+               'subflow_fwd_bytes': '629.5', 'subflow_bwd_packets': '2.25'}
+        parsed = validate(row, source_zone=zone)
+        self.assertEqual(parsed['timestamp'], datetime(2026, 11, 9, 22, 9, 36, 419285))
+        self.assertEqual(parsed['subflow_fwd_bytes'], 629.5)
+        self.assertEqual(parsed['subflow_bwd_packets'], 2.25)
+        for wall in ('2026-11-01T01:30:00', '2026-03-08T02:30:00'):
+            with self.assertRaisesRegex(ValueError, 'explicit offset'):
+                validate({**row, 'timestamp': wall}, source_zone=zone)
+        self.assertEqual(validate({**row, 'timestamp': '2026-11-01T01:30:00-04:00'},
+                                  source_zone=zone)['timestamp'], datetime(2026, 11, 1, 5, 30))
+
     def test_integral_float_csv_and_timezone(self):
         parsed = validate({**fixture(), 'packets_count': '1e3', 'dst_port': '443.0',
                            'timestamp': '2026-10-09T14:00:00+02:00'})
@@ -334,13 +348,34 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(len(self.store.results), 100)
         self.assertEqual(len(list((self.worker.data / 'duplicates').glob('*.csv'))), 1)
 
+    def test_manual_drop_waits_for_stable_copy_and_imports_once(self):
+        config = replace(self.config, require_ready_marker=False, file_settle_seconds=4)
+        worker = Worker(config, self.store, self.models)
+        generated = generate(config, rows=2)
+        generated.with_suffix('.csv.ready').unlink()
+        path = generated.rename(generated.with_name('manual.CSV'))
+        content = path.read_bytes()
+        path.write_bytes(content[:200])
+        with patch('ids_pipeline.worker.time.monotonic', side_effect=[0, 3, 4, 7]):
+            worker.scan()
+            path.write_bytes(content)
+            worker.scan()
+            worker.scan()
+            self.assertTrue(path.exists())
+            worker.scan()
+        self.assertFalse(path.exists())
+        self.assertEqual(len(self.store.results), 2)
+        self.assertFalse(worker.observed_files)
+
     def test_not_ready_file_and_bad_header(self):
-        path = self.worker.data / 'incoming/bad.csv'
+        worker = Worker(replace(self.config, require_ready_marker=True), self.store, self.models)
+        path = worker.data / 'incoming/bad.csv'
         path.write_text('wrong\n1\n')
-        self.worker.scan()
+        worker.scan()
         self.assertTrue(path.exists())
+        self.assertFalse(worker.observed_files)
         path.with_suffix('.csv.ready').touch()
-        self.worker.scan()
+        worker.scan()
         self.assertEqual(len(list((self.worker.data / 'quarantine').glob('*.csv'))), 1)
         self.assertEqual(self.store.results, [])
 

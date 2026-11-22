@@ -369,16 +369,16 @@ public int? SynFlagCounts { get; set; }
         public double? BwdPacketsIatVariance { get; set; }
 
         // Column 120: subflow_fwd_packets
-        public int? SubflowFwdPackets { get; set; }
+        public double? SubflowFwdPackets { get; set; }
 
         // Column 121: subflow_bwd_packets
-        public int? SubflowBwdPackets { get; set; }
+        public double? SubflowBwdPackets { get; set; }
 
  // Column 122: subflow_fwd_bytes
-        public long? SubflowFwdBytes { get; set; }
+        public double? SubflowFwdBytes { get; set; }
 
         // Column 123: subflow_bwd_bytes
-        public long? SubflowBwdBytes { get; set; }
+        public double? SubflowBwdBytes { get; set; }
 
         // Column 124: delta_start
         public double? DeltaStart { get; set; }

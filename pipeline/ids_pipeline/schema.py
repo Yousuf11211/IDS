@@ -45,7 +45,27 @@ def prepare_row(values, features):
     return values
 
 
-def validate(values, features, *, timestamp=None):
+def utc_timestamp(value, source_zone):
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError("timestamp: expected an ISO timestamp") from None
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    if source_zone is None:
+        raise ValueError("timestamp: supply an explicit offset or configure worker.source_timezone")
+    # A local wall time may identify zero or two instants at a DST transition.
+    candidates = set()
+    for fold in (0, 1):
+        utc = dt.replace(tzinfo=source_zone, fold=fold).astimezone(timezone.utc)
+        if utc.astimezone(source_zone).replace(tzinfo=None) == dt:
+            candidates.add(utc)
+    if len(candidates) != 1:
+        raise ValueError("timestamp: ambiguous or nonexistent local time; supply an explicit offset")
+    return candidates.pop().replace(tzinfo=None)
+
+
+def validate(values, features, *, timestamp=None, source_zone=None):
     values = prepare_row(values, features)
     result = {}
     for spec in COLUMNS:
@@ -71,13 +91,11 @@ def validate(values, features, *, timestamp=None):
                     raise ValueError("src_ip: invalid IP address") from None
             result[name] = value or (None if kind.endswith("?") else "")
             continue
+        if kind == "DateTime":
+            result[name] = utc_timestamp(value, source_zone)
+            continue
         try:
-            if kind == "DateTime":
-                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-                if dt.tzinfo is None:
-                    raise ValueError("timezone required")
-                result[name] = dt.astimezone(timezone.utc).replace(tzinfo=None)
-            elif kind == "bool?":
+            if kind == "bool?":
                 result[name] = bool(raw)
             elif (number := numeric(raw)) is None or number == 0:
                 result[name] = number
@@ -92,8 +110,7 @@ def validate(values, features, *, timestamp=None):
             else:
                 result[name] = number
         except (ValueError, OverflowError, InvalidOperation):
-            message = "expected an ISO timestamp with a timezone" if kind == "DateTime" else f"invalid {kind.rstrip('?')} value"
-            raise ValueError(f"{name}: {message}") from None
+            raise ValueError(f"{name}: invalid {kind.rstrip('?')} value") from None
     if result["dst_port"] is not None and not 0 <= result["dst_port"] <= 65535:
         raise ValueError("dst_port: must be between 0 and 65535")
     return result

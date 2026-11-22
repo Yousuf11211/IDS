@@ -79,6 +79,15 @@ class Store:
             "FlowExplanations": ["Id", "AttackTrafficId", "RawPacketId", "Stage", "ModelVersion",
                                  "Fingerprint", "ContextJson", "Status", "PayloadJson"],
         }
+        subflow_columns = self.conn.execute("""
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME IN ('RawPackets','Benign_Table','Attack_Table')
+              AND COLUMN_NAME IN ('SubflowFwdPackets','SubflowBwdPackets','SubflowFwdBytes','SubflowBwdBytes')
+              AND DATA_TYPE='float' AND NUMERIC_PRECISION=53
+        """).fetchone()[0]
+        if subflow_columns != 12:
+            raise RuntimeError("The three flow tables require float(53) subflow columns. "
+                               "Apply the fractional subflow migration before running the workers.")
         for table, names in required.items():
             self.conn.execute(f"SELECT {','.join('[' + name + ']' for name in names)} FROM {self.table(table)} WHERE 1=0")
         self.conn.commit()

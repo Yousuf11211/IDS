@@ -45,7 +45,8 @@ def main():
                 writer.writeheader()
                 for row in records:
                     del row[HANDSHAKE]
-                    row.update(delta_start="not a complete handshake", extra_extractor_column="unused")
+                    row.update(delta_start="not a complete handshake", extra_extractor_column="unused",
+                               subflow_fwd_bytes="629.5")
                     writer.writerow(row)
             duplicate = path.with_name("duplicate.csv")
             duplicate.write_bytes(path.read_bytes())
@@ -86,6 +87,7 @@ def main():
                                   and row['AttackTrafficId'] == selected['AttackTrafficId']))
             assert payload['featureNames'] == models.feature_names
             observed = {f['name']: f['value'] for f in payload['features']}
+            assert observed['subflow_fwd_bytes'] == 629.5
             assert observed['delta_start'] is None and observed[HANDSHAKE] == 1
             assert len(payload['features']) == 120
             assert payload['reference'] is None

@@ -57,7 +57,7 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         {
             Assert.False(await baseline.Database.CanConnectAsync(), "Integration database must be NEW and empty.");
             // A pre-existing duplicate Roles migration prevents blank-database bootstrap.
-            // Start with the historical flow schema, seed a legacy record, then apply the two real migrations.
+            // Start with the historical flow schema, seed a legacy record, then apply the flow migrations.
             await baseline.Database.EnsureCreatedAsync();
             var legacy = new AttackTraffic { AttackType = "Attack", ModelVersion = "legacy-test" };
             foreach (var property in typeof(NetworkFlowBase).GetProperties())
@@ -66,13 +66,14 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
                 if (type != null && type != typeof(bool))
                     property.SetValue(legacy, Activator.CreateInstance(type));
             }
+            legacy.SubflowFwdBytes = 123456789;
             baseline.Add(legacy);
             await baseline.SaveChangesAsync();
         }
         await using (var database = new ApplicationDbContext(options))
         {
             var model = database.GetService<IDesignTimeModel>().Model;
-            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs() })
+            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs(), new PreserveFractionalSubflows() })
             {
                 var commands = database.GetService<IMigrationsSqlGenerator>().Generate(migration.UpOperations, model);
                 foreach (var command in commands) await database.Database.ExecuteSqlRawAsync(command.CommandText);
@@ -81,6 +82,7 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
             Assert.Equal("Attack", legacy.AttackType);
             Assert.Null(legacy.DeltaStartIncompleteHandshake);
             Assert.Equal(0d, legacy.DeltaStart);
+            Assert.Equal(123456789d, legacy.SubflowFwdBytes);
             // UI fixtures cover both new labels even when synthetic traffic predicts other classes.
             database.AddRange(new AttackTraffic { AttackType = "PortScan", Severity = "Medium" },
                 new AttackTraffic { AttackType = "DoS_SYN_Flood", Severity = "High" });
@@ -257,6 +259,10 @@ public sealed class InspectionBaselineContext(DbContextOptions<ApplicationDbCont
         {
             var entity = builder.Entity(type);
             entity.Ignore(nameof(NetworkFlowBase.DeltaStartIncompleteHandshake));
+            foreach (var name in new[] { "SubflowFwdBytes", "SubflowBwdBytes" })
+                entity.Property(name).HasConversion<long>().HasColumnType("bigint");
+            foreach (var name in new[] { "SubflowFwdPackets", "SubflowBwdPackets" })
+                entity.Property(name).HasConversion<int>().HasColumnType("int");
             foreach (var property in typeof(NetworkFlowBase).GetProperties())
             {
                 var underlying = Nullable.GetUnderlyingType(property.PropertyType);

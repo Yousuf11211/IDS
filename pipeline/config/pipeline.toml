@@ -5,8 +5,12 @@ batch_size = 500
 poll_seconds = 2
 max_attempts = 5
 retry_seconds = 10
-# Generate/copy the CSV completely, then create filename.csv.ready.
-require_ready_marker = true
+# Plain CSV drops are claimed after their size and modification time settle.
+# An empty filename.csv.ready marker allows immediate pickup.
+require_ready_marker = false
+file_settle_seconds = 4
+# IANA timezone for CSV timestamps without an offset. Empty requires an explicit offset.
+source_timezone = "America/Chicago"
 
 [database]
 # Read the SAME connection configuration as IDS/Program.cs; no separate database.

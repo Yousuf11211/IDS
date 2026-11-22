@@ -636,17 +636,17 @@ namespace IDS.Data.Migrations
                     b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long?>("SubflowBwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowBwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowBwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowBwdPackets")
+                        .HasColumnType("float");
 
-                    b.Property<long?>("SubflowFwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowFwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowFwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowFwdPackets")
+                        .HasColumnType("float");
 
                     b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");
@@ -1245,17 +1245,17 @@ namespace IDS.Data.Migrations
                     b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long?>("SubflowBwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowBwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowBwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowBwdPackets")
+                        .HasColumnType("float");
 
-                    b.Property<long?>("SubflowFwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowFwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowFwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowFwdPackets")
+                        .HasColumnType("float");
 
                     b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");
@@ -2110,17 +2110,17 @@ namespace IDS.Data.Migrations
                     b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long?>("SubflowBwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowBwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowBwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowBwdPackets")
+                        .HasColumnType("float");
 
-                    b.Property<long?>("SubflowFwdBytes")
-                        .HasColumnType("bigint");
+                    b.Property<double?>("SubflowFwdBytes")
+                        .HasColumnType("float");
 
-                    b.Property<int?>("SubflowFwdPackets")
-                        .HasColumnType("int");
+                    b.Property<double?>("SubflowFwdPackets")
+                        .HasColumnType("float");
 
                     b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");

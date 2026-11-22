@@ -20,6 +20,8 @@ def file_hash(path):
 class Worker:
     def __init__(self, config, store, models):
         self.config, self.store, self.models = config, store, models
+        self.observed_files = {}
+        self.timestamp_zone = config.timestamp_zone()
         self.data = config.root / config.data_dir
         for folder in ("incoming", "processing", "archive", "quarantine", "duplicates"):
             (self.data / folder).mkdir(parents=True, exist_ok=True)
@@ -32,21 +34,46 @@ class Worker:
         return target
 
     def discover(self):
-        for path in sorted((self.data / "incoming").glob("*.csv")):
+        incoming = self.data / "incoming"
+        paths = sorted(p for p in incoming.iterdir() if p.suffix.lower() == ".csv")
+        for removed in self.observed_files.keys() - set(paths):
+            del self.observed_files[removed]
+        for path in paths:
             if path.is_symlink() or not path.is_file():
                 continue
             marker = path.with_name(path.name + ".ready")
-            if self.config.require_ready_marker and not marker.is_file():
+            try:
+                marked = marker.is_file()
+                if marked and marker.stat().st_size:
+                    LOG.warning("Expected an empty marker beside %s; leaving both files in incoming", path.name)
+                    continue
+                if not marked:
+                    if self.config.require_ready_marker:
+                        continue
+                    stat = path.stat()
+                    signature = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
+                    previous = self.observed_files.get(path)
+                    now = time.monotonic()
+                    if previous is None or previous[0] != signature:
+                        self.observed_files[path] = (signature, now)
+                        continue
+                    if now - previous[1] < self.config.file_settle_seconds:
+                        continue
+                target = self.data / "processing" / (uuid.uuid4().hex + "--" + path.name[-180:])
+                path.rename(target)
+            except (FileNotFoundError, PermissionError):
+                # A producer may still hold the CSV open on Windows, or withdraw it.
+                self.observed_files.pop(path, None)
                 continue
-            # Producers must not modify ready files. Rename claims ownership on same filesystem.
-            target = self.data / "processing" / (uuid.uuid4().hex + "--" + path.name[-180:])
-            path.rename(target)
-            marker.unlink(missing_ok=True)
+            self.observed_files.pop(path, None)
+            if marked:
+                marker.unlink(missing_ok=True)
+            LOG.info("Claimed %s", path.name)
 
     def scan(self):
         self.discover()
-        for path in sorted((self.data / "processing").glob("*.csv")):
-            if path.is_symlink():
+        for path in sorted((self.data / "processing").iterdir()):
+            if path.suffix.lower() != ".csv" or path.is_symlink() or not path.is_file():
                 continue
             self.process(path)
 
@@ -62,7 +89,8 @@ class Worker:
                 try:
                     if len(values) != len(names):
                         raise ValueError("CSV record has an incorrect column count")
-                    features = validate(dict(zip(names, values, strict=True)), self.models.feature_names, timestamp=timestamp)
+                    features = validate(dict(zip(names, values, strict=True)), self.models.feature_names,
+                                        timestamp=timestamp, source_zone=self.timestamp_zone)
                     batch.append((number, features, None))
                 except ValueError as error:
                     batch.append((number, None, str(error)))

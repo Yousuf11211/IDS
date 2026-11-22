@@ -16,7 +16,7 @@ pipeline/
   ids_pipeline/         Worker, validation, model loading, and database code
   database/             SQL setup for import tracking
   data/
-    incoming/           Drop completed CSVs and their .ready markers here
+    incoming/           Drop flow CSVs here
     processing/         Files currently being processed or awaiting retry
     archive/            Processed CSVs
     quarantine/         Files with invalid headers, encoding, or CSV structure
@@ -48,7 +48,7 @@ migration history and generate the upgrade script from the solution directory:
 
 ```powershell
 dotnet ef migrations list --project IDS --startup-project IDS
-dotnet ef migrations script 20261016214443_AddFlowExplanations 20261122151153_SupportNullableFlowInputs --idempotent --project IDS --startup-project IDS --output IDS-flow-upgrade.sql
+dotnet ef migrations script 20261016214443_AddFlowExplanations 20261122202918_PreserveFractionalSubflows --idempotent --project IDS --startup-project IDS --output IDS-flow-upgrade.sql
 ```
 
 Verify the target database, take a backup and review the generated SQL. Apply the
@@ -56,7 +56,7 @@ reviewed script through your SQL deployment process, or apply this migration
 explicitly to the configured target:
 
 ```powershell
-dotnet ef database update 20261122151153_SupportNullableFlowInputs --project IDS --startup-project IDS
+dotnet ef database update 20261122202918_PreserveFractionalSubflows --project IDS --startup-project IDS
 ```
 
 If the database is behind the stated baseline, generate and review the script
@@ -65,7 +65,9 @@ limitation is documented in [the inspection guide](../IDS/Docs/ShapInspection.md
 The migration preserves historical values and indexes, permits SQL NULL for
 numeric extractor measurements across the three flow tables, and adds one nullable
 `bit` handshake flag per table. Raw rows must retain the flag across staging and
-restart, before an attack's SHAP snapshots exist. Historical flags remain NULL.
+restart, before an attack's SHAP snapshots exist. Historical flags remain NULL. A subsequent migration widens the four subflow
+packet/byte measurements to SQL float(53) across the same tables. It checks
+that existing byte counts can be converted exactly before altering them.
 
 After the migration, run the database preflight from `pipeline/`:
 
@@ -158,7 +160,9 @@ For a single scan, use `python -m ids_pipeline run --once`.
   Input to both boosters is float32. Missing inputs round-trip through SQL NULL
   and JSON null. Stored integer counters and ports retain the existing integer
   and range checks. A missing timestamp column uses the file's UTC modification
-  time. Supplied timestamps require a timezone. Absent non-model numeric columns
+  time. Offset-bearing timestamps are converted to UTC. For timestamps without an offset, set
+  `worker.source_timezone` to the exporter’s IANA zone and restart the detector.
+  With an empty setting, or for ambiguous or nonexistent local times, supply an explicit offset. Absent non-model numeric columns
   retain the existing storage default of zero.
 - The binary probability is interpreted using `binary_label_mapping.json`.
   At an Attack probability of 0.50 or higher, the same ordered inputs go to
@@ -175,9 +179,14 @@ For a single scan, use `python -m ids_pipeline run --once`.
   the nullable schema when retaining new detections. Finish pinned imports and
   explanation jobs with the worker and exact artifacts for their release.
 
-For real CSVs, finish copying into `data/incoming/`, then create an empty marker
-named `filename.csv.ready`. The generator does this automatically. If markers are
-disabled in config, write to a temporary extension and atomically rename to `.csv`.
+For a manual import, copy the file into `data/incoming/` with its **.csv** extension.
+The default detector waits for unchanged size and modification time across scans
+for at least four seconds. The generator supplies a separate empty `.csv.ready`
+marker after closing the CSV, which bypasses the settling delay. If a producer can
+pause mid-copy for longer than the settling interval, copy with a temporary
+extension and rename to `.csv` on completion, or enable `require_ready_marker`
+and have the producer create the empty marker. Always keep the data in the CSV.
+Restart the detector after updating code or configuration.
 Keep the data folders on the same filesystem and leave worker-owned files alone.
 
 ## Status, recovery and checks

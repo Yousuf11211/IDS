@@ -22,7 +22,7 @@ def main(argv=None):
     retry = sub.add_parser("retry", help="Reset a failed job after fixing its cause")
     retry.add_argument("file_hash")
     run = sub.add_parser("run", help="Watch incoming/ and resume processing/")
-    run.add_argument("--once", action="store_true", help="One scan; exit nonzero if incomplete imports remain")
+    run.add_argument("--once", action="store_true", help="Scan incoming files, allow one settling interval, then exit")
     explain = sub.add_parser("explain", help="Run the independent durable SHAP worker")
     explain.add_argument("--once", action="store_true", help="Drain currently eligible jobs and exit")
     backfill = sub.add_parser("backfill-explanations", help="Queue reproducible historical pipeline attacks")
@@ -95,16 +95,23 @@ def main(argv=None):
             return 0
         worker = Worker(config, store, models)
         logging.info("Detection worker ready for %s; SHAP job enqueueing is enabled", models.release)
+        logging.info("Watching %s (%s)", worker.data / "incoming",
+                     "empty .csv.ready marker required" if config.require_ready_marker else
+                     f"plain CSVs accepted after {config.file_settle_seconds:g}s stable")
         stopped = threading.Event()
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, lambda *_: stopped.set())
         while not stopped.is_set():
             worker.scan()
+            if args.once and worker.observed_files:
+                if stopped.wait(config.file_settle_seconds):
+                    return 1
+                worker.scan()
             worker.heartbeat()
             if args.once:
                 incomplete = store.fetch(f"SELECT FileHash FROM {store.table('PipelineImports')} "
                                          "WHERE Status NOT IN ('completed','completed_with_errors')")
-                return 1 if incomplete else 0
+                return 1 if incomplete or worker.observed_files else 0
             stopped.wait(config.poll_seconds)
         return 0
     finally:

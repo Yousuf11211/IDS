@@ -480,19 +480,19 @@
     },
     {
       "name": "SubflowFwdPackets",
-      "type": "int?"
+      "type": "double?"
     },
     {
       "name": "SubflowBwdPackets",
-      "type": "int?"
+      "type": "double?"
     },
     {
       "name": "SubflowFwdBytes",
-      "type": "long?"
+      "type": "double?"
     },
     {
       "name": "SubflowBwdBytes",
-      "type": "long?"
+      "type": "double?"
     },
     {
       "name": "DeltaStart",
