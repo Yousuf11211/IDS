@@ -18,11 +18,11 @@ dashboard polling, or SignalR delivery.
   in one SQL transaction. `Attack_Table.ConfidenceScore` contains the multiclass
   probability; `PipelineRows.GateScore` holds the binary Attack probability.
   The live feed now labels category probability explicitly.
-- Saved UBJ boosters declare 120 features: the 119-field CSV contract plus
-  `delta_start_incomplete_handshake`. The existing adapter sets this last feature
-  to zero only after proving neither booster splits on it. That check remains.
-  Both prediction and explanation use the same ordered float32 adapter. No NaN
-  replacement, extra normalization, background imputation, or training was added.
+- Both UBJs match the 120 names and order in `pipeline/Features_used/features_used.json`.
+  Inference and SHAP share the same float32 adapter. The raw SQL row retains the
+  validated handshake flag, and explanation snapshots encode missing inputs as JSON null.
+  The worker reproduces the prediction and orients binary contributions toward Attack
+  according to the binary mapping.
 - Original training preprocessing code and labeled training/reference datasets
   are absent. This implementation explains the **deployed** adapter exactly; it
   cannot independently certify how the training data were originally transformed.
@@ -31,7 +31,7 @@ dashboard polling, or SignalR delivery.
   to existing **Admin/Support** roles, with the same check inside the service.
   Employees and suspended/anonymous principals cannot inspect guessed IDs.
   Existing escalation permissions remain unchanged.
-- The working tree was clean at the start. No unrelated changes were replaced.
+- Historical scores below refer to the previous model release.
 
 ## Python explanation and processing contract
 
@@ -65,7 +65,7 @@ artifacts/configuration to explain older releases; no replacement model is used.
 
 ## Database design and migration
 
-The new table is owned by EF Core:
+The explanation table is owned by EF Core:
 `20261016214443_AddFlowExplanations` (plus generated designer and model snapshot).
 Its `Up` creates only this table and its indexes/constraints. No traffic table is
 altered or dropped. Rollback of this migration would remove explanation data.
@@ -88,7 +88,8 @@ The class, probability and explanation metadata reside in versioned JSON rather
 than redundant columns on `Attack_Table`. The selected output class is immutable
 for a particular incident/stage/model. SQL writes are parameterized.
 
-From the solution directory, review and apply the additive migration to an
+For the current flow-input migration and deployment commands see [the pipeline runbook](../../pipeline/README.md#setup).
+The following commands describe the earlier explanation-table migration on an
 **existing migrated database** using the same configuration as the application:
 
 ```powershell
@@ -105,9 +106,8 @@ Development, and requires explicit migration in deployed environments.
 **Existing migration limitation found during testing:** bootstrapping a completely
 blank SQL database through the historical chain fails with “There is already an
 object named 'Roles' in the database.” This precedes the new migration. The isolated
-SQL test therefore creates the current baseline model **without** explanations,
-then executes this migration's actual SQL Server commands. It verifies the new
-migration, not a repaired historical chain. No old migrations were rewritten.
+SQL test creates the historical non-nullable flow schema without explanations,
+seeds a historical record and executes the explanation and nullable-input migrations.
 
 ## Startup, routes, retries and historical detections
 
@@ -200,9 +200,9 @@ files inside detection `data/` are rejected. The dataset custodian must still
 verify truthful provenance; a manifest cannot independently prove a split.
 
 Statistics are mean, population standard deviation, median, 5th/25th/75th/95th
-percentiles and benign sample count, computed on the float32 model values. Port
-and the unused synthetic adapter column are excluded. Missing/invalid profiles
-or model-fingerprint mismatch produce no reference statistics and do not prevent
+percentiles and benign sample count, computed on the float32 model values. The profile excludes
+port identifiers, the categorical handshake flag and missing observations per feature.
+Missing or invalid profiles and fingerprint mismatches omit reference statistics and allow
 SHAP processing. A zero median never yields an infinite percentage. The schema
 has no protocol identity, so the available profile group is all benign reference
 traffic; protocol-specific grouping is not claimed. Physical measurement units
@@ -267,7 +267,7 @@ skips this opt-in test unless explicitly configured. Review/remove disposable
 test databases through SQL administration when finished; the tool never drops
 the existing application database.
 
-Executed validation on 2026-10-16:
+### Historical verification of the previous model release (2026-10-16)
 
 | Check | Actual result |
 | --- | --- |
