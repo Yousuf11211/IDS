@@ -1,10 +1,11 @@
-"""Two-stage inference using the supplied XGBoost UBJ artifacts and text label maps."""
+"""Two-stage inference using the supplied XGBoost UBJ artifacts and JSON label maps."""
 from dataclasses import dataclass
 import hashlib
 import json
-import re
+import math
 
-from .schema import FEATURES, normalize
+from .features import load_features, numeric
+from .schema import CSV_TO_SQL, prepare_row
 
 
 @dataclass(frozen=True)
@@ -21,16 +22,22 @@ class Prediction:
 
 
 def read_labels(path):
-    labels = {}
-    for line in path.read_text(encoding="utf-8-sig").splitlines():
-        match = re.fullmatch(r"\s*(\d+)\s*=\s*(.+?)\s*", line)
-        if match:
-            index, label = int(match[1]), match[2]
-            if index in labels or label in labels.values() or len(label) > 100:
-                raise ValueError(f"Invalid or duplicate label in {path.name}")
-            labels[index] = label
-    if not labels or set(labels) != set(range(len(labels))):
-        raise ValueError(f"{path.name}: labels must be contiguous class IDs starting at zero")
+    def unique_keys(pairs):
+        result = dict(pairs)
+        if len(pairs) != len(result):
+            raise ValueError("duplicate class ID")
+        return result
+
+    try:
+        mapping = json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=unique_keys)
+    except ValueError as error:
+        raise ValueError(f"{path}: invalid JSON mapping: {error}") from error
+    if not isinstance(mapping, dict) or not mapping or set(mapping) != {str(i) for i in range(len(mapping))}:
+        raise ValueError(f"{path}: labels must be contiguous class IDs starting at zero")
+    labels = {int(index): label for index, label in mapping.items()}
+    if (any(not isinstance(label, str) or not label or label != label.strip() or len(label) > 100
+            for label in labels.values()) or len(set(labels.values())) != len(labels)):
+        raise ValueError(f"{path}: invalid or duplicate labels")
     return labels
 
 
@@ -38,9 +45,12 @@ class XGBoostModels:
     def __init__(self, config):
         import xgboost as xgb
         self.config = config
-        self.loaded, self.features, self.labels = {}, {}, {}
+        self.loaded, self.labels = {}, {}
+        self.feature_names = load_features(config)
+        if missing := set(self.feature_names) - CSV_TO_SQL.keys():
+            raise ValueError(f"SQL storage contract lacks model features: {sorted(missing)}")
         self.policy = json.loads((config.root / config.attack_policy).read_text(encoding="utf-8-sig"))
-        contract = {"schema_version": 2, "features": FEATURES, "policy": self.policy,
+        contract = {"schema_version": 3, "features": self.feature_names, "policy": self.policy,
                     "gate_threshold": config.gatekeeper_threshold,
                     "type_threshold": config.multiclass_threshold}
         versions = {}
@@ -52,39 +62,33 @@ class XGBoostModels:
             content = artifact.read_bytes()
             digest = hashlib.sha256(content).hexdigest()
             model = xgb.Booster()
-            model.load_model(bytearray(content))
+            try:
+                model.load_model(bytearray(content))
+            except xgb.core.XGBoostError as error:
+                raise ValueError(f"{stage}: could not load UBJ model {artifact}: {error}") from error
             model.set_param({"device": "cpu", "nthread": 2})
-            names = model.feature_names
-            if not names:
-                raise ValueError(f"{stage}: model must contain its trained feature names")
-            features = [normalize(name) for name in names]
-            extra = "delta_start_incomplete_handshake"
-            if len(set(features)) != len(features) or set(features) != set(FEATURES) | {extra}:
-                raise ValueError(f"{stage}: model features differ from the supplied CSV contract")
-            # The supplied artifacts contain this extra training column, but neither
-            # uses it in any tree split. Zero is safe ONLY while it remains unused.
-            used = {normalize(name) for name in model.get_score(importance_type="weight")}
-            if extra in used:
-                raise ValueError(f"{stage} now uses {extra}; configure its training transformation before inference")
-            if model.num_features() != len(FEATURES) + 1:
-                raise ValueError(f"{stage}: incorrect feature count")
+            if model.num_features() != len(self.feature_names) or model.feature_names != self.feature_names:
+                raise ValueError(f"{stage}: trained feature count, names or order differ from {config.feature_list}")
             labels = read_labels(label_path)
             learner = json.loads(model.save_config())["learner"]
             objective = learner["objective"]["name"]
             if stage == "gatekeeper":
-                if objective != "binary:logistic" or labels != {0: "Benign", 1: "Attack"}:
-                    raise ValueError("Gatekeeper must be binary:logistic with 0=Benign, 1=Attack")
+                if (objective != "binary:logistic" or set(labels.values()) != {"Benign", "Attack"}
+                        or int(learner["learner_model_param"]["num_target"]) != 1):
+                    raise ValueError("Gatekeeper requires binary:logistic and a binary mapping for Benign and Attack")
+                self.attack_index = next(index for index, label in labels.items() if label == "Attack")
             elif (objective != "multi:softprob"
-                  or int(learner["learner_model_param"]["num_class"]) != len(labels)):
-                raise ValueError("Multiclass must use multi:softprob and match its label mapping")
-            self.loaded[stage], self.features[stage], self.labels[stage] = model, features, labels
-            contract[stage] = {"sha256": digest, "labels": labels, "features": features}
+                  or len(labels) != 15 or int(learner["learner_model_param"]["num_class"]) != len(labels)):
+                raise ValueError("Multiclass must use multi:softprob and match the 15-class label mapping")
+            self.loaded[stage], self.labels[stage] = model, labels
+            contract[stage] = {"sha256": digest, "labels": labels}
             versions[stage] = stage + "-" + digest[:16]
         if set(self.policy) != set(self.labels["multiclass"].values()):
             raise ValueError("Attack policy must cover every multiclass label exactly")
-        for meta in self.policy.values():
-            if meta["severity"] not in ("Low", "Medium", "High", "Critical") or len(meta["category"]) > 50:
-                raise ValueError("Invalid attack severity/category policy")
+        for label, meta in self.policy.items():
+            if (not isinstance(meta, dict) or meta.get("severity") not in ("Low", "Medium", "High", "Critical")
+                    or not isinstance(meta.get("category"), str) or not 0 < len(meta["category"].strip()) <= 50):
+                raise ValueError(f"Invalid attack severity/category policy for {label}")
         self.fingerprint = hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest()
         self.release = "ubj-" + self.fingerprint[:20]
         self.gate_version, self.type_version = versions["gatekeeper"], versions["multiclass"]
@@ -92,17 +96,17 @@ class XGBoostModels:
     def input_values(self, stage, rows):
         """Single adapter shared by prediction and explanation; float32 is model input."""
         import numpy as np
-        rows = [{normalize(key): value for key, value in row.items()} for row in rows]
-        data = np.asarray([[0.0 if name == "delta_start_incomplete_handshake" else row[name]
-                            for name in self.features[stage]] for row in rows], dtype=np.float32)
-        if not np.isfinite(data).all():
-            raise ValueError("Nonfinite model input")
+        vectors = []
+        for row in rows:
+            values = prepare_row(row, self.feature_names)
+            vectors.append([numeric(values[name]) for name in self.feature_names])
+        data = np.asarray(vectors, dtype=np.float32).reshape(-1, len(self.feature_names))
         return data
 
     def input_matrix(self, stage, rows):
         import xgboost as xgb
         data = self.input_values(stage, rows)
-        return data, xgb.DMatrix(data, feature_names=self.loaded[stage].feature_names, nthread=2)
+        return data, xgb.DMatrix(data, feature_names=self.feature_names, nthread=2)
 
     def iteration_range(self, stage):
         best = self.loaded[stage].attr("best_iteration")
@@ -120,13 +124,13 @@ class XGBoostModels:
             raise ValueError(f"{stage}: invalid model probabilities")
         if stage == "multiclass" and not np.allclose(scores.sum(axis=1), 1, atol=1e-5):
             raise ValueError("Multiclass probabilities do not sum to one")
+        if stage == "gatekeeper" and self.attack_index == 0:
+            scores = 1 - scores
         return scores
 
     def predict(self, rows):
         if not rows:
             return []
-        # All callers, including SQL recovery, use the same lowercase naming contract.
-        rows = [{normalize(key): value for key, value in row.items()} for row in rows]
         gate_scores = [float(scores[0]) for scores in self.probabilities("gatekeeper", rows)]
         predictions = [Prediction(False, score) for score in gate_scores]
         indices = [i for i, score in enumerate(gate_scores) if score >= self.config.gatekeeper_threshold]
@@ -151,15 +155,17 @@ class XGBoostModels:
         binary = stage == "gatekeeper"
         return {
             "schemaVersion": 1, "release": self.release, "fingerprint": self.fingerprint,
-            "featureNames": self.features[stage], "featureValues": data[0].tolist(),
-            "classIndex": 1 if binary else prediction.class_index,
+            "stage": stage, "modelVersion": self.gate_version if binary else self.type_version,
+            "featureNames": self.feature_names,
+            "featureValues": [None if math.isnan(v) else v for v in data[0].tolist()],
+            "classIndex": self.attack_index if binary else prediction.class_index,
             "explainedClass": "Attack" if binary else prediction.selected_label,
             "predictedLabel": ("Attack" if prediction.attack else "Benign") if binary else prediction.attack_type,
             "probability": prediction.gate_score if binary else prediction.type_score,
             "threshold": self.config.gatekeeper_threshold if binary else self.config.multiclass_threshold,
             "topProbabilities": [] if binary else [dict(label=label, probability=value)
                                                     for label, value in prediction.top_probabilities],
-            "adapterNote": "119 supplied features; unused delta_start_incomplete_handshake=0; float32 input",
+            "adapterNote": "Ordered float32 inputs with native missing values and a validated handshake flag",
         }
 
 

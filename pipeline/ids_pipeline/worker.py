@@ -55,14 +55,14 @@ class Worker:
         timestamp = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).replace(tzinfo=None)
         with path.open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.reader(stream, strict=True)
-            names = headers(next(reader, None))
+            names = headers(next(reader, None), self.models.feature_names)
             for number, values in enumerate(reader, start=1):
                 if number <= checkpoint:
                     continue
                 try:
                     if len(values) != len(names):
                         raise ValueError("CSV record has an incorrect column count")
-                    features = validate(dict(zip(names, values, strict=True)), timestamp=timestamp)
+                    features = validate(dict(zip(names, values, strict=True)), self.models.feature_names, timestamp=timestamp)
                     batch.append((number, features, None))
                 except ValueError as error:
                     batch.append((number, None, str(error)))

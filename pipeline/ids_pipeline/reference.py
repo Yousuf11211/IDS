@@ -28,7 +28,7 @@ def build_profile(config, manifest_path):
     rows = []
     with source.open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.reader(stream)
-        names = headers(next(reader, None))
+        names = headers(next(reader, None), models.feature_names)
         if "label" not in names:
             raise ValueError("Reference must include ground-truth labels")
         for values in reader:
@@ -39,10 +39,13 @@ def build_profile(config, manifest_path):
         raise ValueError("No ground-truth benign rows in reference dataset")
     data, _ = models.input_matrix("gatekeeper", rows)
     features = {}
-    for i, name in enumerate(models.features["gatekeeper"]):
+    for i, name in enumerate(models.feature_names):
         if name in ("dst_port", "delta_start_incomplete_handshake"):
-            continue  # Ports are categorical; the extra training feature has no source values.
+            continue  # Port identifiers and the binary handshake flag are categorical.
         values = data[:, i].astype(float)
+        values = values[np.isfinite(values)]
+        if not len(values):
+            continue
         q = np.percentile(values, [5, 25, 50, 75, 95])
         features[name] = dict(mean=float(values.mean()), standardDeviation=float(values.std()),
                               p05=float(q[0]), p25=float(q[1]), median=float(q[2]),

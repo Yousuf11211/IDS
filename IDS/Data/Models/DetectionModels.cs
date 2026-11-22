@@ -5,7 +5,7 @@ namespace IDS.Data.Models
 {
     /// <summary>
     /// Stores raw packet/flow data before classification.
- /// Inherits all 172 network flow features from NetworkFlowBase.
+ /// Inherits the network flow fields from NetworkFlowBase.
     /// </summary>
     public class RawPacket : NetworkFlowBase
     {
@@ -30,7 +30,7 @@ namespace IDS.Data.Models
 
     /// <summary>
 /// Stores benign (normal) network traffic detected by the IDS pipeline.
-    /// Inherits all 172 network flow features from NetworkFlowBase.
+    /// Inherits the network flow fields from NetworkFlowBase.
     /// </summary>
     public class BenignTraffic : NetworkFlowBase
     {
@@ -50,7 +50,7 @@ namespace IDS.Data.Models
 
     /// <summary>
     /// Stores attack/malicious network traffic detected by the IDS pipeline.
-    /// Inherits all 172 network flow features from NetworkFlowBase.
+    /// Inherits the network flow fields from NetworkFlowBase.
 /// </summary>
     public class AttackTraffic : NetworkFlowBase
     {
@@ -136,7 +136,7 @@ namespace IDS.Data.Models
         public long Id { get; set; }
       public DateTime Timestamp { get; set; }
         public string SrcIp { get; set; } = string.Empty;
-   public int DstPort { get; set; }
+   public int? DstPort { get; set; }
         public bool IsAttack { get; set; }
     public string? AttackType { get; set; }
         public string? Severity { get; set; }

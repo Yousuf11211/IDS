@@ -87,7 +87,7 @@ public class EscalateAttackModel : PageModel
             AssignedToUserId = responder!.Id,
             AssignedToName = responder.Name,
             Subject = $"{Attack.Severity} {Attack.AttackType} detection",
-            Description = $"Detected {Attack.Timestamp:u} from {Attack.SrcIp} to port {Attack.DstPort}.\n\nEscalation reason: {Input.Reason.Trim()}",
+            Description = $"Detected {Attack.Timestamp:u} from {Attack.SrcIp} to port {Attack.DstPort?.ToString() ?? "Unavailable"}.\n\nEscalation reason: {Input.Reason.Trim()}",
             Category = "Security Concern",
             Priority = Attack.Severity,
             Status = "InProgress",

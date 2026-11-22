@@ -1,5 +1,6 @@
 """Opt-in SQL integration fixture. Refuses the application's normal database."""
 from dataclasses import replace
+import csv
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,7 @@ from ids_pipeline.config import Config
 from ids_pipeline.connection import parse_connection
 from ids_pipeline.database import Store
 from ids_pipeline.explanations import ExplanationService, ExplanationWorker
+from ids_pipeline.features import HANDSHAKE
 from ids_pipeline.models import load_models
 from ids_pipeline.worker import Worker
 
@@ -33,8 +35,26 @@ def main():
             store.initialize()
             store.verify()
             worker = Worker(config, store, models)
-            generate(config, rows=30, seed=42)
+            path = generate(config, rows=30, seed=42)
+            with path.open(newline="") as stream:
+                reader = csv.DictReader(stream)
+                names = [n for n in reader.fieldnames if n != HANDSHAKE] + ["extra_extractor_column"]
+                records = list(reader)
+            with path.open("w", newline="") as stream:
+                writer = csv.DictWriter(stream, names)
+                writer.writeheader()
+                for row in records:
+                    del row[HANDSHAKE]
+                    row.update(delta_start="not a complete handshake", extra_extractor_column="unused")
+                    writer.writerow(row)
+            duplicate = path.with_name("duplicate.csv")
+            duplicate.write_bytes(path.read_bytes())
+            duplicate.with_suffix(".csv.ready").touch()
             worker.scan()
+            assert store.fetch("""SELECT COUNT(*) AS Total FROM dbo.RawPackets WHERE IsProcessed=1
+                AND DeltaStart IS NULL AND DeltaStartIncompleteHandshake=1 AND Label='SyntheticCSV'""")[0]['Total'] == 30
+            assert store.fetch("SELECT COUNT(*) AS Total FROM dbo.PipelineRows WHERE State='completed'")[0]['Total'] == 30
+            assert len(list((worker.data / "duplicates").glob("*.csv"))) == 1
             queued = store.fetch('SELECT COUNT(*) AS Total FROM dbo.FlowExplanations')[0]['Total']
             assert queued > 0
             store.acquire_explanation_lock()
@@ -64,6 +84,9 @@ def main():
             payload = json.loads(selected['PayloadJson'])
             gate = json.loads(next(row['PayloadJson'] for row in rows if row['Stage'] == 'gatekeeper'
                                   and row['AttackTrafficId'] == selected['AttackTrafficId']))
+            assert payload['featureNames'] == models.feature_names
+            observed = {f['name']: f['value'] for f in payload['features']}
+            assert observed['delta_start'] is None and observed[HANDSHAKE] == 1
             assert len(payload['features']) == 120
             assert payload['reference'] is None
             assert payload['additivityError'] < 2e-4

@@ -5,6 +5,9 @@ from datetime import datetime
 from pathlib import Path
 import csv
 import json
+import numpy as np
+import xgboost as xgb
+from functools import partial
 import os
 import random
 import re
@@ -17,28 +20,35 @@ from ids_pipeline.config import Config, ROOT
 from ids_pipeline.connection import parse_connection, to_odbc, webapp_connection
 from ids_pipeline.database import Store
 from ids_pipeline.models import Prediction, XGBoostModels, load_models, read_labels
-from ids_pipeline.schema import COLUMNS, FEATURES, NAMES, SQL_TO_CSV, headers, validate
+from ids_pipeline.features import HANDSHAKE, load_features
+from ids_pipeline.schema import COLUMNS, NAMES, SQL_TO_CSV, headers as csv_headers, validate as validate_flow
 from ids_pipeline.worker import Worker, file_hash
 
 
+FEATURES = load_features(Config())
+headers = partial(csv_headers, features=FEATURES)
+validate = partial(validate_flow, features=FEATURES)
+
+
 def fixture(index=0):
-    return synthetic_row(random.Random(42 + index), index, '2026-10-09T12:00:00Z')
+    return synthetic_row(random.Random(42 + index), index, '2026-10-09T12:00:00Z', FEATURES)
 
 
 class SchemaTests(unittest.TestCase):
     def test_schema_matches_web_application(self):
         source = (ROOT.parent / 'IDS/Data/Models/NetworkFlowBase.cs').read_text()
-        expected = re.findall(r'public (DateTime|string\??|int|long|double) (\w+) \{', source)
+        expected = re.findall(r'public (DateTime|string\??|int\??|long\??|double\??|bool\??) (\w+) \{', source)
         self.assertEqual([(c['type'], c['name']) for c in COLUMNS], expected)
-        self.assertEqual(len(FEATURES), 119)
+        self.assertEqual(len(FEATURES), 120)
         self.assertNotIn('label', FEATURES)
         self.assertTrue(set(FEATURES) <= set(SQL_TO_CSV.values()))
 
     def test_header_case_order_and_pascal_names(self):
         supplied = list(reversed(FEATURES)) + ['label']
-        self.assertEqual(headers([name.upper() for name in supplied]), supplied)
+        self.assertEqual(headers(["  " + name.upper() + " " for name in supplied]), supplied)
         self.assertEqual(headers(NAMES), list(SQL_TO_CSV.values()))
-        for bad in (FEATURES[:-1], FEATURES + ['ACK_FLAG_COUNTS'], FEATURES + ['wrong']):
+        self.assertIn('extractor_extra', headers(FEATURES + ['extractor_extra']))
+        for bad in (FEATURES[1:], FEATURES + [' ACK_FLAG_COUNTS '], FEATURES + ['label', 'label']):
             with self.assertRaises(ValueError):
                 headers(bad)
 
@@ -53,8 +63,7 @@ class SchemaTests(unittest.TestCase):
         self.assertEqual(set(parsed), set(SQL_TO_CSV.values()))
 
     def test_invalid_features_never_silently_default(self):
-        for column, value in [('duration', 'nan'), ('duration', ''), ('duration', 'inf'),
-                              ('duration', '1e100'), ('dst_port', 65536), ('packets_count', '1.5'),
+        for column, value in [('duration', '1e100'), ('dst_port', 65536), ('packets_count', '1.5'),
                               ('packets_count', '2147483648'), ('src_ip', 'bad'),
                               ('timestamp', '2026-10-09T12:00:00')]:
             with self.subTest(column=column, value=value), self.assertRaises(ValueError):
@@ -63,6 +72,28 @@ class SchemaTests(unittest.TestCase):
         del row['duration']
         with self.assertRaises(ValueError):
             validate(row)
+
+    def test_handshake_and_numeric_coercion(self):
+        row = fixture()
+        del row[HANDSHAKE]
+        marker = "TCP: NOT a complete handshake (timeout)"
+        for delta, flag in ((marker, 1), ("2.5", 0), ("", 0)):
+            parsed = validate({**row, "delta_start": delta, "extractor_extra": "ignored"})
+            self.assertEqual(parsed[HANDSHAKE], flag)
+            self.assertEqual(parsed["delta_start"], 2.5 if delta == "2.5" else None)
+        for delta, flag in ((marker, "1.0"), ("", 1), ("3", 0)):
+            self.assertEqual(validate({**row, "delta_start": delta, HANDSHAKE: flag})[HANDSHAKE], int(float(flag)))
+        for delta, flag in ((marker, 0), ("2", ""), ("2", 2), ("", "text"), ("", "nan")):
+            with self.assertRaisesRegex(ValueError, HANDSHAKE):
+                validate({**row, "delta_start": delta, HANDSHAKE: flag})
+        for value, expected in (("", None), ("text", None), ("NaN", None), ("+inf", 0), ("-inf", 0)):
+            parsed = validate({**row, "duration": value, "packets_count": value})
+            self.assertEqual((parsed["duration"], parsed["packets_count"]), (expected, expected))
+        del row["delta_start"]
+        with self.assertRaisesRegex(ValueError, "Cannot reconstruct.*delta_start"):
+            validate(row)
+        with self.assertRaisesRegex(ValueError, "Missing required model features: delta_start"):
+            validate({**row, HANDSHAKE: 1})
 
     def test_integral_float_csv_and_timezone(self):
         parsed = validate({**fixture(), 'packets_count': '1e3', 'dst_port': '443.0',
@@ -116,25 +147,49 @@ class ModelTests(unittest.TestCase):
         expected = self.models.predict(rows)
         reordered = [{k.upper(): ('Attack' if k == 'label' else v) for k, v in reversed(list(row.items()))} for row in rows]
         self.assertEqual(self.models.predict(reordered), expected)
-        self.assertEqual(len(self.models.features['gatekeeper']), 120)
-        self.assertEqual(len(self.models.labels['multiclass']), 14)
+        self.assertEqual(self.models.feature_names, FEATURES)
+        self.assertEqual(len(self.models.labels['multiclass']), 15)
         self.assertTrue(all(0 <= p.gate_score <= 1 for p in expected))
 
-    def test_extra_feature_unused_and_new_usage_stops_startup(self):
-        import numpy as np
-        import xgboost as xgb
-        row = validate(fixture())
-        for stage, model in self.models.loaded.items():
-            names = self.models.features[stage]
-            self.assertNotIn('delta_start_incomplete_handshake', model.get_score())
-            data = [[value if name == 'delta_start_incomplete_handshake' else row[name] for name in names]
-                    for value in (0, 1, 1000000)]
-            scores = model.predict(xgb.DMatrix(np.asarray(data), feature_names=model.feature_names))
-            np.testing.assert_array_equal(scores[0], scores[1])
-            np.testing.assert_array_equal(scores[0], scores[2])
-        with patch('xgboost.Booster.get_score', return_value={'delta_start_incomplete_handshake': 1}):
-            with self.assertRaisesRegex(ValueError, 'training transformation'):
-                load_models(Config())
+    def test_against_direct_booster_predictions_and_json_class_indices(self):
+        rows = [fixture(i) for i in range(30)]
+        rows[0].update(delta_start='not a complete handshake', duration='NaN')
+        del rows[0][HANDSHAKE]
+        vectors = [[row[name] for name in FEATURES] for row in rows[1:]]
+        first = {**rows[0], 'delta_start': np.nan, HANDSHAKE: 1}
+        vectors.insert(0, [first[name] for name in FEATURES])
+        direct = xgb.DMatrix(np.asarray(vectors, dtype=np.float32), feature_names=FEATURES)
+        binary_map = json.loads((ROOT / Config().gatekeeper_labels).read_text())
+        labels = json.loads((ROOT / Config().multiclass_labels).read_text())
+        self.assertEqual(set(labels.values()), set(self.models.policy))
+        scores = self.models.loaded['gatekeeper'].predict(direct, strict_shape=True)
+        self.assertEqual(scores.shape, (len(rows), 1))
+        if binary_map['1'] != 'Attack':
+            scores = 1 - scores
+        types = self.models.loaded['multiclass'].predict(direct, strict_shape=True)
+        self.assertEqual(types.shape, (len(rows), len(labels)))
+        for prediction, (score,), probabilities in zip(self.models.predict(rows), scores, types, strict=True):
+            self.assertAlmostEqual(prediction.gate_score, score)
+            self.assertEqual(prediction.attack, score >= self.models.config.gatekeeper_threshold)
+            if prediction.attack:
+                self.assertEqual(prediction.attack_type, labels[str(probabilities.argmax())])
+                self.assertAlmostEqual(prediction.type_score, probabilities.max())
+            else:
+                self.assertIsNone(prediction.type_score)
+
+    def test_startup_rejects_incompatible_order_count_and_mappings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'contract.json'
+            for names in (FEATURES[:-1], FEATURES[:-1] + FEATURES[:1], list(reversed(FEATURES))):
+                path.write_text(json.dumps(names))
+                with self.assertRaisesRegex(ValueError, "feature"):
+                    load_models(replace(Config(), feature_list=str(path)))
+            path.write_text('{"0": "Benign", "1": "Other"}')
+            with self.assertRaisesRegex(ValueError, "binary mapping"):
+                load_models(replace(Config(), gatekeeper_labels=str(path)))
+            path.write_text('{"0": "Bot"}')
+            with self.assertRaisesRegex(ValueError, "15-class"):
+                load_models(replace(Config(), multiclass_labels=str(path)))
 
     def test_only_gatekeeper_attacks_reach_multiclass(self):
         model = XGBoostModels.__new__(XGBoostModels)
@@ -150,10 +205,24 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(result[1].attack_type, 'Bot')
         self.assertEqual(result[2].attack_type, 'UnknownAttack')
 
+    def test_every_mapped_output_has_its_policy_and_label(self):
+        labels = self.models.labels['multiclass']
+        rows = [fixture() for _ in labels]
+        with patch.object(self.models, 'probabilities', side_effect=[np.ones((len(rows), 1)), np.eye(len(rows))]):
+            predictions = self.models.predict(rows)
+        for index, prediction in enumerate(predictions):
+            label = labels[index]
+            self.assertEqual((prediction.class_index, prediction.attack_type, prediction.type_score), (index, label, 1))
+            self.assertEqual((prediction.category, prediction.severity),
+                             (self.models.policy[label]['category'], self.models.policy[label]['severity']))
+        with patch.object(self.models, 'probabilities', return_value=np.zeros((len(rows), 1))) as infer:
+            self.assertTrue(all(not p.attack for p in self.models.predict(rows)))
+            infer.assert_called_once_with('gatekeeper', rows)
+
     def test_mapping_rejects_duplicate_and_noncontiguous_ids(self):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / 'labels.txt'
-            for content in ['0 = Benign\n0 = Attack', '0 = Benign\n2 = Attack', 'no labels']:
+            path = Path(tmp) / 'labels.json'
+            for content in ['{"0":"Benign","0":"Attack"}', '{"0":"Benign","2":"Attack"}', '{"0":"A","1":"A"}', 'no labels']:
                 path.write_text(content)
                 with self.assertRaises(ValueError):
                     read_labels(path)
@@ -239,7 +308,7 @@ class WorkerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.config = replace(Config(), root=Path(self.temp.name), batch_size=7)
+        self.config = replace(Config(), data_dir=self.temp.name, batch_size=7)
         self.store = MemoryStore()
         self.worker = Worker(self.config, self.store, self.models)
 
@@ -280,7 +349,7 @@ class WorkerTests(unittest.TestCase):
         with path.open(newline='') as stream:
             reader = csv.DictReader(stream)
             names, rows = reader.fieldnames, list(reader)
-        rows[0]['duration'] = 'nan'
+        rows[0][HANDSHAKE] = 'invalid'
         with path.open('w', newline='') as stream:
             writer = csv.DictWriter(stream, fieldnames=names)
             writer.writeheader()

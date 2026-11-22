@@ -1,7 +1,7 @@
 namespace IDS.Data.Models;
 
 public sealed record InspectionReport(string Id, string AttackType, string Severity, DateTime Timestamp,
-    string? SourceIp, int DestinationPort, bool IsAcknowledged, bool IsEscalated,
+    string? SourceIp, int? DestinationPort, bool IsAcknowledged, bool IsEscalated,
     double CategoryProbability, string? ModelRelease, IReadOnlyList<InspectionStage> Stages,
     IReadOnlyDictionary<string, object?> StoredFlow);
 
@@ -34,13 +34,13 @@ public sealed class ModelExplanationData
     public string? XgboostVersion { get; set; }
     public string? AdapterNote { get; set; }
     public List<string> FeatureNames { get; set; } = new();
-    public List<double> FeatureValues { get; set; } = new();
+    public List<double?> FeatureValues { get; set; } = new();
     public List<ExplainedFeature> Features { get; set; } = new();
     public BenignReferenceMetadata? Reference { get; set; }
 }
 
 public sealed record ClassProbability(string Label, double Probability);
-public sealed record ExplainedFeature(string Name, double Value, double Contribution, string Units,
+public sealed record ExplainedFeature(string Name, double? Value, double Contribution, string Units,
     BenignFeatureStatistics? Reference);
 public sealed record BenignFeatureStatistics(double Median, double Mean, double StandardDeviation,
     double P05, double P25, double P75, double P95, long SampleCount);

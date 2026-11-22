@@ -18,6 +18,7 @@ test('waterfall retains omitted contribution sum and reconstructs raw margin', (
 });
 test('reference missing, zero median and categorical ports cannot produce misleading percentages', () => {
     assert.equal(difference({ name: 'a', value: 10 }), null);
+    assert.equal(difference({ name: 'delta_start', value: null, reference: { median: 1 } }), null);
     assert.equal(difference({ name: 'dst_port', value: 443, reference: { median: 80 } }), null);
     assert.deepEqual(difference({ name: 'a', value: 10, reference: { median: 0 } }), { delta: 10, percent: null });
     assert.deepEqual(difference({ name: 'a', value: 30, reference: { median: 20 } }), { delta: 10, percent: 50 });

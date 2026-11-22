@@ -15,11 +15,12 @@ environment = "Development"
 odbc_driver = "auto" # Prefer installed Driver 18, otherwise Driver 17.
 
 [models]
-gatekeeper = "models/gatekeeper/gatekeeper_combined_full_features.ubj"
-gatekeeper_labels = "models/gatekeeper/gatekeeper_label_mapping.txt"
-multiclass = "models/multiclass/attack_multiclass_full_features.ubj"
-multiclass_labels = "models/multiclass/attack_multiclass_label_mapping.txt"
-attack_policy = "config/attack-policy.json"
+gatekeeper = "models/gatekeeper/binary.ubj"
+gatekeeper_labels = "models/gatekeeper/binary_label_mapping.json"
+multiclass = "models/multiclass/multiclass.ubj"
+multiclass_labels = "models/multiclass/multiclass_label_mapping.json"
+feature_list = "Features_used/features_used.json"
+attack_policy = "config/attack-policy-v2.json"
 gatekeeper_threshold = 0.5
 # 0 uses the highest-scoring mapped attack class; increase to enable UnknownAttack.
 multiclass_threshold = 0.0

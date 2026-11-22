@@ -32,7 +32,7 @@
             <div><dt>Predicted category</dt><dd>@incident.AttackType</dd></div>
             <div><dt>Flow timestamp · UTC</dt><dd>@incident.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</dd></div>
             <div><dt>Source IP</dt><dd>@(incident.SourceIp ?? "Unavailable")</dd></div>
-            <div><dt>Destination port</dt><dd>@incident.DestinationPort</dd></div>
+            <div><dt>Destination port</dt><dd>@(incident.DestinationPort?.ToString() ?? "Unavailable")</dd></div>
             <div><dt>Destination IP / source port / protocol</dt><dd class="inspection-muted">Not stored in this flow schema</dd></div>
             <div><dt>Response status</dt><dd>@(incident.IsEscalated ? "Escalated" : incident.IsAcknowledged ? "Acknowledged" : "Not acknowledged")</dd></div>
             <div><dt>Binary attack probability</dt><dd id="summaryBinary">Unavailable</dd></div>

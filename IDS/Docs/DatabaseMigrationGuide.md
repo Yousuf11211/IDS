@@ -3,6 +3,12 @@
 
 ## Apply application schema updates
 
+For the 120-feature detector upgrade, review the migration from
+`AddFlowExplanations` to `SupportNullableFlowInputs`. It makes existing extractor
+measurements nullable and adds the nullable handshake flag to each flow table.
+The [pipeline deployment instructions](../../pipeline/README.md#setup) include
+commands to review the target, generate the SQL script and apply this version.
+
 The repository includes the migrations needed by the current application. In Development,
 startup applies pending migrations before querying users or seeding accounts. For a deployed
 database, run this command from the solution directory with the application's database

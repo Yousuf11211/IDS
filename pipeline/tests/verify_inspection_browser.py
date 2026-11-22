@@ -51,6 +51,8 @@ def main():
         page.wait_for_function("document.getElementById('shapBar').data[0].x.length === 120")
         page.select_option('#featureSort', 'name')
         page.wait_for_function("document.querySelector('#featureEvidence button').textContent === 'ack_flag_counts'")
+        missing = page.locator('#featureEvidence tr').filter(has=page.get_by_role('button', name='delta_start', exact=True))
+        assert missing.locator('td').nth(1).inner_text() == 'Unavailable'
         assert page.locator(f'a[href="/EscalateAttack/{attack_id}"]').count() > 0
         page.set_viewport_size({'width': 390, 'height': 844})
         page.select_option('#featureCount', '5')
@@ -81,6 +83,31 @@ def main():
         page.reload(wait_until='networkidle')
         page.wait_for_function("document.getElementById('inspectionNotice').textContent.includes('chart library could not be loaded')")
         assert page.locator('#featureEvidence tr').count() == 10
+        # Drive the dashboard's real event handlers offline. The .NET integration test
+        # separately delivers a real NewDetection message over an authenticated WebSocket.
+        page.set_extra_http_headers({'X-Inspection-Test-Role': 'Admin'})
+        page.route('**/microsoft-signalr/**', lambda route: route.fulfill(content_type='text/javascript', body="""
+            window.dashboardEvents = {};
+            window.signalR = { LogLevel: { Information: 2 }, HubConnectionBuilder: class {
+                withUrl() { return this; } withAutomaticReconnect() { return this; }
+                configureLogging() { return this; } build() { return this; }
+                on(name, handler) { dashboardEvents[name] = handler; }
+                onreconnecting() {} onreconnected() {} onclose() {} async start() {} async invoke() {}
+            }};
+        """))
+        page.goto(f'{base_url}/LiveDashboard', wait_until='networkidle')
+        for label in ('PortScan', 'DoS_SYN_Flood'):
+            page.select_option('#filterType', 'label:' + label)
+            assert page.locator('#liveFeed .detection-item:visible').count() > 0
+            assert page.locator('#liveFeed .detection-item:visible').evaluate_all(
+                '(items, label) => items.every(i => i.dataset.attackType === label)', label)
+            assert label in page.locator('#attacksByType').inner_text()
+        page.evaluate("""() => dashboardEvents.StatsUpdate({ benignLast24h: 1, attacksLast24h: 20,
+            benignLastHour: 1, attacksLastHour: 20, attackPercentage: 95, systemStatus: 'Warning',
+            attacksByType: { PortScan: 13, DoS_SYN_Flood: 7 } })""")
+        assert '13' in page.locator('#attacksByType').inner_text()
+        assert '7' in page.locator('#attacksByType').inner_text()
+        page.wait_for_timeout(1100)  # Also exercise the live clock interval.
         assert not errors, errors
         browser.close()
     print(json.dumps(dict(browser='Microsoft Edge / Chromium', verified=['real stored numerical charts',

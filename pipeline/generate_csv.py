@@ -7,10 +7,11 @@ import random
 import uuid
 
 from ids_pipeline.config import Config, ROOT
-from ids_pipeline.schema import FEATURES, validate
+from ids_pipeline.features import load_features
+from ids_pipeline.schema import validate
 
 
-def synthetic_row(rng, index, timestamp):
+def synthetic_row(rng, index, timestamp, features):
     # Vary ordinary, bursty and sparse flows. These are inputs, not ground-truth labels.
     profile = index % 3
     duration = rng.uniform(0.001, 0.2) if profile == 1 else rng.uniform(0.5, 60)
@@ -21,7 +22,7 @@ def synthetic_row(rng, index, timestamp):
     fwd_bytes, bwd_bytes = fwd * fwd_size, bwd * bwd_size
     payload = fwd_bytes + bwd_bytes
     iat = duration / max(count - 1, 1)
-    row = {name: 0 for name in FEATURES}
+    row = {name: 0 for name in features}
     row.update(timestamp=timestamp, src_ip=f"192.0.2.{1 + index % 254}",
                dst_port=rng.choice([21, 22, 53, 80, 443, 3389, 8080]), duration=duration,
                packets_count=count, fwd_packets_count=fwd, bwd_packets_count=bwd,
@@ -49,7 +50,7 @@ def synthetic_row(rng, index, timestamp):
                fwd_payload_bytes_std=fwd_size / 4, bwd_payload_bytes_std=bwd_size / 4)
     row['payload_bytes_variance'] = row['payload_bytes_std'] ** 2
     row['payload_bytes_cov'] = row['payload_bytes_std'] / max(row['payload_bytes_mean'], 1)
-    for name in FEATURES:
+    for name in features:
         if 'iat' in name or 'packets_delta_time' in name:
             if 'cov' in name:
                 row[name] = 0.5
@@ -87,6 +88,7 @@ def synthetic_row(rng, index, timestamp):
 def generate(config, rows=100, seed=42):
     if rows < 1:
         raise ValueError("rows must be positive")
+    features = load_features(config)
     incoming = config.root / config.data_dir / 'incoming'
     incoming.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -94,14 +96,14 @@ def generate(config, rows=100, seed=42):
     target = incoming / name
     temporary = target.with_suffix('.tmp')
     rng = random.Random(seed)
-    columns = ['timestamp', 'src_ip'] + sorted([*FEATURES, 'label'])
+    columns = ['timestamp', 'src_ip'] + sorted([*features, 'label'])
     try:
         with temporary.open('x', encoding='utf-8', newline='') as stream:
             writer = csv.DictWriter(stream, fieldnames=columns)
             writer.writeheader()
             for index in range(rows):
-                row = synthetic_row(rng, index, timestamp)
-                validate(row)
+                row = synthetic_row(rng, index, timestamp, features)
+                validate(row, features)
                 writer.writerow(row)
         temporary.replace(target)
         target.with_suffix('.csv.ready').touch(exist_ok=False)

@@ -13,8 +13,7 @@ from ids_pipeline.database import Store
 from ids_pipeline.explanations import ExplanationService, ExplanationWorker, select_output
 from ids_pipeline.models import load_models
 from ids_pipeline.reference import build_profile, load_reference
-from ids_pipeline.schema import validate
-from test_pipeline import fixture
+from test_pipeline import FEATURES, fixture, validate
 
 
 class OutputShapeTests(unittest.TestCase):
@@ -55,7 +54,7 @@ class RealExplanationTests(unittest.TestCase):
                 before = self.models.predict([row])
                 result = self.service.generate(stage, context, attack_id=123, raw_id=55)
                 self.assertEqual(self.models.predict([row]), before)
-                self.assertEqual(result['featureNames'], self.models.features[stage])
+                self.assertEqual(result['featureNames'], FEATURES)
                 self.assertEqual(len(result['features']), 120)
                 self.assertEqual([f['value'] for f in result['features']], context['featureValues'])
                 self.assertAlmostEqual(result['baseValue'] + sum(f['contribution'] for f in result['features']),
@@ -71,12 +70,23 @@ class RealExplanationTests(unittest.TestCase):
                 break
         self.assertTrue(selected_nonzero, 'Deterministic fixture must exercise a nonzero attack class')
 
-    def test_predictions_equal_original_adapter_before_shap_integration(self):
-        original = json.loads((Path(__file__).parent / 'fixtures/original_predictions.json').read_text())
-        self.assertEqual(original['release'], self.models.release)
-        for expected, actual in zip(original['predictions'], self.predictions, strict=True):
-            for field, value in expected.items():
-                self.assertEqual(getattr(actual, field), value, field)
+    def test_missing_input_and_reversed_binary_mapping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'reversed.json'
+            path.write_text('{"1": "Benign", "0": "Attack"}')
+            reversed_models = load_models(replace(Config(), gatekeeper_labels=str(path)))
+        service = ExplanationService(reversed_models)
+        row = {**self.rows[0], "delta_start": None, "delta_start_incomplete_handshake": 1}
+        original = self.models.predict([row])[0]
+        reversed_prediction = reversed_models.predict([row])[0]
+        self.assertAlmostEqual(1 - original.gate_score, reversed_prediction.gate_score, places=6)
+        context = reversed_models.explanation_context('gatekeeper', row, reversed_prediction)
+        payload = service.generate('gatekeeper', json.loads(json.dumps(context, allow_nan=False)))
+        self.assertEqual(payload['classIndex'], 0)
+        self.assertAlmostEqual(1 / (1 + np.exp(-payload['rawMargin'])), reversed_prediction.gate_score, places=5)
+        missing = next(f for f in payload['features'] if f['name'] == 'delta_start')
+        self.assertIsNone(missing['value'])
+        json.dumps(payload, allow_nan=False)
 
     def test_benign_binary_explains_attack_score_without_changing_label(self):
         row, prediction = next((r, p) for r, p in zip(self.rows, self.predictions) if not p.attack)
@@ -88,18 +98,20 @@ class RealExplanationTests(unittest.TestCase):
     def test_rejects_changed_input_release_order_probability_and_class(self):
         row, prediction = next((r, p) for r, p in zip(self.rows, self.predictions) if p.attack)
         context = self.models.explanation_context('multiclass', row, prediction)
-        for change in ({'fingerprint': 'other'}, {'featureNames': context['featureNames'][::-1]},
-                       {'probability': -1}, {'classIndex': (context['classIndex'] + 1) % 14},
+        for change in ({'fingerprint': 'other'}, {'modelVersion': self.models.gate_version}, {'predictedLabel': 'wrong'},
+                       {'featureNames': context['featureNames'][::-1]},
+                       {'probability': -1}, {'classIndex': (context['classIndex'] + 1) % len(self.models.labels['multiclass'])},
                        {'featureValues': [float('nan')] * 120}):
             with self.subTest(change=next(iter(change))), self.assertRaises(ValueError):
                 self.service.generate('multiclass', {**context, **change})
 
     def test_unknown_fallback_explains_actual_selected_model_class(self):
-        row, original = next((r, p) for r, p in zip(self.rows, self.predictions) if p.attack)
-        prediction = replace(original, attack_type='UnknownAttack')
-        result = self.service.generate('multiclass', self.models.explanation_context('multiclass', row, prediction))
+        models = load_models(replace(Config(), multiclass_threshold=1.0))
+        row = next(r for r, p in zip(self.rows, self.predictions) if p.attack)
+        prediction = models.predict([row])[0]
+        result = ExplanationService(models).generate('multiclass', models.explanation_context('multiclass', row, prediction))
         self.assertEqual(result['predictedLabel'], 'UnknownAttack')
-        self.assertEqual(result['explainedClass'], original.selected_label)
+        self.assertEqual(result['explainedClass'], prediction.selected_label)
 
     def test_queue_snapshot_parameterization_and_unique_guard(self):
         store = Store.__new__(Store)
@@ -119,9 +131,11 @@ class RealExplanationTests(unittest.TestCase):
 class FailureAndReferenceTests(unittest.TestCase):
     def test_generation_failure_isolated_from_detection(self):
         store, models, service = Mock(), Mock(), Mock()
-        store.claim_explanation.return_value = dict(Id=9, Stage='multiclass', ContextJson='{}', AttackTrafficId=123, RawPacketId=55)
+        store.claim_explanation.return_value = dict(Id=9, Stage='multiclass', ContextJson='{"modelVersion":"v","attackId":"123","rawId":"55"}',
+                                                    ModelVersion='v', AttackTrafficId=123, RawPacketId=55)
         service.generate.side_effect = ValueError('unsupported artifact')
         self.assertTrue(ExplanationWorker(store, models, service).once())
+        service.generate.assert_called_once()
         store.fail_explanation.assert_called_once()
         store.finish_explanation.assert_not_called()
 

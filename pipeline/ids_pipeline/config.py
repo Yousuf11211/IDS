@@ -4,6 +4,7 @@ import math
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+MODEL_DEFAULTS = tomllib.loads((ROOT / "config/pipeline.toml").read_text(encoding="utf-8-sig"))["models"]
 
 
 @dataclass(frozen=True)
@@ -18,13 +19,14 @@ class Config:
     webapp_dir: str = "../IDS"
     environment: str = "Development"
     odbc_driver: str = "auto"
-    gatekeeper: str = "models/gatekeeper/gatekeeper_combined_full_features.ubj"
-    gatekeeper_labels: str = "models/gatekeeper/gatekeeper_label_mapping.txt"
-    multiclass: str = "models/multiclass/attack_multiclass_full_features.ubj"
-    multiclass_labels: str = "models/multiclass/attack_multiclass_label_mapping.txt"
-    attack_policy: str = "config/attack-policy.json"
-    gatekeeper_threshold: float = 0.5
-    multiclass_threshold: float = 0.0
+    gatekeeper: str = MODEL_DEFAULTS["gatekeeper"]
+    gatekeeper_labels: str = MODEL_DEFAULTS["gatekeeper_labels"]
+    multiclass: str = MODEL_DEFAULTS["multiclass"]
+    multiclass_labels: str = MODEL_DEFAULTS["multiclass_labels"]
+    feature_list: str = MODEL_DEFAULTS["feature_list"]
+    attack_policy: str = MODEL_DEFAULTS["attack_policy"]
+    gatekeeper_threshold: float = MODEL_DEFAULTS["gatekeeper_threshold"]
+    multiclass_threshold: float = MODEL_DEFAULTS["multiclass_threshold"]
     reference_profile: str = ""
 
     @classmethod
@@ -41,7 +43,7 @@ class Config:
             raise ValueError("Invalid model confidence thresholds")
         for value in (config.data_dir, config.gatekeeper, config.multiclass,
                       config.gatekeeper_labels, config.multiclass_labels, config.attack_policy,
-                      config.reference_profile):
+                      config.feature_list, config.reference_profile):
             if not (config.root / value).resolve().is_relative_to(config.root.resolve()):
                 raise ValueError("Data and model paths must stay inside pipeline/")
         return config

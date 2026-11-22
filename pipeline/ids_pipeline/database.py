@@ -170,6 +170,7 @@ class Store:
         """Called in detection/backfill transaction; only freezes inputs, never runs SHAP."""
         for stage, version in (("gatekeeper", models.gate_version), ("multiclass", models.type_version)):
             context = models.explanation_context(stage, row, prediction)
+            context.update(attackId=str(attack_id), rawId=str(raw_id))
             self.conn.execute("""INSERT INTO dbo.FlowExplanations
                 (AttackTrafficId,RawPacketId,Stage,ModelVersion,Fingerprint,ContextJson,Status,
                  Attempts,NextAttempt,CreatedAt,UpdatedAt)

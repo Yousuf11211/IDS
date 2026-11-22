@@ -283,6 +283,14 @@ overflow: hidden;
             <option value="all">All Events</option>
  <option value="attack">Attacks Only</option>
       <option value="benign">Benign Only</option>
+            <optgroup label="Attack types" id="attackTypeOptions">
+                @foreach (var label in (Model.InitialStats?.AttacksByType.Keys.AsEnumerable() ?? Enumerable.Empty<string>())
+                    .Concat(Model.InitialEvents.Where(e => e.IsAttack).Select(e => e.AttackType ?? ""))
+                    .Where(label => label.Length > 0).Distinct().OrderBy(label => label))
+                {
+                    <option value="label:@label">@label</option>
+                }
+            </optgroup>
    </select>
      </div>
             </div>
@@ -299,7 +307,7 @@ overflow: hidden;
         {
      @foreach (var evt in Model.InitialEvents)
     {
-       <div class="detection-item @(evt.IsAttack ? "attack" : "benign")" data-type="@(evt.IsAttack ? "attack" : "benign")">
+       <div class="detection-item @(evt.IsAttack ? "attack" : "benign")" data-type="@(evt.IsAttack ? "attack" : "benign")" data-attack-type="@evt.AttackType">
              <div class="detection-type">
         @if (evt.IsAttack)
             {
@@ -314,7 +322,7 @@ overflow: hidden;
  </div>
       <div class="detection-details">
  <div class="detection-ips">
-         @evt.SrcIp <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port @evt.DstPort
+         @evt.SrcIp <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port @(evt.DstPort?.ToString() ?? "Unavailable")
                  </div>
         <div class="detection-meta">
     <span><i class="fa-solid fa-tag me-1"></i>@evt.Label</span>
@@ -359,7 +367,7 @@ overflow: hidden;
         <div id="attacksByType">
          @if (Model.InitialStats?.AttacksByType?.Any() == true)
      {
-          @foreach (var item in Model.InitialStats.AttacksByType.OrderByDescending(x => x.Value).Take(5))
+          @foreach (var item in Model.InitialStats.AttacksByType.OrderByDescending(x => x.Value))
         {
    var percentage = Model.InitialStats.AttacksLast24h > 0 
   ? (double)item.Value / Model.InitialStats.AttacksLast24h * 100 : 0;
@@ -505,8 +513,7 @@ overflow: hidden;
         }
      
      function addDetectionToFeed(event) {
-       const eventType = event.isAttack ? 'attack' : 'benign';
-       if (filterType !== 'all' && filterType !== eventType) return;
+       if (event.isAttack && event.attackType) addAttackTypeOption(event.attackType);
       
     const emptyState = document.getElementById('emptyState');
             if (emptyState) emptyState.remove();
@@ -528,6 +535,8 @@ overflow: hidden;
       const div = document.createElement('div');
             div.className = `detection-item ${event.isAttack ? 'attack' : 'benign'}`;
             div.dataset.type = event.isAttack ? 'attack' : 'benign';
+            div.dataset.attackType = event.attackType || '';
+            applyFeedFilter(div);
 
             const severityClass = event.severity?.toLowerCase() === 'critical' ? 'severity-critical' :
           event.severity?.toLowerCase() === 'high' ? 'severity-high' : 'severity-medium';
@@ -543,7 +552,7 @@ overflow: hidden;
   </div>
    <div class="detection-details">
   <div class="detection-ips">
-             ${escapeHtml(event.srcIp)} <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port ${event.dstPort}
+             ${escapeHtml(event.srcIp)} <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port ${event.dstPort ?? 'Unavailable'}
         </div>
          <div class="detection-meta">
                   <span><i class="fa-solid fa-tag me-1"></i>${escapeHtml(event.label)}</span>
@@ -583,6 +592,18 @@ overflow: hidden;
       document.getElementById('statAttacksHour').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${stats.attacksLastHour} last hour`;
             document.getElementById('statAttackRate').textContent = stats.attackPercentage.toFixed(1) + '%';
             document.getElementById('statStatus').innerHTML = `Status: <strong>${stats.systemStatus}</strong>`;
+            const types = Object.entries(stats.attacksByType || {}).sort((a, b) => b[1] - a[1]);
+            types.forEach(([label]) => addAttackTypeOption(label));
+            const chart = document.getElementById('attacksByType');
+            if (chart) {
+                chart.innerHTML = types.map(([label, count]) => {
+                    const share = stats.attacksLast24h ? 100 * count / stats.attacksLast24h : 0;
+                    return `<div class="mb-3"><div class="d-flex justify-content-between mb-1">
+                        <span style="font-size: 0.875rem;">${escapeHtml(label)}</span><span class="text-muted">${Number(count)}</span>
+                        </div><div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px;">
+                        <div style="height: 100%; width: ${share}%; background: var(--danger); border-radius: 3px;"></div></div></div>`;
+                }).join('') || '<p class="text-muted text-center mb-0">No attack data</p>';
+            }
             document.getElementById('statLastUpdate').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
         }
  
@@ -640,7 +661,7 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
     <strong>${escapeHtml(a.attackType)}</strong>
      </div>
     <div class="detection-meta">
-  <span>${escapeHtml(a.srcIp)} ? Port ${a.dstPort}</span>
+  <span>${escapeHtml(a.srcIp)} ? Port ${a.dstPort ?? 'Unavailable'}</span>
           </div>
              </div>
           <span class="severity-badge severity-${a.severity?.toLowerCase() || 'medium'}">${escapeHtml(a.severity)}</span>
@@ -714,19 +735,24 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
  document.getElementById('feedCount').textContent = '0';
         });
       
+        function addAttackTypeOption(label) {
+            const group = document.getElementById('attackTypeOptions');
+            const value = 'label:' + label;
+            if (!Array.from(group.children).some(option => option.value === value))
+                group.append(new Option(label, value));
+        }
+
+        function applyFeedFilter(item) {
+            const visible = filterType === 'all' || filterType === item.dataset.type ||
+                (item.dataset.type === 'attack' && filterType === 'label:' + item.dataset.attackType);
+            item.style.display = visible ? '' : 'none';
+        }
+
         document.getElementById('filterType').addEventListener('change', function() {
             filterType = this.value;
-       const items = document.querySelectorAll('.detection-item');
-    items.forEach(item => {
-         const type = item.dataset.type;
-     if (filterType === 'all' || filterType === type) {
-       item.style.display = '';
-         } else {
-            item.style.display = 'none';
-                }
-            });
+            document.querySelectorAll('.detection-item').forEach(applyFeedFilter);
         });
-      
+
         document.getElementById('maxEvents').addEventListener('change', function() {
             maxEvents = parseInt(this.value);
         });

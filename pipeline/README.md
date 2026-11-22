@@ -10,8 +10,9 @@ pipeline/
   generate_csv.py       Generate synthetic CSV inputs
   requirements.txt      Python dependency versions
   README.md             Setup and usage
-  config/               Settings, required features, SQL column mapping, severity policy
-  models/               Your UBJ models and TXT label mappings
+  config/               Settings, SQL column mapping and severity policies
+  Features_used/        Authoritative ordered features_used.json
+  models/               Binary and multiclass UBJs and JSON class mappings
   ids_pipeline/         Worker, validation, model loading, and database code
   database/             SQL setup for import tracking
   data/
@@ -38,13 +39,42 @@ python -m venv .venv
 
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+python -m ids_pipeline check-models
+```
+
+Apply the web application's EF migrations before starting either worker. For an
+existing IDS database at `AddFlowExplanations`, stop the workers, review the current
+migration history and generate the upgrade script from the solution directory:
+
+```powershell
+dotnet ef migrations list --project IDS --startup-project IDS
+dotnet ef migrations script 20261016214443_AddFlowExplanations 20261122151153_SupportNullableFlowInputs --idempotent --project IDS --startup-project IDS --output IDS-flow-upgrade.sql
+```
+
+Verify the target database, take a backup and review the generated SQL. Apply the
+reviewed script through your SQL deployment process, or apply this migration
+explicitly to the configured target:
+
+```powershell
+dotnet ef database update 20261122151153_SupportNullableFlowInputs --project IDS --startup-project IDS
+```
+
+If the database is behind the stated baseline, generate and review the script
+starting at its last applied migration. The historical blank-database bootstrap
+limitation is documented in [the inspection guide](../IDS/Docs/ShapInspection.md).
+The migration preserves historical values and indexes, permits SQL NULL for
+numeric extractor measurements across the three flow tables, and adds one nullable
+`bit` handshake flag per table. Raw rows must retain the flag across staging and
+restart, before an attack's SHAP snapshots exist. Historical flags remain NULL.
+
+After the migration, run the database preflight from `pipeline/`:
+
+```powershell
+# For installations that still need the pipeline metadata tables:
 python -m ids_pipeline init-db
 python -m ids_pipeline check
 ```
 
-Start the web app first so its EF migrations create the detection tables.
-The SHAP inspection integration requires the additive `AddFlowExplanations` EF
-migration before either worker starts. See [the complete inspection guide](../IDS/Docs/ShapInspection.md).
 `init-db` adds only `PipelineImports` and `PipelineRows` to the same database.
 It needs table-creation permission; the worker needs SELECT/INSERT/UPDATE access
 on those tables and `RawPackets`, `Benign_Table`, and `Attack_Table`.
@@ -113,24 +143,37 @@ For a single scan, use `python -m ids_pipeline run --once`.
 - The environment comes from `DOTNET_ENVIRONMENT`, `ASPNETCORE_ENVIRONMENT`, or
   `database.environment` in the config. Installed Microsoft ODBC Driver 18 or 17
   is selected automatically. WSL/Linux requires its own drivers and authentication.
-- The required **119 numeric CSV fields** are in `config/model-features.json`.
-  Headers are normalized to lowercase snake_case; uppercase, PascalCase and
-  reordered columns are accepted. Missing features, ambiguous/unknown headers,
-  blanks and invalid numeric values are rejected. `label` is optional source
-  metadata and is never supplied to a model.
-- Both supplied models declare one extra column,
-  `delta_start_incomplete_handshake`, which neither uses in any tree split. The
-  adapter supplies zero only after checking that it remains unused. A future
-  model using it will fail startup until its training transformation is provided.
-- `timestamp` and `src_ip` are optional. Missing timestamps use the CSV's UTC
-  modification time; missing IPs use an empty string. Supplied timestamps need
-  a timezone. Absent non-model numeric storage columns default to zero; missing
-  model inputs never default. Additional fields from `config/flow-schema.json`
-  are accepted and preserved.
-- Raw labels remain unchanged. Classified labels come from the TXT mappings.
-  Benign confidence is `1 - gatekeeper attack probability`; attack confidence is
-  the multiclass probability. Severity/category come from `config/attack-policy.json`.
-  Thresholds are configured in `config/pipeline.toml`.
+- The active feature contract is `Features_used/features_used.json`. Both boosters
+  must declare those exact 120 unique names in that order. CSV headers are trimmed
+  and lowercased. Existing PascalCase storage aliases still work. Duplicate names
+  after normalization and missing required fields reject the file. Extra columns
+  are accepted. Known storage fields and the original `label` are retained in raw
+  rows. Only the ordered model features enter XGBoost.
+- When the flag is absent, a case-insensitive `not a complete handshake` substring
+  in `delta_start` produces `delta_start_incomplete_handshake=1`; other values
+  produce 0. The marker becomes a missing measurement. Supplied flags must be
+  numeric 0 or 1 and must be 1 when a marker is present. A supplied 1 remains
+  valid when the marker was already removed upstream. The delta column is required.
+- Blank or nonnumeric model measurements become NaN; either infinity becomes zero.
+  Input to both boosters is float32. Missing inputs round-trip through SQL NULL
+  and JSON null. Stored integer counters and ports retain the existing integer
+  and range checks. A missing timestamp column uses the file's UTC modification
+  time. Supplied timestamps require a timezone. Absent non-model numeric columns
+  retain the existing storage default of zero.
+- The binary probability is interpreted using `binary_label_mapping.json`.
+  At an Attack probability of 0.50 or higher, the same ordered inputs go to
+  `multiclass.ubj`; its 15 probabilities are interpreted through
+  `multiclass_label_mapping.json`. Benign confidence is one minus the Attack
+  probability. For attacks the classified label and confidence come from the
+  highest-scoring class under the default multiclass threshold of 0.0.
+  `config/attack-policy-v2.json` defines severity and response grouping.
+- The web app reads stored labels for the feed, type filter and statistics. The
+  SHAP worker claims jobs for its own fingerprint. Completed historical explanations
+  remain readable. For a detector rollback use the previous Python worker code
+  (repository revision `0157e2c`), `config/pipeline.legacy.toml` and its original
+  UBJs and TXT mappings from your release backup. Keep the updated web reader and
+  the nullable schema when retaining new detections. Finish pinned imports and
+  explanation jobs with the worker and exact artifacts for their release.
 
 For real CSVs, finish copying into `data/incoming/`, then create an empty marker
 named `filename.csv.ready`. The generator does this automatically. If markers are

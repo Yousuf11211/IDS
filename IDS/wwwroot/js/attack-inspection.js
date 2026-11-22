@@ -8,7 +8,7 @@
         return count === 'all' ? result : result.slice(0, Number(count));
     };
     const difference = (feature) => {
-        if (!feature.reference || feature.name === 'dst_port') return null;
+        if (!feature.reference || feature.value == null || feature.name === 'dst_port') return null;
         const delta = feature.value - feature.reference.median;
         return { delta, percent: feature.reference.median === 0 ? null : delta / Math.abs(feature.reference.median) * 100 };
     };
@@ -183,7 +183,7 @@
         await referenceChart(selected, data);
     }
     async function referenceChart(selected, data) {
-        const features = selected.filter(f => f.reference && f.name !== 'dst_port');
+        const features = selected.filter(f => f.reference && f.value != null && f.name !== 'dst_port');
         if (!features.length) return;
         byId('referenceCaption').textContent = `${data.reference?.datasetVersion ?? 'Version unavailable'} · ${data.reference?.group ?? ''} · ${data.reference?.split ?? ''}. Statistics use verified labeled benign reference inputs.`;
         const traces = [], axes = {}, annotations = [], shapes = [], count = features.length;

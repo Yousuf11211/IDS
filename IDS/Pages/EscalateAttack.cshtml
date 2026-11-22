@@ -24,7 +24,7 @@
                         <dt class="col-sm-4">Severity</dt><dd class="col-sm-8">@Model.Attack.Severity</dd>
                         <dt class="col-sm-4">Attack type</dt><dd class="col-sm-8">@Model.Attack.AttackType</dd>
                         <dt class="col-sm-4">Source</dt><dd class="col-sm-8"><code>@Model.Attack.SrcIp</code></dd>
-                        <dt class="col-sm-4">Destination port</dt><dd class="col-sm-8">@Model.Attack.DstPort</dd>
+                        <dt class="col-sm-4">Destination port</dt><dd class="col-sm-8">@(Model.Attack.DstPort?.ToString() ?? "Unavailable")</dd>
                         <dt class="col-sm-4">Detected</dt><dd class="col-sm-8">@Model.Attack.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC</dd>
                     </dl>
                 </div>

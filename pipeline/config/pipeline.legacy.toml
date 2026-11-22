@@ -1,0 +1,27 @@
+# All paths are relative to pipeline/, regardless of the working directory.
+[worker]
+data_dir = "data"
+batch_size = 500
+poll_seconds = 2
+max_attempts = 5
+retry_seconds = 10
+# Generate/copy the CSV completely, then create filename.csv.ready.
+require_ready_marker = true
+
+[database]
+# Read the SAME connection configuration as IDS/Program.cs; no separate database.
+webapp_dir = "../IDS"
+environment = "Development"
+odbc_driver = "auto" # Prefer installed Driver 18, otherwise Driver 17.
+
+[models]
+gatekeeper = "models/gatekeeper/gatekeeper_combined_full_features.ubj"
+gatekeeper_labels = "models/gatekeeper/gatekeeper_label_mapping.txt"
+multiclass = "models/multiclass/attack_multiclass_full_features.ubj"
+multiclass_labels = "models/multiclass/attack_multiclass_label_mapping.txt"
+attack_policy = "config/attack-policy.json"
+gatekeeper_threshold = 0.5
+# 0 uses the highest-scoring mapped attack class; increase to enable UnknownAttack.
+multiclass_threshold = 0.0
+# Optional artifact built from verified labeled training/reference data; never detection CSVs.
+# reference_profile = "config/benign-reference.json"

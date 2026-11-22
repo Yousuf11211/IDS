@@ -1,7 +1,7 @@
 # Model-to-dashboard pipeline
 
 The implementation and run instructions live in [pipeline/README.md](../../pipeline/README.md).
-The worker loads the gatekeeper and multiclass UBJ models, parses their text label
+The worker loads the gatekeeper and multiclass UBJ models, parses their JSON label
 mappings, normalizes CSV headers to lowercase, and uses the web application's
 SQL Server connection settings.
 
@@ -15,6 +15,9 @@ in `/Dashboard` and `/LiveDashboard`. `DetectionMonitorService` broadcasts newly
 saved results through SignalR. The separate administrative `SecurityAlerts` table
 is not populated by this flow.
 
-The CSV list has 119 numeric features plus optional `label`; the artifacts have
-one additional, unused training column. See the pipeline README for the guarded
-handling of that column, input validation, storage defaults, and recovery behavior.
+Both workers verify the ordered 120-feature contract in
+`pipeline/Features_used/features_used.json`. The gate uses the configured 0.50
+Attack threshold. Its 15-class successor stage runs only for flagged rows.
+The SQL staging tables retain the validated handshake flag and nullable
+measurements for replay, and attack explanations retain exact float32 snapshots.
+See the pipeline README for the migration, preprocessing and rollback commands.

@@ -113,10 +113,10 @@ namespace IDS.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("AckFlagCounts")
+                    b.Property<int?>("AckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("AckFlagPercentageInTotal")
+                    b.Property<double?>("AckFlagPercentageInTotal")
                         .HasColumnType("float");
 
                     b.Property<DateTime?>("AcknowledgedAt")
@@ -126,31 +126,31 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<double>("ActiveCov")
+                    b.Property<double?>("ActiveCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMax")
+                    b.Property<double?>("ActiveMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMean")
+                    b.Property<double?>("ActiveMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMedian")
+                    b.Property<double?>("ActiveMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMin")
+                    b.Property<double?>("ActiveMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMode")
+                    b.Property<double?>("ActiveMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveSkewness")
+                    b.Property<double?>("ActiveSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveStd")
+                    b.Property<double?>("ActiveStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveVariance")
+                    b.Property<double?>("ActiveVariance")
                         .HasColumnType("float");
 
                     b.Property<string>("AttackCategory")
@@ -162,269 +162,272 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<double>("AvgBwdBulkRate")
+                    b.Property<double?>("AvgBwdBulkRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("AvgSegmentSize")
+                    b.Property<double?>("AvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdAckFlagCounts")
+                    b.Property<int?>("BwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdAckFlagPercentageInBwdPackets")
+                    b.Property<double?>("BwdAckFlagPercentageInBwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdAckFlagPercentageInTotal")
+                    b.Property<double?>("BwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdBulkDuration")
+                    b.Property<double?>("BwdBulkDuration")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdBulkStateCount")
+                    b.Property<int?>("BwdBulkStateCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdBytesRate")
+                    b.Property<double?>("BwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdFinFlagCounts")
+                    b.Property<int?>("BwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdInitWinBytes")
+                    b.Property<int?>("BwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdMeanHeaderBytes")
+                    b.Property<double?>("BwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdPacketsCount")
+                    b.Property<int?>("BwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdPacketsIatMax")
+                    b.Property<double?>("BwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMean")
+                    b.Property<double?>("BwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMedian")
+                    b.Property<double?>("BwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMin")
+                    b.Property<double?>("BwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMode")
+                    b.Property<double?>("BwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatStd")
+                    b.Property<double?>("BwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatTotal")
+                    b.Property<double?>("BwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatVariance")
+                    b.Property<double?>("BwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsRate")
+                    b.Property<double?>("BwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMax")
+                    b.Property<double?>("BwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMedian")
+                    b.Property<double?>("BwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesStd")
+                    b.Property<double?>("BwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdRstFlagCounts")
+                    b.Property<int?>("BwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdSynFlagCounts")
+                    b.Property<int?>("BwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("BwdTotalHeaderBytes")
+                    b.Property<long?>("BwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("BwdTotalPayloadBytes")
+                    b.Property<long?>("BwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("BwdUrgFlagCounts")
+                    b.Property<int?>("BwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BytesRate")
+                    b.Property<double?>("BytesRate")
                         .HasColumnType("float");
 
                     b.Property<double>("ConfidenceScore")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaLen")
+                    b.Property<double?>("CovBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaTime")
+                    b.Property<double?>("CovBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaLen")
+                    b.Property<double?>("CovFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaTime")
+                    b.Property<double?>("CovFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovHeaderBytesDeltaLen")
+                    b.Property<double?>("CovHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovPacketsDeltaLen")
+                    b.Property<double?>("CovPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<int>("CwrFlagCounts")
+                    b.Property<int?>("CwrFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("DeltaStart")
+                    b.Property<double?>("DeltaStart")
                         .HasColumnType("float");
 
-                    b.Property<double>("DownUpRate")
+                    b.Property<bool?>("DeltaStartIncompleteHandshake")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("DownUpRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("DstPort")
+                    b.Property<int?>("DstPort")
                         .HasColumnType("int");
 
-                    b.Property<double>("Duration")
+                    b.Property<double?>("Duration")
                         .HasColumnType("float");
 
-                    b.Property<int>("EceFlagCounts")
+                    b.Property<int?>("EceFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FinFlagCounts")
+                    b.Property<int?>("FinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdAckFlagCounts")
+                    b.Property<int?>("FwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdAckFlagPercentageInFwdPackets")
+                    b.Property<double?>("FwdAckFlagPercentageInFwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAckFlagPercentageInTotal")
+                    b.Property<double?>("FwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAvgSegmentSize")
+                    b.Property<double?>("FwdAvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdBytesRate")
+                    b.Property<double?>("FwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdFinFlagCounts")
+                    b.Property<int?>("FwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdInitWinBytes")
+                    b.Property<int?>("FwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdMeanHeaderBytes")
+                    b.Property<double?>("FwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPacketsCount")
+                    b.Property<int?>("FwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdPacketsIatCov")
+                    b.Property<double?>("FwdPacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMax")
+                    b.Property<double?>("FwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMean")
+                    b.Property<double?>("FwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMedian")
+                    b.Property<double?>("FwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMin")
+                    b.Property<double?>("FwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMode")
+                    b.Property<double?>("FwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatSkewness")
+                    b.Property<double?>("FwdPacketsIatSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatStd")
+                    b.Property<double?>("FwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatTotal")
+                    b.Property<double?>("FwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatVariance")
+                    b.Property<double?>("FwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsRate")
+                    b.Property<double?>("FwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesCov")
+                    b.Property<double?>("FwdPayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMax")
+                    b.Property<double?>("FwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMedian")
+                    b.Property<double?>("FwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesSkewness")
+                    b.Property<double?>("FwdPayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesStd")
+                    b.Property<double?>("FwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPshFlagCounts")
+                    b.Property<int?>("FwdPshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdRstFlagCounts")
+                    b.Property<int?>("FwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdSynFlagCounts")
+                    b.Property<int?>("FwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("FwdTotalHeaderBytes")
+                    b.Property<long?>("FwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("FwdTotalPayloadBytes")
+                    b.Property<long?>("FwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("FwdUrgFlagCounts")
+                    b.Property<int?>("FwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("HandshakeDuration")
+                    b.Property<double?>("HandshakeDuration")
                         .HasColumnType("float");
 
                     b.Property<string>("HandshakeState")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("IdleCov")
+                    b.Property<double?>("IdleCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMax")
+                    b.Property<double?>("IdleMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMean")
+                    b.Property<double?>("IdleMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMedian")
+                    b.Property<double?>("IdleMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMin")
+                    b.Property<double?>("IdleMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMode")
+                    b.Property<double?>("IdleMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleSkewness")
+                    b.Property<double?>("IdleSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleStd")
+                    b.Property<double?>("IdleStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleVariance")
+                    b.Property<double?>("IdleVariance")
                         .HasColumnType("float");
 
                     b.Property<bool>("IsAcknowledged")
@@ -435,91 +438,91 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<double>("MaxBwdPacketsDeltaLen")
+                    b.Property<double?>("MaxBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxBwdPacketsDeltaTime")
+                    b.Property<double?>("MaxBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxFwdPacketsDeltaTime")
+                    b.Property<double?>("MaxFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxHeaderBytesDeltaLen")
+                    b.Property<double?>("MaxHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxPayloadBytesDeltaLen")
+                    b.Property<double?>("MaxPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaLen")
+                    b.Property<double?>("MeanBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaTime")
+                    b.Property<double?>("MeanBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaLen")
+                    b.Property<double?>("MeanFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaTime")
+                    b.Property<double?>("MeanFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytes")
+                    b.Property<double?>("MeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaLen")
+                    b.Property<double?>("MeanPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaTime")
+                    b.Property<double?>("MeanPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPayloadBytesDeltaLen")
+                    b.Property<double?>("MeanPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianBwdPacketsDeltaLen")
+                    b.Property<double?>("MedianBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaLen")
+                    b.Property<double?>("MedianFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaTime")
+                    b.Property<double?>("MedianFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianPacketsDeltaLen")
+                    b.Property<double?>("MedianPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinFwdPacketsDeltaTime")
+                    b.Property<double?>("MinFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinPayloadBytesDeltaLen")
+                    b.Property<double?>("MinPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeBwdPacketsDeltaLen")
+                    b.Property<double?>("ModeBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaLen")
+                    b.Property<double?>("ModeFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaTime")
+                    b.Property<double?>("ModeFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPayloadBytesDeltaLen")
+                    b.Property<double?>("ModeFwdPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaLen")
+                    b.Property<double?>("ModePacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaTime")
+                    b.Property<double?>("ModePacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePayloadBytesDeltaLen")
+                    b.Property<double?>("ModePayloadBytesDeltaLen")
                         .HasColumnType("float");
 
                     b.Property<string>("ModelVersion")
@@ -530,67 +533,67 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<double>("PacketIatMax")
+                    b.Property<double?>("PacketIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatMin")
+                    b.Property<double?>("PacketIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatStd")
+                    b.Property<double?>("PacketIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatTotal")
+                    b.Property<double?>("PacketIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<int>("PacketsCount")
+                    b.Property<int?>("PacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("PacketsIatCov")
+                    b.Property<double?>("PacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMean")
+                    b.Property<double?>("PacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMedian")
+                    b.Property<double?>("PacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMode")
+                    b.Property<double?>("PacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatVariance")
+                    b.Property<double?>("PacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsRate")
+                    b.Property<double?>("PacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesCov")
+                    b.Property<double?>("PayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMax")
+                    b.Property<double?>("PayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMean")
+                    b.Property<double?>("PayloadBytesMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMedian")
+                    b.Property<double?>("PayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesSkewness")
+                    b.Property<double?>("PayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesStd")
+                    b.Property<double?>("PayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesVariance")
+                    b.Property<double?>("PayloadBytesVariance")
                         .HasColumnType("float");
 
-                    b.Property<int>("PshFlagCounts")
+                    b.Property<int?>("PshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("RstFlagCounts")
+                    b.Property<int?>("RstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("RstFlagPercentageInTotal")
+                    b.Property<double?>("RstFlagPercentageInTotal")
                         .HasColumnType("float");
 
                     b.Property<string>("Severity")
@@ -598,25 +601,25 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessHeaderBytes")
+                    b.Property<double?>("SkewnessHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaLen")
+                    b.Property<double?>("SkewnessPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaTime")
+                    b.Property<double?>("SkewnessPacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.Property<string>("SrcIp")
@@ -624,49 +627,49 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("nvarchar(45)");
 
-                    b.Property<double>("StdFwdPacketsDeltaTime")
+                    b.Property<double?>("StdFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdHeaderBytes")
+                    b.Property<double?>("StdHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdPacketsDeltaTime")
+                    b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long>("SubflowBwdBytes")
+                    b.Property<long?>("SubflowBwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowBwdPackets")
+                    b.Property<int?>("SubflowBwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<long>("SubflowFwdBytes")
+                    b.Property<long?>("SubflowFwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowFwdPackets")
+                    b.Property<int?>("SubflowFwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<int>("SynFlagCounts")
+                    b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("SynFlagPercentageInTotal")
+                    b.Property<double?>("SynFlagPercentageInTotal")
                         .HasColumnType("float");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("TotalHeaderBytes")
+                    b.Property<long?>("TotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("TotalPayloadBytes")
+                    b.Property<long?>("TotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("UrgFlagCounts")
+                    b.Property<int?>("UrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("VarianceHeaderBytes")
+                    b.Property<double?>("VarianceHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("VariancePacketsDeltaTime")
+                    b.Property<double?>("VariancePacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.HasKey("Id");
@@ -747,302 +750,305 @@ namespace IDS.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("AckFlagCounts")
+                    b.Property<int?>("AckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("AckFlagPercentageInTotal")
+                    b.Property<double?>("AckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveCov")
+                    b.Property<double?>("ActiveCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMax")
+                    b.Property<double?>("ActiveMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMean")
+                    b.Property<double?>("ActiveMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMedian")
+                    b.Property<double?>("ActiveMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMin")
+                    b.Property<double?>("ActiveMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMode")
+                    b.Property<double?>("ActiveMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveSkewness")
+                    b.Property<double?>("ActiveSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveStd")
+                    b.Property<double?>("ActiveStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveVariance")
+                    b.Property<double?>("ActiveVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("AvgBwdBulkRate")
+                    b.Property<double?>("AvgBwdBulkRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("AvgSegmentSize")
+                    b.Property<double?>("AvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdAckFlagCounts")
+                    b.Property<int?>("BwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdAckFlagPercentageInBwdPackets")
+                    b.Property<double?>("BwdAckFlagPercentageInBwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdAckFlagPercentageInTotal")
+                    b.Property<double?>("BwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdBulkDuration")
+                    b.Property<double?>("BwdBulkDuration")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdBulkStateCount")
+                    b.Property<int?>("BwdBulkStateCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdBytesRate")
+                    b.Property<double?>("BwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdFinFlagCounts")
+                    b.Property<int?>("BwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdInitWinBytes")
+                    b.Property<int?>("BwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdMeanHeaderBytes")
+                    b.Property<double?>("BwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdPacketsCount")
+                    b.Property<int?>("BwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdPacketsIatMax")
+                    b.Property<double?>("BwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMean")
+                    b.Property<double?>("BwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMedian")
+                    b.Property<double?>("BwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMin")
+                    b.Property<double?>("BwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMode")
+                    b.Property<double?>("BwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatStd")
+                    b.Property<double?>("BwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatTotal")
+                    b.Property<double?>("BwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatVariance")
+                    b.Property<double?>("BwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsRate")
+                    b.Property<double?>("BwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMax")
+                    b.Property<double?>("BwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMedian")
+                    b.Property<double?>("BwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesStd")
+                    b.Property<double?>("BwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdRstFlagCounts")
+                    b.Property<int?>("BwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdSynFlagCounts")
+                    b.Property<int?>("BwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("BwdTotalHeaderBytes")
+                    b.Property<long?>("BwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("BwdTotalPayloadBytes")
+                    b.Property<long?>("BwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("BwdUrgFlagCounts")
+                    b.Property<int?>("BwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BytesRate")
+                    b.Property<double?>("BytesRate")
                         .HasColumnType("float");
 
                     b.Property<double>("ConfidenceScore")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaLen")
+                    b.Property<double?>("CovBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaTime")
+                    b.Property<double?>("CovBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaLen")
+                    b.Property<double?>("CovFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaTime")
+                    b.Property<double?>("CovFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovHeaderBytesDeltaLen")
+                    b.Property<double?>("CovHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovPacketsDeltaLen")
+                    b.Property<double?>("CovPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<int>("CwrFlagCounts")
+                    b.Property<int?>("CwrFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("DeltaStart")
+                    b.Property<double?>("DeltaStart")
                         .HasColumnType("float");
 
-                    b.Property<double>("DownUpRate")
+                    b.Property<bool?>("DeltaStartIncompleteHandshake")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("DownUpRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("DstPort")
+                    b.Property<int?>("DstPort")
                         .HasColumnType("int");
 
-                    b.Property<double>("Duration")
+                    b.Property<double?>("Duration")
                         .HasColumnType("float");
 
-                    b.Property<int>("EceFlagCounts")
+                    b.Property<int?>("EceFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FinFlagCounts")
+                    b.Property<int?>("FinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdAckFlagCounts")
+                    b.Property<int?>("FwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdAckFlagPercentageInFwdPackets")
+                    b.Property<double?>("FwdAckFlagPercentageInFwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAckFlagPercentageInTotal")
+                    b.Property<double?>("FwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAvgSegmentSize")
+                    b.Property<double?>("FwdAvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdBytesRate")
+                    b.Property<double?>("FwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdFinFlagCounts")
+                    b.Property<int?>("FwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdInitWinBytes")
+                    b.Property<int?>("FwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdMeanHeaderBytes")
+                    b.Property<double?>("FwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPacketsCount")
+                    b.Property<int?>("FwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdPacketsIatCov")
+                    b.Property<double?>("FwdPacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMax")
+                    b.Property<double?>("FwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMean")
+                    b.Property<double?>("FwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMedian")
+                    b.Property<double?>("FwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMin")
+                    b.Property<double?>("FwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMode")
+                    b.Property<double?>("FwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatSkewness")
+                    b.Property<double?>("FwdPacketsIatSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatStd")
+                    b.Property<double?>("FwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatTotal")
+                    b.Property<double?>("FwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatVariance")
+                    b.Property<double?>("FwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsRate")
+                    b.Property<double?>("FwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesCov")
+                    b.Property<double?>("FwdPayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMax")
+                    b.Property<double?>("FwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMedian")
+                    b.Property<double?>("FwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesSkewness")
+                    b.Property<double?>("FwdPayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesStd")
+                    b.Property<double?>("FwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPshFlagCounts")
+                    b.Property<int?>("FwdPshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdRstFlagCounts")
+                    b.Property<int?>("FwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdSynFlagCounts")
+                    b.Property<int?>("FwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("FwdTotalHeaderBytes")
+                    b.Property<long?>("FwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("FwdTotalPayloadBytes")
+                    b.Property<long?>("FwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("FwdUrgFlagCounts")
+                    b.Property<int?>("FwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("HandshakeDuration")
+                    b.Property<double?>("HandshakeDuration")
                         .HasColumnType("float");
 
                     b.Property<string>("HandshakeState")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("IdleCov")
+                    b.Property<double?>("IdleCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMax")
+                    b.Property<double?>("IdleMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMean")
+                    b.Property<double?>("IdleMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMedian")
+                    b.Property<double?>("IdleMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMin")
+                    b.Property<double?>("IdleMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMode")
+                    b.Property<double?>("IdleMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleSkewness")
+                    b.Property<double?>("IdleSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleStd")
+                    b.Property<double?>("IdleStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleVariance")
+                    b.Property<double?>("IdleVariance")
                         .HasColumnType("float");
 
                     b.Property<string>("Label")
@@ -1050,179 +1056,179 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<double>("MaxBwdPacketsDeltaLen")
+                    b.Property<double?>("MaxBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxBwdPacketsDeltaTime")
+                    b.Property<double?>("MaxBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxFwdPacketsDeltaTime")
+                    b.Property<double?>("MaxFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxHeaderBytesDeltaLen")
+                    b.Property<double?>("MaxHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxPayloadBytesDeltaLen")
+                    b.Property<double?>("MaxPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaLen")
+                    b.Property<double?>("MeanBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaTime")
+                    b.Property<double?>("MeanBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaLen")
+                    b.Property<double?>("MeanFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaTime")
+                    b.Property<double?>("MeanFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytes")
+                    b.Property<double?>("MeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaLen")
+                    b.Property<double?>("MeanPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaTime")
+                    b.Property<double?>("MeanPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPayloadBytesDeltaLen")
+                    b.Property<double?>("MeanPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianBwdPacketsDeltaLen")
+                    b.Property<double?>("MedianBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaLen")
+                    b.Property<double?>("MedianFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaTime")
+                    b.Property<double?>("MedianFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianPacketsDeltaLen")
+                    b.Property<double?>("MedianPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinFwdPacketsDeltaTime")
+                    b.Property<double?>("MinFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinPayloadBytesDeltaLen")
+                    b.Property<double?>("MinPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeBwdPacketsDeltaLen")
+                    b.Property<double?>("ModeBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaLen")
+                    b.Property<double?>("ModeFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaTime")
+                    b.Property<double?>("ModeFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPayloadBytesDeltaLen")
+                    b.Property<double?>("ModeFwdPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaLen")
+                    b.Property<double?>("ModePacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaTime")
+                    b.Property<double?>("ModePacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePayloadBytesDeltaLen")
+                    b.Property<double?>("ModePayloadBytesDeltaLen")
                         .HasColumnType("float");
 
                     b.Property<string>("ModelVersion")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("PacketIatMax")
+                    b.Property<double?>("PacketIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatMin")
+                    b.Property<double?>("PacketIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatStd")
+                    b.Property<double?>("PacketIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatTotal")
+                    b.Property<double?>("PacketIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<int>("PacketsCount")
+                    b.Property<int?>("PacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("PacketsIatCov")
+                    b.Property<double?>("PacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMean")
+                    b.Property<double?>("PacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMedian")
+                    b.Property<double?>("PacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMode")
+                    b.Property<double?>("PacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatVariance")
+                    b.Property<double?>("PacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsRate")
+                    b.Property<double?>("PacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesCov")
+                    b.Property<double?>("PayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMax")
+                    b.Property<double?>("PayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMean")
+                    b.Property<double?>("PayloadBytesMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMedian")
+                    b.Property<double?>("PayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesSkewness")
+                    b.Property<double?>("PayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesStd")
+                    b.Property<double?>("PayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesVariance")
+                    b.Property<double?>("PayloadBytesVariance")
                         .HasColumnType("float");
 
-                    b.Property<int>("PshFlagCounts")
+                    b.Property<int?>("PshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("RstFlagCounts")
+                    b.Property<int?>("RstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("RstFlagPercentageInTotal")
+                    b.Property<double?>("RstFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessHeaderBytes")
+                    b.Property<double?>("SkewnessHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaLen")
+                    b.Property<double?>("SkewnessPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaTime")
+                    b.Property<double?>("SkewnessPacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.Property<string>("SrcIp")
@@ -1230,49 +1236,49 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("nvarchar(45)");
 
-                    b.Property<double>("StdFwdPacketsDeltaTime")
+                    b.Property<double?>("StdFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdHeaderBytes")
+                    b.Property<double?>("StdHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdPacketsDeltaTime")
+                    b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long>("SubflowBwdBytes")
+                    b.Property<long?>("SubflowBwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowBwdPackets")
+                    b.Property<int?>("SubflowBwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<long>("SubflowFwdBytes")
+                    b.Property<long?>("SubflowFwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowFwdPackets")
+                    b.Property<int?>("SubflowFwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<int>("SynFlagCounts")
+                    b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("SynFlagPercentageInTotal")
+                    b.Property<double?>("SynFlagPercentageInTotal")
                         .HasColumnType("float");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("TotalHeaderBytes")
+                    b.Property<long?>("TotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("TotalPayloadBytes")
+                    b.Property<long?>("TotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("UrgFlagCounts")
+                    b.Property<int?>("UrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("VarianceHeaderBytes")
+                    b.Property<double?>("VarianceHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("VariancePacketsDeltaTime")
+                    b.Property<double?>("VariancePacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.HasKey("Id");
@@ -1606,127 +1612,127 @@ namespace IDS.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("AckFlagCounts")
+                    b.Property<int?>("AckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("AckFlagPercentageInTotal")
+                    b.Property<double?>("AckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveCov")
+                    b.Property<double?>("ActiveCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMax")
+                    b.Property<double?>("ActiveMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMean")
+                    b.Property<double?>("ActiveMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMedian")
+                    b.Property<double?>("ActiveMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMin")
+                    b.Property<double?>("ActiveMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveMode")
+                    b.Property<double?>("ActiveMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveSkewness")
+                    b.Property<double?>("ActiveSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveStd")
+                    b.Property<double?>("ActiveStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("ActiveVariance")
+                    b.Property<double?>("ActiveVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("AvgBwdBulkRate")
+                    b.Property<double?>("AvgBwdBulkRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("AvgSegmentSize")
+                    b.Property<double?>("AvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdAckFlagCounts")
+                    b.Property<int?>("BwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdAckFlagPercentageInBwdPackets")
+                    b.Property<double?>("BwdAckFlagPercentageInBwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdAckFlagPercentageInTotal")
+                    b.Property<double?>("BwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdBulkDuration")
+                    b.Property<double?>("BwdBulkDuration")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdBulkStateCount")
+                    b.Property<int?>("BwdBulkStateCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdBytesRate")
+                    b.Property<double?>("BwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdFinFlagCounts")
+                    b.Property<int?>("BwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdInitWinBytes")
+                    b.Property<int?>("BwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdMeanHeaderBytes")
+                    b.Property<double?>("BwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdPacketsCount")
+                    b.Property<int?>("BwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("BwdPacketsIatMax")
+                    b.Property<double?>("BwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMean")
+                    b.Property<double?>("BwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMedian")
+                    b.Property<double?>("BwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMin")
+                    b.Property<double?>("BwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatMode")
+                    b.Property<double?>("BwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatStd")
+                    b.Property<double?>("BwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatTotal")
+                    b.Property<double?>("BwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsIatVariance")
+                    b.Property<double?>("BwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPacketsRate")
+                    b.Property<double?>("BwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMax")
+                    b.Property<double?>("BwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesMedian")
+                    b.Property<double?>("BwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("BwdPayloadBytesStd")
+                    b.Property<double?>("BwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("BwdRstFlagCounts")
+                    b.Property<int?>("BwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("BwdSynFlagCounts")
+                    b.Property<int?>("BwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("BwdTotalHeaderBytes")
+                    b.Property<long?>("BwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("BwdTotalPayloadBytes")
+                    b.Property<long?>("BwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("BwdUrgFlagCounts")
+                    b.Property<int?>("BwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("BytesRate")
+                    b.Property<double?>("BytesRate")
                         .HasColumnType("float");
 
                     b.Property<string>("Classification")
@@ -1736,176 +1742,179 @@ namespace IDS.Data.Migrations
                     b.Property<long?>("ClassifiedRecordId")
                         .HasColumnType("bigint");
 
-                    b.Property<double>("CovBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaLen")
+                    b.Property<double?>("CovBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovBwdPacketsDeltaTime")
+                    b.Property<double?>("CovBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("CovFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaLen")
+                    b.Property<double?>("CovFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovFwdPacketsDeltaTime")
+                    b.Property<double?>("CovFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovHeaderBytesDeltaLen")
+                    b.Property<double?>("CovHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("CovPacketsDeltaLen")
+                    b.Property<double?>("CovPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<int>("CwrFlagCounts")
+                    b.Property<int?>("CwrFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("DeltaStart")
+                    b.Property<double?>("DeltaStart")
                         .HasColumnType("float");
 
-                    b.Property<double>("DownUpRate")
+                    b.Property<bool?>("DeltaStartIncompleteHandshake")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("DownUpRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("DstPort")
+                    b.Property<int?>("DstPort")
                         .HasColumnType("int");
 
-                    b.Property<double>("Duration")
+                    b.Property<double?>("Duration")
                         .HasColumnType("float");
 
-                    b.Property<int>("EceFlagCounts")
+                    b.Property<int?>("EceFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FinFlagCounts")
+                    b.Property<int?>("FinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdAckFlagCounts")
+                    b.Property<int?>("FwdAckFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdAckFlagPercentageInFwdPackets")
+                    b.Property<double?>("FwdAckFlagPercentageInFwdPackets")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAckFlagPercentageInTotal")
+                    b.Property<double?>("FwdAckFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdAvgSegmentSize")
+                    b.Property<double?>("FwdAvgSegmentSize")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdBytesRate")
+                    b.Property<double?>("FwdBytesRate")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdFinFlagCounts")
+                    b.Property<int?>("FwdFinFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdInitWinBytes")
+                    b.Property<int?>("FwdInitWinBytes")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdMeanHeaderBytes")
+                    b.Property<double?>("FwdMeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPacketsCount")
+                    b.Property<int?>("FwdPacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("FwdPacketsIatCov")
+                    b.Property<double?>("FwdPacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMax")
+                    b.Property<double?>("FwdPacketsIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMean")
+                    b.Property<double?>("FwdPacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMedian")
+                    b.Property<double?>("FwdPacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMin")
+                    b.Property<double?>("FwdPacketsIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatMode")
+                    b.Property<double?>("FwdPacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatSkewness")
+                    b.Property<double?>("FwdPacketsIatSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatStd")
+                    b.Property<double?>("FwdPacketsIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatTotal")
+                    b.Property<double?>("FwdPacketsIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsIatVariance")
+                    b.Property<double?>("FwdPacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPacketsRate")
+                    b.Property<double?>("FwdPacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesCov")
+                    b.Property<double?>("FwdPayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMax")
+                    b.Property<double?>("FwdPayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesMedian")
+                    b.Property<double?>("FwdPayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesSkewness")
+                    b.Property<double?>("FwdPayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("FwdPayloadBytesStd")
+                    b.Property<double?>("FwdPayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<int>("FwdPshFlagCounts")
+                    b.Property<int?>("FwdPshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdRstFlagCounts")
+                    b.Property<int?>("FwdRstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("FwdSynFlagCounts")
+                    b.Property<int?>("FwdSynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<long>("FwdTotalHeaderBytes")
+                    b.Property<long?>("FwdTotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("FwdTotalPayloadBytes")
+                    b.Property<long?>("FwdTotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("FwdUrgFlagCounts")
+                    b.Property<int?>("FwdUrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("HandshakeDuration")
+                    b.Property<double?>("HandshakeDuration")
                         .HasColumnType("float");
 
                     b.Property<string>("HandshakeState")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("IdleCov")
+                    b.Property<double?>("IdleCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMax")
+                    b.Property<double?>("IdleMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMean")
+                    b.Property<double?>("IdleMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMedian")
+                    b.Property<double?>("IdleMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMin")
+                    b.Property<double?>("IdleMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleMode")
+                    b.Property<double?>("IdleMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleSkewness")
+                    b.Property<double?>("IdleSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleStd")
+                    b.Property<double?>("IdleStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("IdleVariance")
+                    b.Property<double?>("IdleVariance")
                         .HasColumnType("float");
 
                     b.Property<bool>("IsProcessed")
@@ -1916,175 +1925,175 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<double>("MaxBwdPacketsDeltaLen")
+                    b.Property<double?>("MaxBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxBwdPacketsDeltaTime")
+                    b.Property<double?>("MaxBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxFwdPacketsDeltaTime")
+                    b.Property<double?>("MaxFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxHeaderBytesDeltaLen")
+                    b.Property<double?>("MaxHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MaxPayloadBytesDeltaLen")
+                    b.Property<double?>("MaxPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanBwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaLen")
+                    b.Property<double?>("MeanBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanBwdPacketsDeltaTime")
+                    b.Property<double?>("MeanBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanFwdHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaLen")
+                    b.Property<double?>("MeanFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanFwdPacketsDeltaTime")
+                    b.Property<double?>("MeanFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytes")
+                    b.Property<double?>("MeanHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanHeaderBytesDeltaLen")
+                    b.Property<double?>("MeanHeaderBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaLen")
+                    b.Property<double?>("MeanPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPacketsDeltaTime")
+                    b.Property<double?>("MeanPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MeanPayloadBytesDeltaLen")
+                    b.Property<double?>("MeanPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianBwdPacketsDeltaLen")
+                    b.Property<double?>("MedianBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaLen")
+                    b.Property<double?>("MedianFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianFwdPacketsDeltaTime")
+                    b.Property<double?>("MedianFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MedianPacketsDeltaLen")
+                    b.Property<double?>("MedianPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinFwdPacketsDeltaTime")
+                    b.Property<double?>("MinFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("MinPayloadBytesDeltaLen")
+                    b.Property<double?>("MinPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeBwdPacketsDeltaLen")
+                    b.Property<double?>("ModeBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaLen")
+                    b.Property<double?>("ModeFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPacketsDeltaTime")
+                    b.Property<double?>("ModeFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModeFwdPayloadBytesDeltaLen")
+                    b.Property<double?>("ModeFwdPayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaLen")
+                    b.Property<double?>("ModePacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePacketsDeltaTime")
+                    b.Property<double?>("ModePacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("ModePayloadBytesDeltaLen")
+                    b.Property<double?>("ModePayloadBytesDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatMax")
+                    b.Property<double?>("PacketIatMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatMin")
+                    b.Property<double?>("PacketIatMin")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatStd")
+                    b.Property<double?>("PacketIatStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketIatTotal")
+                    b.Property<double?>("PacketIatTotal")
                         .HasColumnType("float");
 
-                    b.Property<int>("PacketsCount")
+                    b.Property<int?>("PacketsCount")
                         .HasColumnType("int");
 
-                    b.Property<double>("PacketsIatCov")
+                    b.Property<double?>("PacketsIatCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMean")
+                    b.Property<double?>("PacketsIatMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMedian")
+                    b.Property<double?>("PacketsIatMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatMode")
+                    b.Property<double?>("PacketsIatMode")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsIatVariance")
+                    b.Property<double?>("PacketsIatVariance")
                         .HasColumnType("float");
 
-                    b.Property<double>("PacketsRate")
+                    b.Property<double?>("PacketsRate")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesCov")
+                    b.Property<double?>("PayloadBytesCov")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMax")
+                    b.Property<double?>("PayloadBytesMax")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMean")
+                    b.Property<double?>("PayloadBytesMean")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesMedian")
+                    b.Property<double?>("PayloadBytesMedian")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesSkewness")
+                    b.Property<double?>("PayloadBytesSkewness")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesStd")
+                    b.Property<double?>("PayloadBytesStd")
                         .HasColumnType("float");
 
-                    b.Property<double>("PayloadBytesVariance")
+                    b.Property<double?>("PayloadBytesVariance")
                         .HasColumnType("float");
 
-                    b.Property<int>("PshFlagCounts")
+                    b.Property<int?>("PshFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<int>("RstFlagCounts")
+                    b.Property<int?>("RstFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("RstFlagPercentageInTotal")
+                    b.Property<double?>("RstFlagPercentageInTotal")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessBwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessBwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaLen")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessFwdPacketsDeltaTime")
+                    b.Property<double?>("SkewnessFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessHeaderBytes")
+                    b.Property<double?>("SkewnessHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaLen")
+                    b.Property<double?>("SkewnessPacketsDeltaLen")
                         .HasColumnType("float");
 
-                    b.Property<double>("SkewnessPacketsDeltaTime")
+                    b.Property<double?>("SkewnessPacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.Property<string>("SrcIp")
@@ -2092,49 +2101,49 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("nvarchar(45)");
 
-                    b.Property<double>("StdFwdPacketsDeltaTime")
+                    b.Property<double?>("StdFwdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdHeaderBytes")
+                    b.Property<double?>("StdHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("StdPacketsDeltaTime")
+                    b.Property<double?>("StdPacketsDeltaTime")
                         .HasColumnType("float");
 
-                    b.Property<long>("SubflowBwdBytes")
+                    b.Property<long?>("SubflowBwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowBwdPackets")
+                    b.Property<int?>("SubflowBwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<long>("SubflowFwdBytes")
+                    b.Property<long?>("SubflowFwdBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("SubflowFwdPackets")
+                    b.Property<int?>("SubflowFwdPackets")
                         .HasColumnType("int");
 
-                    b.Property<int>("SynFlagCounts")
+                    b.Property<int?>("SynFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("SynFlagPercentageInTotal")
+                    b.Property<double?>("SynFlagPercentageInTotal")
                         .HasColumnType("float");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<long>("TotalHeaderBytes")
+                    b.Property<long?>("TotalHeaderBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("TotalPayloadBytes")
+                    b.Property<long?>("TotalPayloadBytes")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("UrgFlagCounts")
+                    b.Property<int?>("UrgFlagCounts")
                         .HasColumnType("int");
 
-                    b.Property<double>("VarianceHeaderBytes")
+                    b.Property<double?>("VarianceHeaderBytes")
                         .HasColumnType("float");
 
-                    b.Property<double>("VariancePacketsDeltaTime")
+                    b.Property<double?>("VariancePacketsDeltaTime")
                         .HasColumnType("float");
 
                     b.HasKey("Id");

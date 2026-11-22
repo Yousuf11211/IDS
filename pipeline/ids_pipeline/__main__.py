@@ -36,7 +36,7 @@ def main(argv=None):
     models = load_models(config) if args.command in ("run", "check", "check-models", "retry",
                                                   "explain", "backfill-explanations", "retry-explanations") else None
     if args.command == "check-models":
-        print(f"Model release {models.release} verified: 119 CSV features + 1 unused training feature; 2 gatekeeper / 14 attack labels")
+        print(f"Model release {models.release} verified: {len(models.feature_names)} ordered features, {len(models.labels['gatekeeper'])} binary / {len(models.labels['multiclass'])} attack labels")
         return 0
     store = Store(config)
     try:
