@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 
 using IDS.Data.Models;
+using IDS.Security;
 
 namespace IDS.Areas.Identity.Pages.Account.Manage
 {
@@ -66,6 +67,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
+            if (await _userManager.IsInRoleAsync(user, AppRoles.Admin)) return Forbid();
             RequirePassword = await _userManager.HasPasswordAsync(user);
             return Page();
         }
@@ -78,6 +80,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
+            if (await _userManager.IsInRoleAsync(user, AppRoles.Admin)) return Forbid();
             RequirePassword = await _userManager.HasPasswordAsync(user);
             if (RequirePassword)
             {

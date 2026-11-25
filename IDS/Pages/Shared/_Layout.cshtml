@@ -29,7 +29,8 @@
 
     @await RenderSectionAsync("HeadContent", required: false)
 </head>
-<body>
+<body class="app-shell">
+ <a class="visually-hidden-focusable app-skip-link" href="#main-content">Skip to main content</a>
  <header>
   <nav class="navbar navbar-ids navbar-expand-lg">
     <div class="container-fluid px-4">
@@ -72,29 +73,19 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
 
    @if (User.IsInRole("Admin"))
        {
-          <li class="nav-item">
-              <a class="nav-link" asp-area="" asp-page="/Admin/Security"><i class="fa-solid fa-user-shield me-1"></i> Security</a>
+          <li class="nav-item dropdown">
+              <button class="nav-link dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fa-solid fa-user-shield me-1" aria-hidden="true"></i> Administration
+              </button>
+              <div class="dropdown-menu">
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Operations">Settings</a>
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Security">Security approvals</a>
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/UserList">Employees and roles</a>
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Alerts">Security alerts</a>
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/DatabaseViewer">Database</a>
+                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Logs">Audit and logs</a>
+              </div>
           </li>
-          <li class="nav-item">
-          <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Alerts") == true ? "active" : "")" asp-area="" asp-page="/Admin/Alerts">
-          <i class="fa-solid fa-bell me-1"></i> Alerts
-      </a>
-       </li>
-       <li class="nav-item">
- <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/UserList") == true ? "active" : "")" asp-area="" asp-page="/Admin/UserList">
-    <i class="fa-solid fa-users me-1"></i> Users
-         </a>
-   </li>
-    <li class="nav-item">
-    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Database") == true ? "active" : "")" asp-area="" asp-page="/Admin/DatabaseViewer">
-          <i class="fa-solid fa-database me-1"></i> Database
-      </a>
- </li>
-    <li class="nav-item">
-          <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Admin/Logs") == true ? "active" : "")" asp-area="" asp-page="/Admin/Logs">
- <i class="fa-solid fa-scroll me-1"></i> Logs
-    </a>
- </li>
       }
     
         @* Support Tickets - visible to Admin and Support roles *@
@@ -130,7 +121,7 @@ else
   </li>
  </ul>
    
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex flex-wrap align-items-center gap-2">
     <!-- Theme Toggle -->
   <button id="themeToggle" type="button" class="btn btn-icon btn-ids-ghost" aria-label="Toggle theme" title="Toggle dark/light mode">
   <i class="fa-solid fa-moon" id="themeIcon" aria-hidden="true"></i>
@@ -140,6 +131,10 @@ else
  {
      <partial name="_ApprovalNotifications" />
  }
+ @if (User?.Identity?.IsAuthenticated == true)
+ {
+     <partial name="_InboxNotifications" />
+ }
  <partial name="_LoginPartial" />
    </div>
   </div>
@@ -147,26 +142,21 @@ else
 </nav>
   </header>
 
-    @if (ViewData["FullWidthLayout"] != null)
- {
-      <main role="main" class="main-content-full">
-       @RenderBody()
-</main>
+    @{
+        var fullWidth = ViewData["FullWidthLayout"] != null || ViewData["NoContainer"] != null;
     }
-    else if (ViewData["NoContainer"] != null)
-    {
-    <main role="main">
-  @RenderBody()
-    </main>
-    }
-    else
-    {
-        <main role="main" class="main-content">
-  <div class="container-fluid" style="max-width: 1400px;">
-        @RenderBody()
+    <main id="main-content" class="@(fullWidth ? "main-content-full" : "main-content")">
+        @if (fullWidth)
+        {
+            @RenderBody()
+        }
+        else
+        {
+            <div class="container-fluid app-container">
+                @RenderBody()
             </div>
-        </main>
-    }
+        }
+    </main>
 
     <footer class="footer-ids">
   <div class="container">

@@ -109,6 +109,7 @@ builder.Services.AddSignalR(options =>
 // Add API Controllers (read-only detection data access)
 // =====================================================
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 
 // =====================================================
 // Register Application Services
@@ -140,6 +141,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
 builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
 builder.Services.AddScoped<AttackInspectionService>();
+builder.Services.AddScoped<WorkerHealthService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
 // Background service to monitor detection tables and push updates via SignalR

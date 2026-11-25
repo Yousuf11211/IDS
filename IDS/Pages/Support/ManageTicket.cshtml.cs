@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
 using IDS.Security;
@@ -32,8 +33,8 @@ UserManager<ApplicationUser> userManager,
 
      public SupportTicket? Ticket { get; set; }
         public List<TicketComment> Comments { get; set; } = new();
-        public List<Responder> Responders { get; set; } = new();
-        public sealed record Responder(string Id, string Name, string Role);
+        public List<IncidentWorkflow.Responder> Responders { get; set; } = new();
+        public bool AssignmentEnabled { get; private set; }
         public string[] Statuses => TicketConstants.Statuses;
  public string[] Priorities => TicketConstants.Priorities;
 
@@ -68,7 +69,8 @@ UserManager<ApplicationUser> userManager,
             .OrderBy(c => c.CreatedAt)
    .ToListAsync();
 
-            await LoadRespondersAsync();
+            AssignmentEnabled = await OperationsSettings.IsAssignmentEnabledAsync(_context);
+            if (AssignmentEnabled) await LoadRespondersAsync();
 
     return Page();
         }
@@ -86,16 +88,21 @@ UserManager<ApplicationUser> userManager,
         {
         return NotFound();
    }
+            if (ticket.Status == "Cancelled") return Conflict();
+
 
       var oldStatus = ticket.Status;
+      var previousId = ticket.AssignedToUserId;
+      var previousName = ticket.AssignedToName;
 
-            if (!string.IsNullOrEmpty(NewStatus) && TicketConstants.Statuses.Contains(NewStatus))
+            if (NewStatus != oldStatus && !string.IsNullOrEmpty(NewStatus) && TicketConstants.Statuses.Contains(NewStatus))
          {
            ticket.Status = NewStatus;
              ticket.UpdatedAt = DateTime.UtcNow;
 
      // Auto-assign if not assigned and moving to InProgress
-                if (NewStatus == "InProgress" && string.IsNullOrEmpty(ticket.AssignedToUserId))
+                if (NewStatus == "InProgress" && string.IsNullOrEmpty(ticket.AssignedToUserId) &&
+                    await OperationsSettings.IsAssignmentEnabledAsync(_context))
     {
            ticket.AssignedToUserId = user.Id;
         ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
@@ -109,7 +116,11 @@ UserManager<ApplicationUser> userManager,
       ticket.ResolvedAt = DateTime.UtcNow;
                 }
 
-    await _context.SaveChangesAsync();
+    else ticket.ResolvedAt = null;
+
+    IncidentWorkflow.RecordAssignment(_context, ticket, user, previousId, previousName);
+    IncidentWorkflow.RecordStatus(_context, ticket, user, oldStatus);
+    if (!await TrySaveAsync()) return Conflict();
 
                 _logger.LogInformation(
             "Ticket {TicketNumber} status changed from {OldStatus} to {NewStatus} by {Email}",
@@ -134,6 +145,8 @@ UserManager<ApplicationUser> userManager,
   {
     return NotFound();
             }
+            if (ticket.Status == "Cancelled") return Conflict();
+
 
             if (!string.IsNullOrEmpty(NewPriority) && TicketConstants.Priorities.Contains(NewPriority))
      {
@@ -141,7 +154,7 @@ UserManager<ApplicationUser> userManager,
          ticket.Priority = NewPriority;
   ticket.UpdatedAt = DateTime.UtcNow;
 
-          await _context.SaveChangesAsync();
+          if (!await TrySaveAsync()) return Conflict();
 
        _logger.LogInformation(
          "Ticket {TicketNumber} priority changed from {OldPriority} to {NewPriority} by {Email}",
@@ -166,13 +179,19 @@ UserManager<ApplicationUser> userManager,
             {
 return NotFound();
         }
+            if (ticket.Status == "Cancelled") return Conflict();
 
+
+      var oldStatus = ticket.Status;
+      var previousId = ticket.AssignedToUserId;
+      var previousName = ticket.AssignedToName;
+      if (ResolutionNotes?.Trim().Length > 4000) return BadRequest();
       ticket.Status = "Resolved";
     ticket.ResolvedAt = DateTime.UtcNow;
             ticket.UpdatedAt = DateTime.UtcNow;
          ticket.ResolutionNotes = ResolutionNotes?.Trim();
 
-    if (string.IsNullOrEmpty(ticket.AssignedToUserId))
+    if (string.IsNullOrEmpty(ticket.AssignedToUserId) && await OperationsSettings.IsAssignmentEnabledAsync(_context))
         {
     ticket.AssignedToUserId = user.Id;
                 ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
@@ -180,7 +199,11 @@ return NotFound();
                   : user.Email ?? "Support";
 }
 
- await _context.SaveChangesAsync();
+ IncidentWorkflow.RecordAssignment(_context, ticket, user, previousId, previousName);
+ IncidentWorkflow.RecordStatus(_context, ticket, user, oldStatus);
+ if (oldStatus == "Resolved")
+     IncidentWorkflow.Audit(_context, ticket, user, "UpdateTicketResolution", "Resolution notes updated.");
+ if (!await TrySaveAsync()) return Conflict();
 
          _logger.LogInformation(
        "Ticket {TicketNumber} resolved by {Email}",
@@ -203,8 +226,10 @@ if (user == null)
      {
    return NotFound();
             }
+            if (ticket.Status == "Cancelled") return Conflict();
 
-     if (string.IsNullOrWhiteSpace(NewComment))
+
+     if (string.IsNullOrWhiteSpace(NewComment) || NewComment.Trim().Length > 2000)
       {
      StatusMessage = "Error: Comment cannot be empty.";
       return RedirectToPage(new { id });
@@ -225,7 +250,7 @@ if (user == null)
        _context.TicketComments.Add(comment);
   ticket.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            if (!await TrySaveAsync()) return Conflict();
 
      _logger.LogInformation(
         "Support comment added to ticket {TicketNumber} by {Email}",
@@ -237,6 +262,7 @@ if (user == null)
 
         public async Task<IActionResult> OnPostAssignToMeAsync(int id)
         {
+            if (!await OperationsSettings.IsAssignmentEnabledAsync(_context)) return Forbid();
        var user = await _userManager.GetUserAsync(User);
       if (user == null)
    {
@@ -248,6 +274,8 @@ if (user == null)
         {
  return NotFound();
             }
+            if (ticket.Status == "Cancelled") return Conflict();
+
 
             if (ticket.Status == "Closed" || ticket.Status == "Resolved")
             {
@@ -261,6 +289,8 @@ if (user == null)
                 return RedirectToPage(new { id });
             }
 
+            if (ticket.AssignedToUserId == user.Id) return RedirectToPage(new { id });
+            var oldStatus = ticket.Status;
          ticket.AssignedToUserId = user.Id;
    ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
     ? $"{user.FirstName} {user.LastName}"
@@ -272,7 +302,9 @@ if (user == null)
          ticket.Status = "InProgress";
             }
 
-            await _context.SaveChangesAsync();
+            IncidentWorkflow.RecordAssignment(_context, ticket, user, null, null);
+            IncidentWorkflow.RecordStatus(_context, ticket, user, oldStatus);
+            if (!await TrySaveAsync()) return Conflict();
 
       _logger.LogInformation(
      "Ticket {TicketNumber} assigned to {Email}",
@@ -284,11 +316,14 @@ if (user == null)
 
         public async Task<IActionResult> OnPostAssignAsync(int id)
         {
+            if (!await OperationsSettings.IsAssignmentEnabledAsync(_context)) return Forbid();
             var actor = await _userManager.GetUserAsync(User);
             if (actor == null) return Challenge();
 
             var ticket = await _context.SupportTickets.FindAsync(id);
             if (ticket == null) return NotFound();
+            if (ticket.Status == "Cancelled") return Conflict();
+
             if (ticket.Status == "Closed" || ticket.Status == "Resolved")
             {
                 StatusMessage = "Error: Reopen this ticket before reassigning it.";
@@ -309,7 +344,9 @@ if (user == null)
                 return RedirectToPage(new { id });
             }
 
+            var previousId = ticket.AssignedToUserId;
             var previousAssignee = ticket.AssignedToName ?? "Unassigned";
+            var oldStatus = ticket.Status;
             ticket.AssignedToUserId = responder.Id;
             ticket.AssignedToName = responder.Name;
             ticket.Status = "InProgress";
@@ -320,22 +357,14 @@ if (user == null)
             {
                 TicketId = ticket.Id,
                 UserId = actor.Id,
-                UserName = DisplayName(actor),
+                UserName = IncidentWorkflow.DisplayName(actor),
                 IsFromSupport = true,
                 Content = $"Assigned from {previousAssignee} to {responder.Name} ({responder.Role}).",
                 CreatedAt = ticket.UpdatedAt
             });
-            _context.AuditLogs.Add(new AuditLog
-            {
-                Timestamp = ticket.UpdatedAt,
-                UserId = actor.Id,
-                UserEmail = actor.Email ?? string.Empty,
-                Action = "AssignTicket",
-                EntityType = "SupportTicket",
-                EntityId = ticket.Id.ToString(),
-                Details = $"{previousAssignee} -> {responder.Name} ({responder.Role})"
-            });
-            await _context.SaveChangesAsync();
+            IncidentWorkflow.RecordAssignment(_context, ticket, actor, previousId, previousAssignee);
+            IncidentWorkflow.RecordStatus(_context, ticket, actor, oldStatus);
+            if (!await TrySaveAsync()) return Conflict();
 
             _logger.LogInformation("Ticket {TicketNumber} assigned to {ResponderId} by {ActorId}",
                 ticket.TicketNumber, responder.Id, actor.Id);
@@ -343,21 +372,16 @@ if (user == null)
             return RedirectToPage(new { id });
         }
 
-        private async Task LoadRespondersAsync()
+        private async Task LoadRespondersAsync() =>
+            Responders = await IncidentWorkflow.RespondersAsync(_userManager, _userManager.GetUserId(User));
+
+        private async Task<bool> TrySaveAsync()
         {
-            var admins = await _userManager.GetUsersInRoleAsync(AppRoles.Admin);
-            var support = await _userManager.GetUsersInRoleAsync(AppRoles.Support);
-            Responders = admins.Select(u => new Responder(u.Id, DisplayName(u), "Admin"))
-                .Concat(support.Select(u => new Responder(u.Id, DisplayName(u), "Support")))
-                .DistinctBy(r => r.Id)
-                .OrderBy(r => r.Name)
-                .ToList();
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException) { return false; }
+            return true;
         }
 
-        private static string DisplayName(ApplicationUser user)
-        {
-            var name = $"{user.FirstName} {user.LastName}".Trim();
-            return string.IsNullOrEmpty(name) ? user.Email ?? "Responder" : name;
-        }
+        private IActionResult Conflict() => StatusCode(409, "The incident changed. Reload it before making another change.");
     }
 }

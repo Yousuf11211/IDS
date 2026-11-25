@@ -24,8 +24,6 @@ namespace IDS.Pages
         public long AttackCount { get; private set; }
         public long NetworkTotal => NormalCount + AttackCount;
         public Dictionary<string, long> LevelCounts { get; private set; } = new();
-        public string IdsStatus { get; private set; } = "Evaluating";
-        public string IdsStatusClass { get; private set; } = "off";
 
         public async Task OnGetAsync()
         {
@@ -55,16 +53,6 @@ namespace IDS.Pages
                 ? await _db.LogFiles.LongCountAsync(cancellationToken)
                 : NetworkTotal;
 
-            if (AttackCount > 0)
-            {
-                IdsStatus = AttackCount > NormalCount / 2.0 ? "Attention" : "Degraded";
-                IdsStatusClass = "warn";
-            }
-            else
-            {
-                IdsStatus = "Normal";
-                IdsStatusClass = "on";
-            }
         }
 
         public async Task<IActionResult> OnGetLogsAsync()

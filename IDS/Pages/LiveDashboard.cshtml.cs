@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using IDS.Core.Services;
 using IDS.Data.Models;
+using IDS.Data;
 
 namespace IDS.Pages
 {
@@ -15,22 +16,24 @@ namespace IDS.Pages
     {
     private readonly ILiveDetectionService _liveDetectionService;
         private readonly ILogger<LiveDashboardModel> _logger;
+        private readonly ApplicationDbContext _database;
 
      public LiveDashboardModel(
             ILiveDetectionService liveDetectionService,
-          ILogger<LiveDashboardModel> logger)
+          ILogger<LiveDashboardModel> logger, ApplicationDbContext database)
  {
             _liveDetectionService = liveDetectionService;
         _logger = logger;
+        _database = database;
      }
 
         public LiveDashboardStats? InitialStats { get; set; }
         public List<LiveDetectionEvent> InitialEvents { get; set; } = new();
-        public bool IsAdmin { get; set; }
+        public bool EscalationEnabled { get; private set; }
 
       public async Task OnGetAsync()
         {
- IsAdmin = User.IsInRole("Admin");
+            EscalationEnabled = await OperationsSettings.IsEscalationEnabledAsync(_database);
    
        try
 {

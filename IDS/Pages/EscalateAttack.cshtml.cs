@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
-using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +33,8 @@ public class EscalateAttackModel : PageModel
 
     public AttackTraffic? Attack { get; private set; }
     public SupportTicket? ExistingTicket { get; private set; }
-    public List<Responder> Responders { get; private set; } = new();
+    public bool CanViewExistingTicket => ExistingTicket != null && IncidentWorkflow.CanView(ExistingTicket, User);
+    public List<IncidentWorkflow.Responder> Responders { get; private set; } = new();
 
     [BindProperty]
     public EscalationInput Input { get; set; } = new();
@@ -48,10 +49,9 @@ public class EscalateAttackModel : PageModel
         public string Reason { get; set; } = string.Empty;
     }
 
-    public sealed record Responder(string Id, string Name, string Role);
-
     public async Task<IActionResult> OnGetAsync(long id)
     {
+        if (!await OperationsSettings.IsEscalationEnabledAsync(_db)) return Forbid();
         if (!await LoadAttackAsync(id)) return NotFound();
         await LoadRespondersAsync();
         return Page();
@@ -59,10 +59,10 @@ public class EscalateAttackModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(long id)
     {
+        if (!await OperationsSettings.IsEscalationEnabledAsync(_db)) return Forbid();
         if (!await LoadAttackAsync(id)) return NotFound();
         if (ExistingTicket != null)
-            return ExistingTicket.SubmittedByUserId == _userManager.GetUserId(User) ||
-                   User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Support)
+            return CanViewExistingTicket
                 ? RedirectToPage("/ViewTicket", new { id = ExistingTicket.Id })
                 : RedirectToPage(new { id });
 
@@ -71,7 +71,9 @@ public class EscalateAttackModel : PageModel
         if (responder == null)
             ModelState.AddModelError("Input.ResponderId", "Select an active Support or Admin responder.");
 
-        if (!ModelState.IsValid) return Page();
+        if (string.IsNullOrWhiteSpace(Input.Reason) || Input.Reason.Trim().Length is < 10 or > 2000)
+            ModelState.AddModelError("Input.Reason", "Enter an escalation reason between 10 and 2,000 characters.");
+        if (!ModelState.IsValid || responder == null) return Page();
 
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return Challenge();
@@ -83,9 +85,7 @@ public class EscalateAttackModel : PageModel
             SourceAttackId = Attack!.Id,
             SubmittedByUserId = user.Id,
             SubmittedByEmail = user.Email ?? string.Empty,
-            SubmittedByName = DisplayName(user),
-            AssignedToUserId = responder!.Id,
-            AssignedToName = responder.Name,
+            SubmittedByName = IncidentWorkflow.DisplayName(user),
             Subject = $"{Attack.Severity} {Attack.AttackType} detection",
             Description = $"Detected {Attack.Timestamp:u} from {Attack.SrcIp} to port {Attack.DstPort?.ToString() ?? "Unavailable"}.\n\nEscalation reason: {Input.Reason.Trim()}",
             Category = "Security Concern",
@@ -108,16 +108,7 @@ public class EscalateAttackModel : PageModel
         Attack.AcknowledgedBy = user.Id;
         Attack.AcknowledgedAt = now;
         _db.SupportTickets.Add(ticket);
-        _db.AuditLogs.Add(new AuditLog
-        {
-            Timestamp = now,
-            UserId = user.Id,
-            UserEmail = user.Email ?? string.Empty,
-            Action = "EscalateAttack",
-            EntityType = "AttackTraffic",
-            EntityId = id.ToString(),
-            Details = $"Escalated to {responder.Name} ({responder.Role}) as {ticket.TicketNumber}."
-        });
+        IncidentWorkflow.Escalate(_db, ticket, user, responder, Input.Reason.Trim(), createdTicket: true);
 
         try
         {
@@ -151,20 +142,6 @@ public class EscalateAttackModel : PageModel
         return true;
     }
 
-    private async Task LoadRespondersAsync()
-    {
-        var admins = await _userManager.GetUsersInRoleAsync(AppRoles.Admin);
-        var support = await _userManager.GetUsersInRoleAsync(AppRoles.Support);
-        Responders = admins.Select(u => new Responder(u.Id, DisplayName(u), "Admin"))
-            .Concat(support.Select(u => new Responder(u.Id, DisplayName(u), "Support")))
-            .DistinctBy(r => r.Id)
-            .OrderBy(r => r.Name)
-            .ToList();
-    }
-
-    private static string DisplayName(ApplicationUser user)
-    {
-        var name = $"{user.FirstName} {user.LastName}".Trim();
-        return string.IsNullOrEmpty(name) ? user.Email ?? "Responder" : name;
-    }
+    private async Task LoadRespondersAsync() =>
+        Responders = await IncidentWorkflow.RespondersAsync(_userManager, _userManager.GetUserId(User));
 }

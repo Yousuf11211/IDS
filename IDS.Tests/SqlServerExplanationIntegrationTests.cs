@@ -73,7 +73,7 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         await using (var database = new ApplicationDbContext(options))
         {
             var model = database.GetService<IDesignTimeModel>().Model;
-            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs(), new PreserveFractionalSubflows() })
+            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs(), new PreserveFractionalSubflows(), new AddOperationsMonitoringAndInbox() })
             {
                 var commands = database.GetService<IMigrationsSqlGenerator>().Generate(migration.UpOperations, model);
                 foreach (var command in commands) await database.Database.ExecuteSqlRawAsync(command.CommandText);
@@ -124,13 +124,19 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         builder.Services.AddDbContext<ApplicationDbContext>(b => b.UseSqlServer(connection));
         builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
         builder.Services.AddAuthentication(authentication => {
-            authentication.DefaultAuthenticateScheme = "InspectionFixture";
+            authentication.DefaultAuthenticateScheme = "ScenarioAuthentication";
             authentication.DefaultChallengeScheme = "InspectionFixture";
             authentication.DefaultForbidScheme = "InspectionFixture";
+        }).AddPolicyScheme("ScenarioAuthentication", null, options =>
+        {
+            options.ForwardDefaultSelector = context => context.Request.Headers.ContainsKey("X-Inspection-Test-Role")
+                ? "InspectionFixture" : IdentityConstants.ApplicationScheme;
         }).AddScheme<AuthenticationSchemeOptions, InspectionFixtureAuthentication>("InspectionFixture", _ => { });
         builder.Services.AddAuthorization();
         builder.Services.AddRazorPages();
         builder.Services.AddControllers();
+        builder.Services.AddMemoryCache();
+        builder.Services.AddScoped<WorkerHealthService>();
         builder.Services.AddSignalR();
         builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
         builder.Services.AddSingleton<DashboardNotificationService>();
@@ -149,6 +155,12 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         http.DefaultRequestHeaders.Add("X-Inspection-Test-Role", AppRoles.Employee);
         Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync(apiPath)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync($"/InspectAttack/{attackId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await http.GetAsync("/Admin/Operations")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await http.GetAsync("/Identity/Account/Manage/Disable2fa")).StatusCode);
+        var empty = JsonDocument.Parse(await http.GetStringAsync("/api/monitoring/analytics?range=1h"));
+        Assert.Empty(empty.RootElement.GetProperty("snapshot").GetProperty("incidents").EnumerateArray());
+        Assert.Equal(HttpStatusCode.BadRequest, (await http.GetAsync("/api/monitoring/analytics?range=other")).StatusCode);
         http.DefaultRequestHeaders.Remove("X-Inspection-Test-Role");
         http.DefaultRequestHeaders.Add("X-Inspection-Test-Role", AppRoles.Support);
         var response = await http.GetAsync(apiPath);
@@ -168,11 +180,23 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         http.DefaultRequestHeaders.Add("X-Inspection-Test-Role", AppRoles.Admin);
         var stats = JsonDocument.Parse(await http.GetStringAsync("/api/detection/stats/by-type"));
         var dashboard = await http.GetStringAsync("/LiveDashboard");
+        var analytics = JsonDocument.Parse(await http.GetStringAsync("/api/monitoring/analytics?range=24h"));
+        var snapshot = analytics.RootElement.GetProperty("snapshot");
+        Assert.True(snapshot.GetProperty("traffic").EnumerateArray().Sum(b => b.GetProperty("malicious").GetInt64()) > 0);
+        Assert.Contains(snapshot.GetProperty("explanations").EnumerateArray(), item => item.GetProperty("label").GetString() == "completed");
+        var aliases = snapshot.GetProperty("types").EnumerateArray()
+            .Select(t => t.GetProperty("label").GetString()).ToArray();
+        var recent = JsonDocument.Parse(await http.GetStringAsync("/api/monitoring/alerts"));
+        Assert.InRange(recent.RootElement.GetProperty("alerts").GetArrayLength(), 1, 12);
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"/DetectionHistory?id={attackId}")).StatusCode);
+        Assert.Contains("Detection Service", dashboard);
+        Assert.Contains("Detection Service", await http.GetStringAsync("/Dashboard"));
+        await VerifyWorkerStatusesAsync(app.Services, http);
         foreach (var label in new[] { "PortScan", "DoS_SYN_Flood", "Attack" })
         {
             Assert.True(stats.RootElement.GetProperty(label).GetInt32() >= 1);
             Assert.Contains($"value=\"label:{label}\"", dashboard);
-            Assert.Contains($">{label}</span>", dashboard);
+            Assert.Contains(label, aliases);
         }
         var data = json.RootElement.GetProperty("stages")[1].GetProperty("data");
         Assert.Equal(trace.RootElement.GetProperty("selectedClass").GetString(), data.GetProperty("explainedClass").GetString());
@@ -191,7 +215,37 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
                 RedirectStandardError = true, UseShellExecute = false };
             browser.ArgumentList.Add("tests/verify_inspection_browser.py");
             browser.ArgumentList.Add(baseUrl); browser.ArgumentList.Add(attackId!);
+            using var scope = app.Services.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            const string username = "fixture-responder@example.test";
+            var password = Guid.NewGuid().ToString("N") + "Aa1!";
+            var responder = new ApplicationUser { UserName = username, Email = username, EmailConfirmed = true };
+            Assert.True((await roles.CreateAsync(new IdentityRole(AppRoles.Support))).Succeeded);
+            Assert.True((await users.CreateAsync(responder, password)).Succeeded);
+            Assert.True((await users.AddToRoleAsync(responder, AppRoles.Support)).Succeeded);
+            Assert.True((await users.ResetAuthenticatorKeyAsync(responder)).Succeeded);
+            Assert.True((await users.SetTwoFactorEnabledAsync(responder, true)).Succeeded);
+            var recoveryCode = Assert.Single((await users.GenerateNewTwoFactorRecoveryCodesAsync(responder, 1))!);
+
+            var employee = new ApplicationUser { UserName = "fixture-employee", FirstName = "Scenario employee" };
+            Assert.True((await users.CreateAsync(employee)).Succeeded);
+            var ticket = new SupportTicket
+            {
+                TicketNumber = TicketConstants.GenerateTicketNumber(), SubmittedByUserId = employee.Id,
+                Subject = "Review fixture security incident", Category = "Security Concern"
+            };
+            database.SupportTickets.Add(ticket);
+            IncidentWorkflow.Escalate(database, ticket, employee, new(responder.Id, "Fixture responder", AppRoles.Support),
+                "Check telemetry for this browser workflow.", createdTicket: false);
+            await database.SaveChangesAsync();
+            browser.Environment["IDS_TEST_INBOX_LOGIN"] = username;
+            browser.Environment["IDS_TEST_INBOX_PASSWORD"] = password;
+            browser.Environment["IDS_TEST_INBOX_RECOVERY"] = recoveryCode;
             output.WriteLine(await RunProcess(browser));
+            var opened = await database.InboxNotifications.AsNoTracking().SingleAsync(n => n.TicketId == ticket.Id);
+            Assert.NotNull(opened.ReadAt);
         }
         else output.WriteLine("Browser rendering was NOT requested.");
         var evidenceDirectory = Path.Combine(root.FullName, "IDS.Tests", "TestResults");
@@ -203,6 +257,35 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
                 verifiedAt = DateTimeOffset.UtcNow }, new JsonSerializerOptions { WriteIndented = true }));
         output.WriteLine($"Verified SQL → HTTP API → Razor report for attack {attackId}. Database retained: {sql.InitialCatalog}");
         await app.StopAsync();
+    }
+
+    private static async Task VerifyWorkerStatusesAsync(IServiceProvider services, HttpClient http)
+    {
+        using var scope = services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var detection = await database.WorkerHeartbeats.SingleAsync(row => row.Worker == "detection");
+        var explanation = await database.WorkerHeartbeats.SingleAsync(row => row.Worker == "explanation");
+        foreach (var (detectorActive, explanationActive, status) in new[]
+        {
+            (false, false, "Offline"), (true, false, "Degraded"), (true, true, "Operational"),
+            (false, true, "Degraded"), (false, false, "Offline")
+        })
+        {
+            detection.IsRunning = detectorActive;
+            explanation.IsRunning = explanationActive;
+            await database.SaveChangesAsync();
+            var json = JsonDocument.Parse(await http.GetStringAsync("/api/detection/workers")).RootElement;
+            Assert.Equal(status, json.GetProperty("overall").GetString());
+            Assert.Equal(detectorActive, json.GetProperty("detection").GetProperty("online").GetBoolean());
+            Assert.Equal(explanationActive, json.GetProperty("explanation").GetProperty("online").GetBoolean());
+        }
+
+        detection.IsRunning = true;
+        detection.LastHeartbeatUtc = DateTime.UtcNow.AddMinutes(-3);
+        await database.SaveChangesAsync();
+        var stale = JsonDocument.Parse(await http.GetStringAsync("/api/detection/workers")).RootElement;
+        Assert.Equal("Offline", stale.GetProperty("overall").GetString());
+        Assert.Equal(JsonValueKind.String, stale.GetProperty("detection").GetProperty("lastHeartbeatUtc").ValueKind);
     }
 
     private static async Task VerifySignalR(string baseUrl, DashboardNotificationService service, LiveDetectionEvent detection)
@@ -255,6 +338,9 @@ public sealed class InspectionBaselineContext(DbContextOptions<ApplicationDbCont
     {
         base.OnModelCreating(builder);
         builder.Ignore<FlowExplanation>();
+        builder.Ignore<InboxNotification>();
+        builder.Ignore<IncidentEscalation>();
+        builder.Ignore<WorkerHeartbeat>();
         foreach (var type in new[] { typeof(RawPacket), typeof(AttackTraffic), typeof(BenignTraffic) })
         {
             var entity = builder.Entity(type);

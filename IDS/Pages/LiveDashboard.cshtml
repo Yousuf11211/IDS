@@ -30,7 +30,6 @@
    height: 8px;
          background: currentColor;
      border-radius: 50%;
-     animation: pulse 2s infinite;
       }
         
         .live-feed {
@@ -45,7 +44,6 @@
  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
             transition: background var(--transition-fast);
-  animation: slideIn 0.3s ease;
         }
         
    .detection-item:hover {
@@ -90,94 +88,6 @@
    white-space: nowrap;
         }
    
-        .stat-card-live {
-  position: relative;
-overflow: hidden;
-   }
-  
-.stat-card-live::after {
-            content: '';
-         position: absolute;
-  top: 0;
-            right: 0;
-     width: 100%;
-            height: 2px;
-     background: linear-gradient(90deg, transparent, var(--primary), transparent);
-    animation: scan 2s linear infinite;
-        }
-        
-      @@keyframes scan {
-    0% { transform: translateX(-100%); }
-       100% { transform: translateX(100%); }
-        }
-        
-        @@keyframes slideIn {
-            from {
-    opacity: 0;
-      transform: translateX(-20px);
-            }
-            to {
-       opacity: 1;
-        transform: translateX(0);
-            }
-        }
-     
-      @@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.2); }
-     }
-        
-        .attack-alert-container {
-            position: fixed;
-            top: 80px;
-            right: 16px;
-            z-index: 1050;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: min(400px, calc(100vw - 32px));
-            max-height: calc(100vh - 96px);
-            max-height: calc(100dvh - 96px);
-            overflow-x: hidden;
-            overflow-y: auto;
-            overscroll-behavior: contain;
-        }
-
-        .attack-alert-container:empty {
-            display: none;
-        }
-
-        .attack-alert {
-            position: relative;
-            flex-shrink: 0;
-            margin: 0;
-            animation: slideInRight 0.3s ease;
-        }
-
-        .attack-alert .alert-ids-content {
-            min-width: 0;
-            overflow-wrap: anywhere;
-        }
-
-        .attack-alert > .btn-close {
-            flex-shrink: 0;
-        }
-        
-        @@keyframes slideInRight {
-            from {
-     opacity: 0;
-    transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
- }
-     }
-        
-      .chart-container {
-            height: 200px;
- position: relative;
-        }
     </style>
 }
 
@@ -199,7 +109,7 @@ overflow: hidden;
        <span class="pulse"></span>
         <span id="connectionText">Connecting...</span>
        </div>
-       <a asp-page="/Dashboard" class="btn-ids btn-ids-secondary" style="background: rgba(255,255,255,0.2);">
+       <a asp-page="/Dashboard" class="btn-ids btn-ids-secondary">
         <i class="fa-solid fa-gauge"></i> Standard Dashboard
        </a>
     </div>
@@ -243,7 +153,7 @@ overflow: hidden;
   <div class="metric-label">Attack Rate</div>
  <div class="metric-value" id="statAttackRate">@Model.InitialStats?.AttackPercentage.ToString("F1")%</div>
       <div class="metric-change" id="statStatus">
-      Status: <strong>@Model.InitialStats?.SystemStatus</strong>
+      Threat activity: <strong>@Model.InitialStats?.SystemStatus</strong>
          </div>
    </div>
     </div>
@@ -262,6 +172,10 @@ overflow: hidden;
     </div>
 </div>
 
+<section class="card-ids card-ids-body mb-4" aria-label="Worker health">
+    <partial name="_WorkerHealth" />
+</section>
+
 <div class="row g-4">
     <!-- Live Feed -->
     <div class="col-lg-8">
@@ -273,13 +187,13 @@ overflow: hidden;
           <span class="badge bg-primary ms-2" id="feedCount">@Model.InitialEvents.Count</span>
        </h3>
  <div class="d-flex gap-2">
-    <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnPause" title="Pause feed">
+    <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnPause" title="Pause feed" aria-label="Pause or resume feed">
     <i class="fa-solid fa-pause"></i>
     </button>
-         <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnClear" title="Clear feed">
+         <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnClear" title="Clear feed" aria-label="Clear feed">
               <i class="fa-solid fa-trash"></i>
     </button>
-        <select class="form-control-ids form-select-ids" style="width: auto; padding: 0.25rem 2rem 0.25rem 0.5rem;" id="filterType">
+        <select class="form-control-ids form-select-ids" style="width: auto; padding: 0.25rem 2rem 0.25rem 0.5rem;" id="filterType" aria-label="Filter detections">
             <option value="all">All Events</option>
  <option value="attack">Attacks Only</option>
       <option value="benign">Benign Only</option>
@@ -335,7 +249,7 @@ overflow: hidden;
            </div>
               <div class="detection-time">
        @evt.Timestamp.ToString("HH:mm:ss")
-       @if (evt.IsAttack && (evt.Severity == "High" || evt.Severity == "Critical"))
+       @if (Model.EscalationEnabled && evt.IsAttack && (evt.Severity == "High" || evt.Severity == "Critical"))
        {
            <a asp-page="/EscalateAttack" asp-route-id="@evt.Id" class="btn-ids btn-ids-primary btn-ids-sm d-block mt-2">Escalate</a>
        }
@@ -352,62 +266,8 @@ overflow: hidden;
         </div>
     </div>
     
-    <!-- Attack Summary -->
-    <div class="col-lg-4">
-        @if (Model.IsAdmin)
-        {
-    <div class="card-ids mb-4">
-     <div class="card-ids-header">
-      <h3 class="card-ids-title">
-     <i class="fa-solid fa-chart-pie text-warning"></i>
-        Attacks by Type (24h)
-  </h3>
-      </div>
-        <div class="card-ids-body">
-        <div id="attacksByType">
-         @if (Model.InitialStats?.AttacksByType?.Any() == true)
-     {
-          @foreach (var item in Model.InitialStats.AttacksByType.OrderByDescending(x => x.Value))
-        {
-   var percentage = Model.InitialStats.AttacksLast24h > 0 
-  ? (double)item.Value / Model.InitialStats.AttacksLast24h * 100 : 0;
-  <div class="mb-3">
-             <div class="d-flex justify-content-between mb-1">
-    <span style="font-size: 0.875rem;">@item.Key</span>
-    <span class="text-muted">@item.Value</span>
-     </div>
-        <div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px;">
-            <div style="height: 100%; width: @percentage%; background: var(--danger); border-radius: 3px;"></div>
-            </div>
-       </div>
-   }
-           }
-         else
-     {
-           <p class="text-muted text-center mb-0">No attack data</p>
-         }
-          </div>
-                </div>
-     </div>
-        }
-   
-        <div class="card-ids">
-         <div class="card-ids-header">
-             <h3 class="card-ids-title">
-           <i class="fa-solid fa-bell text-danger"></i>
-   Recent Alerts
-      </h3>
-   </div>
-   <div class="card-ids-body p-0">
-         <div id="recentAlerts" style="max-height: 300px; overflow-y: auto;">
-          <div class="p-3 text-center text-muted">
-        <i class="fa-solid fa-check-circle text-success"></i>
-      <p class="mb-0 mt-2">No recent alerts</p>
-                  </div>
-          </div>
-     </div>
-        </div>
-      
+    <aside class="col-lg-4">
+        <partial name="_RecentDetectionAlerts" />
       <div class="card-ids mt-4">
             <div class="card-ids-header">
  <h3 class="card-ids-title">
@@ -417,7 +277,7 @@ overflow: hidden;
             </div>
             <div class="card-ids-body">
   <div class="form-group">
- <label class="form-label-ids">Max Events in Feed</label>
+ <label class="form-label-ids" for="maxEvents">Max events in feed</label>
      <select class="form-control-ids form-select-ids" id="maxEvents">
      <option value="50">50 events</option>
          <option value="100" selected>100 events</option>
@@ -439,12 +299,12 @@ overflow: hidden;
               </div>
             </div>
         </div>
-    </div>
+    </aside>
 </div>
 
-<!-- Attack Alert Toast Container -->
-<div id="alertContainer" class="attack-alert-container" role="region"
-     aria-label="Attack notifications" aria-live="polite" aria-relevant="additions"></div>
+<div class="mt-4">
+    <partial name="_TrafficAnalytics" model='"live"' />
+</div>
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
@@ -459,8 +319,8 @@ overflow: hidden;
         let filterType = 'all';
    let eventCount = 0;
         let eventsLastSecond = 0;
-        let alerts = [];
-        const seenAttackAlerts = new Set();
+        let lastAlertAt = 0;
+        const escalationEnabled = @Model.EscalationEnabled.ToString().ToLowerInvariant();
         
         const connection = new signalR.HubConnectionBuilder()
  .withUrl("/hubs/dashboard")
@@ -474,7 +334,7 @@ overflow: hidden;
         });
         
         connection.onreconnected(connectionId => {
- updateConnectionStatus(true, 'Live');
+ updateConnectionStatus(true, 'Feed connected');
             console.log('SignalR reconnected:', connectionId);
         });
         
@@ -486,7 +346,7 @@ overflow: hidden;
       connection.on("NewDetection", (event) => {
      if (isPaused) return;
       addDetectionToFeed(event);
-      if (event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())) {
+      if (!canInspect && event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())) {
           showAttackAlert(event);
       }
         eventsLastSecond++;
@@ -547,7 +407,7 @@ overflow: hidden;
     div.innerHTML = `
         <div class="detection-type">
            ${event.isAttack 
-      ? `<span class="severity-badge ${severityClass}">${event.severity || 'Attack'}</span>`
+      ? `<span class="severity-badge ${severityClass}">${escapeHtml(event.severity || 'Attack')}</span>`
   : '<span class="severity-badge severity-low">Benign</span>'}
   </div>
    <div class="detection-details">
@@ -566,7 +426,7 @@ overflow: hidden;
         // The live feed includes attack table IDs, so the same incident can be
         // opened from a newly arrived detection or from the initial page load.
         const id = Number(event.id);
-        if (event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())
+        if (escalationEnabled && event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())
             && Number.isSafeInteger(id) && id > 0) {
             const link = document.createElement('a');
             link.href = `/EscalateAttack/${id}`;
@@ -591,88 +451,24 @@ overflow: hidden;
     document.getElementById('statBenignHour').innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${stats.benignLastHour} last hour`;
       document.getElementById('statAttacksHour').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${stats.attacksLastHour} last hour`;
             document.getElementById('statAttackRate').textContent = stats.attackPercentage.toFixed(1) + '%';
-            document.getElementById('statStatus').innerHTML = `Status: <strong>${stats.systemStatus}</strong>`;
+            document.getElementById('statStatus').innerHTML = `Threat activity: <strong>${stats.systemStatus}</strong>`;
             const types = Object.entries(stats.attacksByType || {}).sort((a, b) => b[1] - a[1]);
             types.forEach(([label]) => addAttackTypeOption(label));
-            const chart = document.getElementById('attacksByType');
-            if (chart) {
-                chart.innerHTML = types.map(([label, count]) => {
-                    const share = stats.attacksLast24h ? 100 * count / stats.attacksLast24h : 0;
-                    return `<div class="mb-3"><div class="d-flex justify-content-between mb-1">
-                        <span style="font-size: 0.875rem;">${escapeHtml(label)}</span><span class="text-muted">${Number(count)}</span>
-                        </div><div style="height: 6px; background: var(--bg-tertiary); border-radius: 3px;">
-                        <div style="height: 100%; width: ${share}%; background: var(--danger); border-radius: 3px;"></div></div></div>`;
-                }).join('') || '<p class="text-muted text-center mb-0">No attack data</p>';
-            }
-            document.getElementById('statLastUpdate').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('statLastUpdate').textContent = new Date(stats.lastUpdated ?? Date.now()).toLocaleTimeString();
         }
  
         function showAttackAlert(attack) {
-            const id = Number(attack.id);
-            const canEscalate = Number.isSafeInteger(id) && id > 0 &&
-                ['high', 'critical'].includes(String(attack.severity).toLowerCase());
-            if (canEscalate && seenAttackAlerts.has(id)) return;
-            if (canEscalate) {
-                seenAttackAlerts.add(id);
-                if (seenAttackAlerts.size > 100) seenAttackAlerts.delete(seenAttackAlerts.values().next().value);
+            if (isPaused || Date.now() - lastAlertAt < 3000) return;
+            lastAlertAt = Date.now();
+            if (document.getElementById('soundAlerts').checked) playAlertSound();
+            if ('Notification' in window && document.getElementById('desktopNotifications').checked &&
+                Notification.permission === 'granted') {
+                new Notification('IDS attack alert', {
+                    body: `${attack.attackType} detected from ${attack.srcIp}`, tag: `ids-attack-${attack.id}`
+                });
             }
+        }
 
-            if (document.getElementById('soundAlerts').checked) {
-        playAlertSound();
-          }
-   
-            if (document.getElementById('desktopNotifications').checked && Notification.permission === 'granted') {
-         new Notification('IDS Attack Alert', {
-              body: `${attack.attackType} detected from ${attack.srcIp}`,
-  icon: '/favicon.ico'
-   });
-            }
-    
-      const container = document.getElementById('alertContainer');
-   const alert = document.createElement('div');
- alert.className = 'attack-alert alert-ids alert-ids-danger';
-      alert.innerHTML = `
-<i class="alert-ids-icon fa-solid fa-skull-crossbones"></i>
-       <div class="alert-ids-content">
-     <div class="alert-ids-title">${escapeHtml(attack.attackType)}</div>
-              <div>From: ${escapeHtml(attack.srcIp)}</div>
-<div>Severity: ${escapeHtml(attack.severity)}</div>
-${canEscalate ? `<a href="/EscalateAttack/${id}" class="btn-ids btn-ids-primary btn-ids-sm mt-2">Escalate incident</a>` : ''}
-${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${id}" class="btn-ids btn-ids-ghost btn-ids-sm mt-2">Inspect</a>` : ''}
-           </div>
-       <button type="button" class="btn-close" aria-label="Dismiss attack notification" onclick="this.parentElement.remove()"></button>
- `;
-        container.appendChild(alert);
-            
-    setTimeout(() => alert.remove(), 10000);
-            
-            addRecentAlert(attack);
-     }
-        
-        function addRecentAlert(attack) {
-         alerts.unshift(attack);
-            if (alerts.length > 10) alerts.pop();
- 
-            const container = document.getElementById('recentAlerts');
-  container.innerHTML = alerts.map(a => `
-     <div class="detection-item attack" style="border-bottom: 1px solid var(--border-color);">
-        <div class="detection-details">
-           <div class="detection-ips" style="font-size: 0.8125rem;">
-    <strong>${escapeHtml(a.attackType)}</strong>
-     </div>
-    <div class="detection-meta">
-  <span>${escapeHtml(a.srcIp)} ? Port ${a.dstPort ?? 'Unavailable'}</span>
-          </div>
-             </div>
-          <span class="severity-badge severity-${a.severity?.toLowerCase() || 'medium'}">${escapeHtml(a.severity)}</span>
-          ${Number.isSafeInteger(Number(a.id)) && Number(a.id) > 0 && ['high', 'critical'].includes(String(a.severity).toLowerCase())
-              ? `<a href="/EscalateAttack/${Number(a.id)}" class="btn-ids btn-ids-primary btn-ids-sm">Escalate</a>` : ''}
-          ${canInspect && Number.isSafeInteger(Number(a.id)) && Number(a.id) > 0
-              ? `<a href="/InspectAttack/${Number(a.id)}" class="btn-ids btn-ids-ghost btn-ids-sm">Inspect</a>` : ''}
-      </div>
-   `).join('');
-     }
-        
         function playAlertSound() {
      try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -686,6 +482,7 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
          oscillator.type = 'sine';
     gainNode.gain.value = 0.3;
   
+        oscillator.addEventListener("ended", () => audioCtx.close());
         oscillator.start();
                 setTimeout(() => oscillator.stop(), 200);
             } catch (e) {
@@ -703,7 +500,7 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
         async function startConnection() {
     try {
     await connection.start();
-   updateConnectionStatus(true, 'Live');
+   updateConnectionStatus(true, 'Feed connected');
               console.log('SignalR connected');
   
      await connection.invoke("RequestLatestStats");
@@ -758,7 +555,7 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
         });
         
      document.getElementById('desktopNotifications').addEventListener('change', function() {
-            if (this.checked && Notification.permission !== 'granted') {
+            if (this.checked && 'Notification' in window && Notification.permission !== 'granted') {
            Notification.requestPermission();
             }
    });
@@ -768,9 +565,7 @@ ${canInspect && Number.isSafeInteger(id) && id > 0 ? `<a href="/InspectAttack/${
             eventsLastSecond = 0;
    }, 1000);
         
- setInterval(() => {
-            document.getElementById('statLastUpdate').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
-        }, 1000);
+
     })();
     </script>
 }

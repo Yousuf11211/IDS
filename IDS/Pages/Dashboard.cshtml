@@ -254,23 +254,8 @@ else
  </h3>
   </div>
  <div class="card-ids-body">
-       <div class="ids-status-card">
-    @{
-          var statusClass = Model.IdsStatusClass switch
-    {
-          "on" => "normal",
-"warn" => "attention",
-"off" => "degraded",
-    _ => "normal"
-    };
-        }
-          <div class="status-indicator @statusClass"></div>
-  <div>
-        <div class="status-text @statusClass">@Model.IdsStatus</div>
-         <div class="text-muted" style="font-size: 0.875rem;">IDS Protection Status</div>
-    </div>
-  </div>
-   
+    <partial name="_WorkerHealth" />
+
      <div class="mt-4">
        <h4 style="font-size: 0.875rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.75rem;">TRAFFIC BREAKDOWN</h4>
       <div class="d-flex flex-column gap-2">
@@ -369,6 +354,8 @@ else
         </div>
     </div>
 }
+
+<partial name="_TrafficAnalytics" model='"dashboard"' />
 
 @section Scripts {
     <script>

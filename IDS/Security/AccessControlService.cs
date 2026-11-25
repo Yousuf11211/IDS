@@ -105,6 +105,21 @@ namespace IDS.Security
             if (!allowAdministratorChange && (string.Equals(role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
                 currentRoles.Contains(AppRoles.Admin)))
                 throw new SecurityChangeException("Administrator role changes require the approved security workflow.");
+            if (currentRoles.Contains(AppRoles.Admin) && !string.Equals(role, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+            {
+                var remaining = await userManager.GetUsersInRoleAsync(AppRoles.Admin);
+                var available = false;
+                foreach (var administrator in remaining.Where(candidate => candidate.Id != user.Id &&
+                    candidate.EmailConfirmed && candidate.TwoFactorEnabled && !candidate.MustChangePassword))
+                {
+                    if (await userManager.IsLockedOutAsync(administrator) ||
+                        await userManager.IsInRoleAsync(administrator, AppRoles.Suspended)) continue;
+                    available = true;
+                    break;
+                }
+                if (!available) throw new SecurityChangeException("At least one active, enrolled administrator must remain.");
+            }
+
             var toRemove = currentRoles.Where(r => AppRoles.IsManagedRole(r) && !string.Equals(r, role, StringComparison.OrdinalIgnoreCase)).ToArray();
             if (toRemove.Length > 0)
             {

@@ -27,9 +27,25 @@ namespace IDS.Data
         public DbSet<RawPacket> RawPackets { get; set; } = null!;
         public DbSet<FlowExplanation> FlowExplanations { get; set; } = null!;
 
+        public DbSet<InboxNotification> InboxNotifications => Set<InboxNotification>();
+        public DbSet<IncidentEscalation> IncidentEscalations => Set<IncidentEscalation>();
+        public DbSet<WorkerHeartbeat> WorkerHeartbeats => Set<WorkerHeartbeat>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<InboxNotification>(b =>
+            {
+                b.HasIndex(n => new { n.RecipientId, n.CreatedAt, n.Id });
+                b.HasIndex(n => new { n.RecipientId, n.ReadAt });
+                b.HasOne(n => n.Ticket).WithMany().OnDelete(DeleteBehavior.SetNull);
+            });
+            builder.Entity<IncidentEscalation>(b =>
+            {
+                b.HasIndex(e => new { e.TicketId, e.Id });
+                b.HasOne(e => e.Ticket).WithMany().OnDelete(DeleteBehavior.Restrict);
+            });
+            builder.Entity<SupportTicket>().Property(t => t.UpdatedAt).IsConcurrencyToken();
 
             // =====================================================
             // Log Files Table - Stores log information

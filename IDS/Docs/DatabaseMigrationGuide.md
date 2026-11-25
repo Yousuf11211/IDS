@@ -24,6 +24,15 @@ and assigns `General` to existing employees. It is required even when chat is di
 because departments are also used by employee administration. Do not add the column
 manually or generate another migration for this update.
 
+### Worker health, incident escalation and inbox
+
+`20261125180505_AddOperationsMonitoringAndInbox` adds separate tables for worker
+heartbeats, incident escalation history and per-user inbox notifications. It
+reuses `SystemSettings`, `SupportTickets` and `AuditLogs`. The upgrade retains
+existing tickets, detections and explanations. An untouched legacy attack handoff
+with a known recipient is copied into escalation history without sending a new
+notification. Apply the migration before running the updated Python workers.
+
 ## Detection data
 
 This IDS web application **reads** from two database tables that are **written to by your external detection pipeline**:

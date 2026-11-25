@@ -21,7 +21,7 @@
             <div class="alert-ids-content">Generating new codes invalidates your current recovery codes. Save the new codes somewhere secure.</div>
         </div>
 
-        <form method="post">
+        <form method="post" data-confirm="Replace your existing recovery codes?">
             <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
             <div class="form-group">
                 <label asp-for="Input.Password" class="form-label-ids"></label>

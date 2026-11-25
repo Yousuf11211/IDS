@@ -48,6 +48,55 @@
     </div>
 </div>
 
+@if (Model.Responders.Count > 0 || Model.Escalations.Count > 0)
+{
+    <section class="card-ids card-ids-body mb-4">
+        <h2 class="h5">Escalation history</h2>
+        @if (Model.Escalations.Count == 0)
+        {
+            <p class="text-muted">No escalations yet.</p>
+        }
+        @foreach (var escalation in Model.Escalations)
+        {
+            <div class="border-bottom py-2">
+                <time>@escalation.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</time>
+                <p class="mb-1 text-break">@escalation.Reason</p>
+                @if (escalation.CancelledAt is DateTime cancelled)
+                {
+                    <p class="mb-0 text-break">Cancelled @cancelled.ToString("yyyy-MM-dd HH:mm") UTC · @escalation.CancellationReason</p>
+                }
+            </div>
+        }
+        @if (Model.Responders.Count > 0)
+        {
+            <form method="post" asp-page-handler="Escalate" asp-route-id="@Model.Ticket.Id" class="mt-3">
+                <label asp-for="ResponderId" class="form-label-ids">Responder</label>
+                <select asp-for="ResponderId" class="form-select" required>
+                    <option value="">Select a responder</option>
+                    @foreach (var responder in Model.Responders)
+                    {
+                        <option value="@responder.Id">@responder.Name (@responder.Role)</option>
+                    }
+                </select>
+                <label asp-for="EscalationReason" class="form-label-ids mt-2">Escalation reason</label>
+                <textarea asp-for="EscalationReason" class="form-control mb-2" required minlength="10" maxlength="2000"></textarea>
+                <button class="btn-ids btn-ids-primary" type="submit">Escalate incident</button>
+            </form>
+        }
+        @if (Model.CanCancel)
+        {
+            <details class="mt-3">
+                <summary>Cancel escalation</summary>
+                <form method="post" asp-page-handler="CancelEscalation" asp-route-id="@Model.Ticket.Id" data-confirm="Cancel this escalation and notify the responder?" class="mt-2">
+                    <label asp-for="CancellationReason" class="form-label-ids">Cancellation reason</label>
+                    <textarea asp-for="CancellationReason" class="form-control mb-2" required maxlength="2000"></textarea>
+                    <button class="btn-ids btn-ids-danger" type="submit">Confirm cancellation</button>
+                </form>
+            </details>
+        }
+    </section>
+}
+
 @if (!string.IsNullOrEmpty(Model.StatusMessage))
 {
     var isError = Model.StatusMessage.Contains("Error");
@@ -142,7 +191,7 @@
        }
      
       <!-- Add Comment Form -->
-                @if (Model.Ticket.Status != "Closed")
+                @if (Model.Ticket.Status is not ("Closed" or "Cancelled"))
        {
        <form method="post" asp-page-handler="AddComment" asp-route-id="@Model.Ticket.Id">
       <div class="form-group">
@@ -160,7 +209,7 @@ else
        {
                <div class="alert-ids alert-ids-info">
      <i class="alert-ids-icon fa-solid fa-circle-info"></i>
-       <div class="alert-ids-content">This ticket is closed. No further comments can be added.</div>
+       <div class="alert-ids-content">Comments are closed for this incident.</div>
             </div>
           }
       </div>

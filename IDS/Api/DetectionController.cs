@@ -94,6 +94,10 @@ var stats = await _liveDetectionService.GetAttacksByTypeAsync(since);
       return Ok(stats);
     }
 
+        [HttpGet("workers")]
+        public Task<SystemHealth> GetWorkers([FromServices] WorkerHealthService health, CancellationToken token) =>
+            health.GetAsync(token);
+
         /// <summary>
         /// Health check endpoint.
         /// GET /api/detection/health

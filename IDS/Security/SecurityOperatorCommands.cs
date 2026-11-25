@@ -1,6 +1,7 @@
 using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace IDS.Security;
 
@@ -19,7 +20,7 @@ public static class SecurityOperatorCommands
         var users = services.GetRequiredService<UserManager<ApplicationUser>>();
         var database = services.GetRequiredService<ApplicationDbContext>();
         var access = services.GetRequiredService<AccessControlService>();
-        await using var transaction = await database.Database.BeginTransactionAsync();
+        await using var transaction = await database.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         var user = await users.FindByEmailAsync(email) ?? throw new InvalidOperationException("The account does not exist.");
 
         if (command.StartsWith(prefixes[0], StringComparison.Ordinal))

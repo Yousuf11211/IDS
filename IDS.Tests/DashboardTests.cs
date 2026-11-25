@@ -29,12 +29,12 @@ public class DashboardTests : IDisposable
     }
 
     [Theory]
-    [InlineData(0, 0, "Normal")]
-    [InlineData(12, 0, "Normal")]
-    [InlineData(0, 8, "Attention")]
-    [InlineData(12, 3, "Degraded")]
-    [InlineData(4, 3, "Attention")]
-    public async Task EmployeeDashboardCountsSavedTraffic(int normalCount, int attackCount, string expectedStatus)
+    [InlineData(0, 0)]
+    [InlineData(12, 0)]
+    [InlineData(0, 8)]
+    [InlineData(12, 3)]
+    [InlineData(4, 3)]
+    public async Task EmployeeDashboardCountsSavedTraffic(int normalCount, int attackCount)
     {
         // Old detections still belong in the lifetime totals. Logs and raw packets do not.
         var timestamp = DateTime.UtcNow.AddDays(-30);
@@ -56,7 +56,6 @@ public class DashboardTests : IDisposable
         Assert.Equal(attackCount, page.AttackCount);
         Assert.Equal(normalCount + attackCount, page.TotalLogs);
         Assert.Equal(page.NetworkTotal, page.LevelCounts.Values.Sum());
-        Assert.Equal(expectedStatus, page.IdsStatus);
 
         // Revisiting the page records another visit without changing traffic totals.
         await page.OnGetAsync();

@@ -12,14 +12,20 @@ LOG = logging.getLogger(__name__)
 TERMINAL = {"completed", "completed_with_errors", "rejected"}
 
 
-def file_hash(path):
+def file_hash(path, pulse=None):
+    digest = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+            if pulse:
+                pulse()
+    return digest.hexdigest()
 
 
 class Worker:
-    def __init__(self, config, store, models):
+    def __init__(self, config, store, models, pulse=None):
         self.config, self.store, self.models = config, store, models
+        self.pulse = pulse or (lambda: None)
         self.observed_files = {}
         self.timestamp_zone = config.timestamp_zone()
         self.data = config.root / config.data_dir
@@ -39,6 +45,7 @@ class Worker:
         for removed in self.observed_files.keys() - set(paths):
             del self.observed_files[removed]
         for path in paths:
+            self.pulse()
             if path.is_symlink() or not path.is_file():
                 continue
             marker = path.with_name(path.name + ".ready")
@@ -73,6 +80,7 @@ class Worker:
     def scan(self):
         self.discover()
         for path in sorted((self.data / "processing").iterdir()):
+            self.pulse()
             if path.suffix.lower() != ".csv" or path.is_symlink() or not path.is_file():
                 continue
             self.process(path)
@@ -84,6 +92,8 @@ class Worker:
             reader = csv.reader(stream, strict=True)
             names = headers(next(reader, None), self.models.feature_names)
             for number, values in enumerate(reader, start=1):
+                if number % self.config.batch_size == 0:
+                    self.pulse()
                 if number <= checkpoint:
                     continue
                 try:
@@ -101,7 +111,7 @@ class Worker:
                 self.store.stage(digest, batch)
 
     def process(self, path):
-        digest = file_hash(path)
+        digest = file_hash(path, self.pulse)
         job = self.store.register(digest, path.name, self.models)
         if job["Status"] in TERMINAL:
             # Recover a crash between completion commit and file movement.
@@ -127,6 +137,7 @@ class Worker:
                 self.stage_file(path, digest, job["LastRow"])
                 self.store.update(digest, Status="classifying", LastError=None)
             while rows := self.store.pending(digest, self.config.batch_size):
+                self.pulse()
                 predictions = self.models.predict(rows)
                 self.store.complete_batch(digest, rows, predictions, self.models.release, models=self.models)
                 LOG.info("Import %s committed %d predictions (%d benign, %d attacks)",

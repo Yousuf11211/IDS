@@ -4,6 +4,7 @@ from pathlib import Path
 import signal
 import sys
 import threading
+import time
 
 from .config import Config, ROOT
 from .database import Store
@@ -39,6 +40,22 @@ def main(argv=None):
         print(f"Model release {models.release} verified: {len(models.feature_names)} ordered features, {len(models.labels['gatekeeper'])} binary / {len(models.labels['multiclass'])} attack labels")
         return 0
     store = Store(config)
+    worker_name = None
+    next_pulse = 0.0
+
+    def pulse():
+        nonlocal next_pulse
+        if worker_name and time.monotonic() >= next_pulse:
+            store.write_heartbeat(worker_name, True)
+            next_pulse = time.monotonic() + 5
+
+    def wait_for_poll(stopped):
+        deadline = time.monotonic() + config.poll_seconds
+        while not stopped.wait(max(0, min(5, deadline - time.monotonic()))):
+            if time.monotonic() >= deadline:
+                break
+            pulse()
+
     try:
         if args.command in ("init-db", "run", "retry"):
             store.acquire_lock()
@@ -70,12 +87,14 @@ def main(argv=None):
             stopped = threading.Event()
             for sig in (signal.SIGINT, signal.SIGTERM):
                 signal.signal(sig, lambda *_: stopped.set())
+            worker_name = None if args.once else "explanation"
             while not stopped.is_set():
+                pulse()
                 worked = explanation_worker.once()
                 if not worked:
                     if args.once:
                         return 0
-                    stopped.wait(config.poll_seconds)
+                    wait_for_poll(stopped)
             return 0
         if args.command == "check":
             print(f"Database and model release {models.release} verified")
@@ -93,8 +112,9 @@ def main(argv=None):
             # Re-read through durable staging checkpoint, then resume pending inference.
             store.update(args.file_hash, Status="retry_staging", Attempts=0, NextAttempt=0, LastError=None)
             return 0
-        worker = Worker(config, store, models)
-        logging.info("Detection worker ready for %s; SHAP job enqueueing is enabled", models.release)
+        worker = Worker(config, store, models, pulse)
+        worker_name = None if args.once else "detection"
+        logging.info("Detection worker ready for %s", models.release)
         logging.info("Watching %s (%s)", worker.data / "incoming",
                      "empty .csv.ready marker required" if config.require_ready_marker else
                      f"plain CSVs accepted after {config.file_settle_seconds:g}s stable")
@@ -102,6 +122,7 @@ def main(argv=None):
         for sig in (signal.SIGINT, signal.SIGTERM):
             signal.signal(sig, lambda *_: stopped.set())
         while not stopped.is_set():
+            pulse()
             worker.scan()
             if args.once and worker.observed_files:
                 if stopped.wait(config.file_settle_seconds):
@@ -112,10 +133,16 @@ def main(argv=None):
                 incomplete = store.fetch(f"SELECT FileHash FROM {store.table('PipelineImports')} "
                                          "WHERE Status NOT IN ('completed','completed_with_errors')")
                 return 1 if incomplete or worker.observed_files else 0
-            stopped.wait(config.poll_seconds)
+            wait_for_poll(stopped)
         return 0
     finally:
-        store.close()
+        try:
+            if worker_name:
+                store.write_heartbeat(worker_name, False)
+        except Exception:
+            logging.warning("Could not clear worker heartbeat; it will expire")
+        finally:
+            store.close()
 
 
 if __name__ == "__main__":

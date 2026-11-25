@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,15 +14,18 @@ public class ResetAuthenticatorModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<ResetAuthenticatorModel> _logger;
+    private readonly ApplicationDbContext _database;
 
     public ResetAuthenticatorModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ILogger<ResetAuthenticatorModel> logger)
+        ILogger<ResetAuthenticatorModel> logger,
+        ApplicationDbContext database)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
+        _database = database;
     }
 
     [BindProperty]
@@ -71,6 +75,7 @@ public class ResetAuthenticatorModel : PageModel
             return Page();
         }
         await _userManager.ResetAccessFailedCountAsync(user);
+        await using var transaction = await _database.Database.BeginTransactionAsync();
 
         // The enrollment middleware keeps the account on the setup screen until a new code is verified.
         var disableResult = await _userManager.SetTwoFactorEnabledAsync(user, false);
@@ -87,8 +92,20 @@ public class ResetAuthenticatorModel : PageModel
             return Page();
         }
 
-        await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0);
-        await _userManager.UpdateSecurityStampAsync(user);
+        if (await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0) == null ||
+            !(await _userManager.UpdateSecurityStampAsync(user)).Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, "The authenticator could not be reset. Try again.");
+            return Page();
+        }
+
+        _database.AuditLogs.Add(new AuditLog
+        {
+            UserId = user.Id, UserEmail = user.Email ?? "", EntityId = user.Id, EntityType = "Authentication",
+            Action = "Security.AuthenticatorReset", Timestamp = DateTime.UtcNow
+        });
+        await _database.SaveChangesAsync();
+        await transaction.CommitAsync();
         await _signInManager.RefreshSignInAsync(user);
         _logger.LogInformation("User {UserId} reset their authenticator key.", user.Id);
         StatusMessage = "Set up your authenticator again to complete the reset.";

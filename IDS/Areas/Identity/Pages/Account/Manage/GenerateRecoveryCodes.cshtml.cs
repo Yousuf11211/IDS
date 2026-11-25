@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using IDS.Data;
 using IDS.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,13 +14,16 @@ public class GenerateRecoveryCodesModel : PageModel
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<GenerateRecoveryCodesModel> _logger;
+    private readonly ApplicationDbContext _database;
 
     public GenerateRecoveryCodesModel(
         UserManager<ApplicationUser> userManager,
-        ILogger<GenerateRecoveryCodesModel> logger)
+        ILogger<GenerateRecoveryCodesModel> logger,
+        ApplicationDbContext database)
     {
         _userManager = userManager;
         _logger = logger;
+        _database = database;
     }
 
     [BindProperty]
@@ -83,6 +87,7 @@ public class GenerateRecoveryCodesModel : PageModel
             return Page();
         }
         await _userManager.ResetAccessFailedCountAsync(user);
+        await using var transaction = await _database.Database.BeginTransactionAsync();
 
         var codes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
         if (codes == null)
@@ -91,6 +96,13 @@ public class GenerateRecoveryCodesModel : PageModel
             return Page();
         }
 
+        _database.AuditLogs.Add(new AuditLog
+        {
+            UserId = user.Id, UserEmail = user.Email ?? "", EntityId = user.Id, EntityType = "Authentication",
+            Action = "Security.RecoveryCodesReplaced", Timestamp = DateTime.UtcNow
+        });
+        await _database.SaveChangesAsync();
+        await transaction.CommitAsync();
         RecoveryCodes = codes.ToArray();
         _logger.LogInformation("User {UserId} generated new recovery codes.", user.Id);
         StatusMessage = "Your new recovery codes are ready. Save them now; they will only be shown once.";

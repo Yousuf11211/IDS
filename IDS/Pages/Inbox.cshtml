@@ -1,0 +1,54 @@
+@page
+@model IDS.Pages.InboxModel
+@{
+    ViewData["Title"] = "Notification inbox";
+}
+<header class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0">Notification inbox</h1>
+    <form method="post" asp-page-handler="ReadAll">
+        <button type="submit" class="btn-ids btn-ids-secondary">Mark all as read</button>
+    </form>
+</header>
+<section class="card-ids">
+    @if (Model.Items.Count == 0)
+    {
+        <p class="card-ids-body mb-0 text-muted">No notifications on this page.</p>
+    }
+    @foreach (var item in Model.Items)
+    {
+        <article id="notification-@item.Id" class="card-ids-body border-bottom d-flex flex-wrap justify-content-between gap-3 notification-item" data-unread="@(item.ReadAt == null ? "true" : "false")">
+            <div class="flex-grow-1 text-break">
+                <h2 class="h6">
+                    @item.Type
+                    @if (item.ReadAt == null)
+                    {
+                        <span class="badge text-bg-primary ms-1">Unread</span>
+                    }
+                </h2>
+                <p class="mb-1">@item.Message</p>
+                <small class="text-muted">@(item.SenderName ?? "IDS Security") · @item.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</small>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                @if (item.TicketId.HasValue || item.ReadAt == null)
+                {
+                    <form method="post" asp-page-handler="Open" asp-route-id="@item.Id">
+                        <button type="submit" class="btn-ids btn-ids-primary btn-sm">@(item.TicketId.HasValue ? "Open incident" : "Open notification")</button>
+                    </form>
+                }
+                <form method="post" asp-page-handler="State" asp-route-id="@item.Id" asp-route-unread="@(item.ReadAt != null)" asp-route-p="@Model.CurrentPage">
+                    <button type="submit" class="btn-ids btn-ids-secondary btn-sm">Mark as @(item.ReadAt == null ? "read" : "unread")</button>
+                </form>
+            </div>
+        </article>
+    }
+</section>
+<nav class="d-flex gap-2 mt-3" aria-label="Inbox pages">
+    @if (Model.CurrentPage > 1)
+    {
+        <a asp-page="/Inbox" asp-route-p="@(Model.CurrentPage - 1)" class="btn-ids btn-ids-secondary">Previous</a>
+    }
+    @if (Model.HasNext)
+    {
+        <a asp-page="/Inbox" asp-route-p="@(Model.CurrentPage + 1)" class="btn-ids btn-ids-secondary">Next</a>
+    }
+</nav>

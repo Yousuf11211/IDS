@@ -1,0 +1,37 @@
+@model string
+<section class="card-ids mb-4" data-analytics="@Model" data-url="@Url.Content("~/api/monitoring/analytics")">
+    <header class="card-ids-header flex-wrap gap-2">
+        <h2 class="h5 mb-0">Traffic analytics</h2>
+        <label class="d-flex align-items-center gap-2">
+            <span class="small text-nowrap">Time range</span>
+            <select class="form-select form-select-sm" data-range>
+                <option value="1h">Last hour</option>
+                <option value="24h" selected>Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+            </select>
+        </label>
+    </header>
+    <div class="card-ids-body">
+        <p class="text-muted mb-2" role="status" data-chart-state>Loading analytics…</p>
+        <div class="analytics-grid">
+            <div><h3 class="h6">Detections over time</h3><div data-chart="traffic"></div></div>
+            @if (Model == "dashboard")
+            {
+                <div><h3 class="h6">Benign and malicious traffic</h3><div data-chart="ratio"></div></div>
+            }
+            else
+            {
+                <div><h3 class="h6">Top attack types</h3><div data-chart="types"></div></div>
+                <div><h3 class="h6">Attack categories</h3><div data-chart="categories"></div></div>
+            }
+            @if (Model == "dashboard" && (User.IsInRole("Admin") || User.IsInRole("Support")))
+            {
+                <div><h3 class="h6">Status of security incidents opened in this range</h3><div data-chart="incidents"></div></div>
+                <div><h3 class="h6">Status of SHAP jobs queued in this range</h3><div data-chart="explanations"></div></div>
+            }
+        </div>
+    </div>
+</section>
+<script defer src="~/lib/plotly/plotly-basic-3.1.0.min.js" asp-append-version="true"></script>
+<script defer src="~/js/traffic-analytics.js" asp-append-version="true"></script>

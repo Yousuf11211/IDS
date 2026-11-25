@@ -1,207 +1,122 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
-
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
+using IDS.Data;
+using IDS.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Extensions.Logging;
-using IDS.Data.Models; // Include the namespace for ApplicationUser
+using QRCoder;
 
-namespace IDS.Areas.Identity.Pages.Account.Manage
+namespace IDS.Areas.Identity.Pages.Account.Manage;
+
+[Authorize]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+public sealed class EnableAuthenticatorModel(UserManager<ApplicationUser> users,
+    SignInManager<ApplicationUser> signIn, ApplicationDbContext database) : PageModel
 {
-    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public class EnableAuthenticatorModel : PageModel
+    public string? SharedKey { get; private set; }
+    public string? QrImage { get; private set; }
+    [BindProperty, DataType(DataType.Password)] public string? Password { get; set; }
+    [BindProperty] public string? Code { get; set; }
+    [TempData] public string[]? RecoveryCodes { get; set; }
+    [TempData] public string? StatusMessage { get; set; }
+
+    public async Task<IActionResult> OnGetAsync()
     {
-        // Use ApplicationUser instead of ApplicationUser
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly ILogger<EnableAuthenticatorModel> _logger;
-        private readonly UrlEncoder _urlEncoder;
+        var user = await users.GetUserAsync(User);
+        if (user == null) return Challenge();
+        return user.TwoFactorEnabled ? RedirectToPage("./TwoFactorAuthentication") : Page();
+    }
 
-        private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
+    public async Task<IActionResult> OnPostPrepareAsync()
+    {
+        var user = await users.GetUserAsync(User);
+        if (user == null) return Challenge();
+        if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
+        if (!await VerifyPasswordAsync(user)) return Page();
+        await users.ResetAccessFailedCountAsync(user);
+        await LoadKeyAsync(user);
+        return Page();
+    }
 
-        public EnableAuthenticatorModel(
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
-            ILogger<EnableAuthenticatorModel> logger,
-            UrlEncoder urlEncoder)
+    public async Task<IActionResult> OnPostAsync()
+    {
+        var user = await users.GetUserAsync(User);
+        if (user == null) return Challenge();
+        if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
+        var code = Code?.Replace(" ", "").Replace("-", "");
+        ModelState.Remove(nameof(Code));
+        Code = null;
+        if (!await VerifyPasswordAsync(user)) return Page();
+
+        if (code == null || code.Length != 6 || !code.All(char.IsAsciiDigit) ||
+            !await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, code))
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _logger = logger;
-            _urlEncoder = urlEncoder;
-        }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public string SharedKey { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public string AuthenticatorUri { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string[] RecoveryCodes { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string StatusMessage { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [BindProperty]
-        public InputModel Input { get; set; }
-
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        public class InputModel
-        {
-            /// <summary>
-            ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-            ///     directly from your code. This API may change or be removed in future releases.
-            /// </summary>
-            [Required]
-            [StringLength(7, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
-            [DataType(DataType.Text)]
-            [Display(Name = "Verification Code")]
-            public string Code { get; set; }
-        }
-
-        public async Task<IActionResult> OnGetAsync()
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
-
-            // Once enrolled, never redisplay the authenticator secret to a session alone.
-            if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
-            await LoadSharedKeyAndQrCodeUriAsync(user);
-
+            await users.AccessFailedAsync(user);
+            ModelState.AddModelError(string.Empty, "Enter a valid six-digit authenticator code.");
+            if (!await users.IsLockedOutAsync(user)) await LoadKeyAsync(user);
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        await using var transaction = await database.Database.BeginTransactionAsync();
+        await users.ResetAccessFailedCountAsync(user);
+        var result = await users.SetTwoFactorEnabledAsync(user, true);
+        IEnumerable<string>? codes = null;
+        if (result.Succeeded && await users.CountRecoveryCodesAsync(user) == 0)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
-
-            if (user.TwoFactorEnabled) return RedirectToPage("./TwoFactorAuthentication");
-            if (!ModelState.IsValid)
-            {
-                await LoadSharedKeyAndQrCodeUriAsync(user);
-                return Page();
-            }
-
-            // Strip spaces and hyphens
-            var verificationCode = Input.Code.Replace(" ", string.Empty).Replace("-", string.Empty);
-
-            var is2faTokenValid = await _userManager.VerifyTwoFactorTokenAsync(
-                user, _userManager.Options.Tokens.AuthenticatorTokenProvider, verificationCode);
-
-            if (!is2faTokenValid)
-            {
-                ModelState.AddModelError("Input.Code", "Verification code is invalid.");
-                await LoadSharedKeyAndQrCodeUriAsync(user);
-                return Page();
-            }
-
-            var enableResult = await _userManager.SetTwoFactorEnabledAsync(user, true);
-            if (!enableResult.Succeeded)
-            {
-                foreach (var error in enableResult.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
-                }
-                await LoadSharedKeyAndQrCodeUriAsync(user);
-                return Page();
-            }
-            await _signInManager.RefreshSignInAsync(user);
-            var userId = await _userManager.GetUserIdAsync(user);
-            _logger.LogInformation("User with ID '{UserId}' has enabled 2FA with an authenticator app.", userId);
-
-            StatusMessage = "Your authenticator app has been verified.";
-
-            if (await _userManager.CountRecoveryCodesAsync(user) == 0)
-            {
-                var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-                RecoveryCodes = recoveryCodes.ToArray();
-                return RedirectToPage("./ShowRecoveryCodes");
-            }
-            else
-            {
-                return RedirectToPage("./TwoFactorAuthentication");
-            }
+            codes = await users.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+            if (codes == null) result = IdentityResult.Failed();
+        }
+        if (result.Succeeded) result = await users.UpdateSecurityStampAsync(user);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, "Authenticator setup could not be saved. Start enrollment again.");
+            return Page();
         }
 
-        private async Task LoadSharedKeyAndQrCodeUriAsync(ApplicationUser user)
+        database.AuditLogs.Add(new AuditLog
         {
-            // Load the authenticator key & QR code URI to display on the form
-            var unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
-            if (string.IsNullOrEmpty(unformattedKey))
-            {
-                await _userManager.ResetAuthenticatorKeyAsync(user);
-                unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
-            }
+            UserId = user.Id, UserEmail = user.Email ?? "", Action = "Security.AuthenticatorEnabled",
+            EntityType = "Authentication", EntityId = user.Id, Timestamp = DateTime.UtcNow
+        });
+        await database.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await signIn.RefreshSignInAsync(user);
+        StatusMessage = "Your authenticator is enabled.";
+        if (codes == null) return RedirectToPage("./TwoFactorAuthentication");
+        RecoveryCodes = codes.ToArray();
+        return RedirectToPage("./ShowRecoveryCodes");
+    }
 
-            SharedKey = FormatKey(unformattedKey);
-
-            var email = await _userManager.GetEmailAsync(user);
-            AuthenticatorUri = GenerateQrCodeUri(email, unformattedKey);
-        }
-
-        private string FormatKey(string unformattedKey)
+    private async Task<bool> VerifyPasswordAsync(ApplicationUser user)
+    {
+        var password = Password;
+        Password = null;
+        ModelState.Remove(nameof(Password));
+        if (!await users.IsLockedOutAsync(user) && !string.IsNullOrEmpty(password))
         {
-            var result = new StringBuilder();
-            int currentPosition = 0;
-            while (currentPosition + 4 < unformattedKey.Length)
-            {
-                result.Append(unformattedKey.AsSpan(currentPosition, 4)).Append(' ');
-                currentPosition += 4;
-            }
-            if (currentPosition < unformattedKey.Length)
-            {
-                result.Append(unformattedKey.AsSpan(currentPosition));
-            }
-
-            return result.ToString().ToLowerInvariant();
+            if (await users.CheckPasswordAsync(user, password)) return true;
+            await users.AccessFailedAsync(user);
         }
+        ModelState.AddModelError(string.Empty, "Verify your current password to continue.");
+        return false;
+    }
 
-        private string GenerateQrCodeUri(string email, string unformattedKey)
+    private async Task LoadKeyAsync(ApplicationUser user)
+    {
+        var key = await users.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key) && (await users.ResetAuthenticatorKeyAsync(user)).Succeeded)
+            key = await users.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key))
         {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                AuthenticatorUriFormat,
-                _urlEncoder.Encode("IDS"), // Use a friendly name like "IDS"
-                _urlEncoder.Encode(email),
-                unformattedKey);
+            ModelState.AddModelError(string.Empty, "Could not prepare the authenticator key. Try again.");
+            return;
         }
+        SharedKey = string.Join(" ", key.Chunk(4).Select(chars => new string(chars)));
+        var label = Uri.EscapeDataString(user.Email ?? user.Id);
+        using var qr = QRCodeGenerator.GenerateQrCode($"otpauth://totp/IDS:{label}?secret={key}&issuer=IDS&digits=6",
+            QRCodeGenerator.ECCLevel.M);
+        using var png = new PngByteQRCode(qr);
+        QrImage = "data:image/png;base64," + Convert.ToBase64String(png.GetGraphic(5));
     }
 }

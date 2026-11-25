@@ -172,7 +172,10 @@
              <!-- Add Comment -->
      @if (Model.Ticket.Status != "Closed")
           {
-   <form method="post" asp-page-handler="AddComment" asp-route-id="@Model.Ticket.Id">
+
+@if (Model.Ticket.Status != "Cancelled")
+{
+<form method="post" asp-page-handler="AddComment" asp-route-id="@Model.Ticket.Id">
      <div class="form-group">
         <label class="form-label-ids">Reply to User</label>
 <textarea asp-for="NewComment" class="form-control-ids" rows="3" placeholder="Type your response..."></textarea>
@@ -183,6 +186,8 @@
        </button>
          </div>
        </form>
+}
+
        }
  </div>
         </div>
@@ -190,25 +195,27 @@
     
     <!-- Actions Sidebar -->
     <div class="col-lg-4">
-<!-- Quick Actions -->
+@if (Model.Ticket.Status != "Cancelled")
+{
+<!-- Incident actions -->
    <div class="card-ids">
    <div class="card-ids-header">
     <h3 class="card-ids-title">
   <i class="fa-solid fa-bolt text-warning"></i>
-Quick Actions
+Incident actions
      </h3>
 </div>
     <div class="card-ids-body">
-         @if (string.IsNullOrEmpty(Model.Ticket.AssignedToUserId) && Model.Ticket.Status != "Closed" && Model.Ticket.Status != "Resolved")
+         @if (Model.AssignmentEnabled && Model.Ticket.AssignedToUserId == null && Model.Ticket.Status is not ("Closed" or "Resolved"))
    {
   <form method="post" asp-page-handler="AssignToMe" asp-route-id="@Model.Ticket.Id" class="mb-3">
-    <button type="submit" class="btn-ids btn-ids-success w-100">
+    <button type="submit" class="btn-ids btn-ids-secondary">
     <i class="fa-solid fa-hand me-2"></i> Assign to Me
          </button>
   </form>
     }
 
-        @if (Model.Ticket.Status != "Closed" && Model.Ticket.Status != "Resolved")
+        @if (Model.AssignmentEnabled && Model.Ticket.Status is not ("Closed" or "Resolved"))
         {
             <form method="post" asp-page-handler="Assign" asp-route-id="@Model.Ticket.Id" class="mb-3">
                 <label asp-for="ResponderId" class="form-label-ids">Assign or reassign responder</label>
@@ -229,7 +236,7 @@ Quick Actions
       
   <!-- Update Status -->
    <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@Model.Ticket.Id" class="mb-3">
-       <label class="form-label-ids">Update Status</label>
+       <label asp-for="NewStatus" class="form-label-ids">Update status</label>
       <div class="d-flex gap-2">
       <select asp-for="NewStatus" class="form-control-ids form-select-ids">
      @foreach (var status in Model.Statuses)
@@ -237,15 +244,14 @@ Quick Actions
          <option value="@status" selected="@(status == Model.Ticket.Status)">@status</option>
    }
   </select>
- <button type="submit" class="btn-ids btn-ids-primary">
-       <i class="fa-solid fa-check"></i>
+ <button type="submit" class="btn-ids btn-ids-secondary">Save
 </button>
        </div>
          </form>
 
         <!-- Update Priority -->
     <form method="post" asp-page-handler="UpdatePriority" asp-route-id="@Model.Ticket.Id" class="mb-3">
-    <label class="form-label-ids">Update Priority</label>
+    <label asp-for="NewPriority" class="form-label-ids">Update priority</label>
         <div class="d-flex gap-2">
   <select asp-for="NewPriority" class="form-control-ids form-select-ids">
      @foreach (var priority in Model.Priorities)
@@ -253,8 +259,7 @@ Quick Actions
  <option value="@priority" selected="@(priority == Model.Ticket.Priority)">@priority</option>
    }
     </select>
-       <button type="submit" class="btn-ids btn-ids-primary">
-      <i class="fa-solid fa-check"></i>
+       <button type="submit" class="btn-ids btn-ids-secondary">Save
              </button>
    </div>
     </form>
@@ -277,13 +282,15 @@ Quick Actions
  <label class="form-label-ids">Resolution Notes</label>
   <textarea asp-for="ResolutionNotes" class="form-control-ids" rows="4" placeholder="Describe how the issue was resolved..."></textarea>
        </div>
-       <button type="submit" class="btn-ids btn-ids-success w-100 mt-3">
+       <button type="submit" class="btn-ids btn-ids-primary mt-3">
    <i class="fa-solid fa-check-circle me-2"></i> Mark as Resolved
       </button>
  </form>
          </div>
          </div>
         }
+
+}
 
 <!-- Ticket Timeline -->
    <div class="card-ids mt-4">

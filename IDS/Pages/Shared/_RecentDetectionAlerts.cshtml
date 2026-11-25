@@ -1,0 +1,13 @@
+<section class="card-ids mb-4" data-alert-panel data-url="@Url.Content("~/api/monitoring/alerts")"
+         data-history="@Url.Page("/DetectionHistory")">
+    <header class="card-ids-header gap-2 flex-wrap">
+        <h2 class="h6 mb-0">Recent detection alerts <span class="badge text-bg-primary" data-new-alerts hidden></span></h2>
+        <a asp-page="/DetectionHistory" class="small">Detection history</a>
+    </header>
+    <p class="px-3 pt-2 mb-0 text-muted small" data-alert-state role="status">Loading alerts…</p>
+    <div class="recent-detection-alerts" data-alert-list></div>
+    <div class="px-3 py-2 text-end" data-alert-controls hidden>
+        <button type="button" class="btn-ids btn-ids-ghost btn-ids-sm" data-clear-alerts>Clear new count</button>
+    </div>
+</section>
+<script defer src="~/js/recent-detection-alerts.js" asp-append-version="true"></script>

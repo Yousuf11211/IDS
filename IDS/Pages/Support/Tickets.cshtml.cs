@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
 using IDS.Security;
@@ -32,6 +33,7 @@ namespace IDS.Pages.Support
 
   public List<SupportTicket> Tickets { get; set; } = new();
         public string CurrentFilter { get; set; } = "Open";
+        public bool AssignmentEnabled { get; private set; }
         public string? SearchQuery { get; set; }
         
 // Statistics
@@ -45,14 +47,15 @@ namespace IDS.Pages.Support
 
         public async Task OnGetAsync(string? status, string? search, string? priority)
         {
-  CurrentFilter = status ?? "Open";
+  CurrentFilter = status ?? "All";
+        AssignmentEnabled = await OperationsSettings.IsAssignmentEnabledAsync(_context);
         SearchQuery = search;
 
      // Get statistics
             TotalOpen = await _context.SupportTickets.CountAsync(t => t.Status == "Open");
        TotalInProgress = await _context.SupportTickets.CountAsync(t => t.Status == "InProgress");
  TotalResolved = await _context.SupportTickets.CountAsync(t => t.Status == "Resolved" || t.Status == "Closed");
- TotalCritical = await _context.SupportTickets.CountAsync(t => t.Priority == "Critical" && t.Status != "Closed" && t.Status != "Resolved");
+ TotalCritical = await _context.SupportTickets.CountAsync(t => t.Priority == "Critical" && t.Status != "Closed" && t.Status != "Resolved" && t.Status != "Cancelled");
 
             // Build query
      var query = _context.SupportTickets.AsQueryable();
@@ -91,6 +94,7 @@ namespace IDS.Pages.Support
 
         public async Task<IActionResult> OnPostAssignToMeAsync(int ticketId)
         {
+            if (!await OperationsSettings.IsAssignmentEnabledAsync(_context)) return Forbid();
  var user = await _userManager.GetUserAsync(User);
          if (user == null)
       {
@@ -104,7 +108,7 @@ namespace IDS.Pages.Support
        return RedirectToPage();
             }
 
-            if (ticket.Status == "Closed" || ticket.Status == "Resolved")
+            if (ticket.Status is "Closed" or "Resolved" or "Cancelled")
             {
                 StatusMessage = "Error: Reopen this ticket before assigning it.";
                 return RedirectToPage();
@@ -120,10 +124,14 @@ namespace IDS.Pages.Support
      ticket.AssignedToName = !string.IsNullOrEmpty(user.FirstName)
       ? $"{user.FirstName} {user.LastName}"
  : user.Email ?? "Support";
+     var oldStatus = ticket.Status;
      ticket.Status = "InProgress";
       ticket.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            IncidentWorkflow.RecordAssignment(_context, ticket, user, null, null);
+            IncidentWorkflow.RecordStatus(_context, ticket, user, oldStatus);
+            try { await _context.SaveChangesAsync(); }
+            catch (DbUpdateConcurrencyException) { return StatusCode(409, "The incident changed. Reload the queue."); }
 
       _logger.LogInformation(
   "Ticket {TicketNumber} assigned to {Email}",

@@ -60,7 +60,11 @@
    <i class="alert-ids-icon fa-solid fa-exclamation-triangle"></i>
     <div class="alert-ids-content">
  <strong>No Recovery Codes Left!</strong><br/>
-    You must <a asp-page="./GenerateRecoveryCodes">generate new recovery codes</a> before you can use them to log in.
+    You must        @if (User.IsInRole("Admin") && Model.TestingBypass)
+        {
+            <a asp-page="./Disable2fa" class="btn-ids btn-ids-secondary">Disable authenticator</a>
+        }
+ <a asp-page="./GenerateRecoveryCodes">generate new recovery codes</a> before you can use them to log in.
      </div>
   </div>
           }
@@ -133,26 +137,10 @@
      Use an authenticator app like Google Authenticator or Microsoft Authenticator to generate time-based verification codes.
     </p>
 
-        @if (!Model.HasAuthenticator)
-          {
-       <a asp-page="./EnableAuthenticator" class="btn-ids btn-ids-success btn-ids-lg">
-<i class="fa-solid fa-plus me-2"></i>
-            <span>Set Up Authenticator App</span>
-         </a>
-  }
- else
-         {
-        <div class="d-flex flex-wrap gap-2">
-         <a asp-page="./EnableAuthenticator" class="btn-ids btn-ids-primary">
-  <i class="fa-solid fa-gear me-2"></i>
-      <span>Reconfigure Authenticator</span>
- </a>
-       <a asp-page="./ResetAuthenticator" class="btn-ids btn-ids-secondary">
-   <i class="fa-solid fa-rotate me-2"></i>
-        <span>Reset Authenticator</span>
-      </a>
-         </div>
-            }
+        @if (!Model.Is2faEnabled)
+        {
+            <a asp-page="./EnableAuthenticator" class="btn-ids btn-ids-primary">Set up authenticator</a>
+        }
  </div>
         </div>
  </div>

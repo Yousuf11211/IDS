@@ -83,6 +83,7 @@ def main():
         page.reload(wait_until='networkidle')
         page.wait_for_function("document.getElementById('inspectionNotice').textContent.includes('chart library could not be loaded')")
         assert page.locator('#featureEvidence tr').count() == 10
+        page.unroute('**/lib/plotly/**')
         # Drive the dashboard's real event handlers offline. The .NET integration test
         # separately delivers a real NewDetection message over an authenticated WebSocket.
         page.set_extra_http_headers({'X-Inspection-Test-Role': 'Admin'})
@@ -101,20 +102,62 @@ def main():
             assert page.locator('#liveFeed .detection-item:visible').count() > 0
             assert page.locator('#liveFeed .detection-item:visible').evaluate_all(
                 '(items, label) => items.every(i => i.dataset.attackType === label)', label)
-            assert label in page.locator('#attacksByType').inner_text()
+        page.wait_for_function("document.querySelector('[data-chart=types]').data?.[0]?.type === 'bar'")
+        page.wait_for_function("document.querySelector('[data-chart=categories]').data?.[0]?.type === 'pie'")
+        page.wait_for_selector('[data-alert-list] a')
+        assert page.locator('[data-alert-list] a').count() <= 12
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Mobile feed overflows'
+        panel = page.locator('[data-alert-list]')
+        assert panel.evaluate("node => node.clientHeight <= 320")
+        page.wait_for_function("document.querySelector('[data-worker=overall]').textContent === 'Offline'")
+        page.locator('[data-alert-list] a').first.click()
+        assert 'DetectionHistory?id=' in page.url
+        page.get_by_role('heading', name='Detection history', exact=True).wait_for()
+        page.goto(f'{base_url}/LiveDashboard', wait_until='networkidle')
         page.evaluate("""() => dashboardEvents.StatsUpdate({ benignLast24h: 1, attacksLast24h: 20,
             benignLastHour: 1, attacksLastHour: 20, attackPercentage: 95, systemStatus: 'Warning',
             attacksByType: { PortScan: 13, DoS_SYN_Flood: 7 } })""")
-        assert '13' in page.locator('#attacksByType').inner_text()
-        assert '7' in page.locator('#attacksByType').inner_text()
-        page.wait_for_timeout(1100)  # Also exercise the live clock interval.
+        assert page.locator('#statAttacks24h').inner_text() == '20'
+        page.goto(f'{base_url}/Dashboard', wait_until='networkidle')
+        page.wait_for_function("document.querySelector('[data-chart=ratio]').data?.[0]?.type === 'pie'")
+        assert page.evaluate("document.querySelector('footer').getBoundingClientRect().top >= window.innerHeight")
+        page.route('**/api/monitoring/analytics?range=1h', lambda route: route.fulfill(
+            content_type='application/json', body=json.dumps({
+                'snapshot': {'traffic': [], 'types': [], 'categories': [], 'incidents': [], 'explanations': []},
+                'refreshSeconds': 30
+            })))
+        page.locator('[data-range]').select_option('1h')
+        page.locator('[data-chart=traffic]').get_by_text('No records in this time range.').wait_for()
+        page.goto(f'{base_url}/Inbox', wait_until='networkidle')
+        assert abs(page.evaluate("document.querySelector('footer').getBoundingClientRect().bottom - window.innerHeight")) <= 2
+        # A fixture user signs in through real Identity cookies and a one-time recovery code.
+        inbox_context = browser.new_context(viewport={'width': 1024, 'height': 768})
+        inbox_context.route('https://**/*', lambda route: route.abort())
+        inbox = inbox_context.new_page()
+        inbox.on('pageerror', lambda error: errors.append(str(error)))
+        inbox.goto(base_url + '/Identity/Account/Login?returnUrl=%2FInbox')
+        inbox.locator('#Input_Email').fill(os.environ['IDS_TEST_INBOX_LOGIN'])
+        inbox.locator('#Input_Password').fill(os.environ['IDS_TEST_INBOX_PASSWORD'])
+        inbox.locator('button[type=submit]').first.click()
+        inbox.get_by_role('link', name='Use Recovery Code').click()
+        inbox.locator('#Input_RecoveryCode').fill(os.environ['IDS_TEST_INBOX_RECOVERY'])
+        inbox.locator('button[type=submit]').first.click()
+        inbox.get_by_role('heading', name='Notification inbox').wait_for()
+        inbox.locator('[data-inbox-count]:text-is("1")').wait_for()
+        inbox.get_by_role('heading', name='Incident escalated Unread').wait_for()
+        inbox.get_by_role('button', name='Open incident').click()
+        inbox.get_by_text('Review fixture security incident', exact=True).wait_for()
+        assert '/ViewTicket' in inbox.url
+        inbox.goto(base_url + '/Inbox')
+        assert inbox.locator('.notification-item').get_attribute('data-unread') == 'false'
         assert not errors, errors
         browser.close()
     print(json.dumps(dict(browser='Microsoft Edge / Chromium', verified=['real stored numerical charts',
         'binary and nonzero multiclass selection', 'hover', 'keyboard feature detail', 'top 5/10/all',
         'sorting', 'waterfall', 'reference unavailable', 'mobile 390px', 'API error', 'processing', 'failed',
         'existing escalation link', 'missing chart library with numerical fallback',
-        'local charts with external requests blocked'], javascriptErrors=errors)))
+        'local charts with external requests blocked', 'traffic charts and empty state', 'bounded linked alerts',
+        'worker status', 'short and long page footers', 'MFA login and persistent inbox navigation'], javascriptErrors=errors)))
 
 
 if __name__ == '__main__':

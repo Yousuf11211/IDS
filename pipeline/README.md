@@ -111,8 +111,10 @@ python -m ids_pipeline explain
 
 Backfill can run while the explanation process stays running. Restart both workers
 after updating Python code: an existing process retains its previously loaded code.
-The detector should log `SHAP job enqueueing is enabled` on startup; the explanation
-worker logs each completed attack/stage. Stop the explanation process before
+The explanation worker logs each completed attack and stage. Administrators control
+automatic enqueueing for new detections in **Administration → Settings**. Existing
+jobs continue processing and historical backfill remains an explicit operator command.
+Stop the explanation process before
 resetting failed explanations. After fixing a failure, use
 `python -m ids_pipeline retry-explanations ATTACK_TABLE_ID` and restart it.
 
@@ -130,6 +132,20 @@ Open **Live Dashboard** (`/LiveDashboard`) or `/Dashboard` in the web app. The
 existing monitor broadcasts detections about every two seconds and stats about
 every ten seconds. The separate administrative `SecurityAlerts` table is not part
 of this flow.
+
+### Worker health
+
+Apply the web migration `20261125180505_AddOperationsMonitoringAndInbox`
+before starting updated workers. Both workers write their own SQL Server UTC
+heartbeat while polling and reaching progress checkpoints. Idle workers remain
+live. A graceful exit clears the running flag. A crash or stalled operation
+becomes offline after the configured timeout. Dashboard and Live Feed read the
+same health endpoint and refresh every five seconds while visible.
+
+The default timeout is 120 seconds. Set a timeout in **Administration →
+Settings** that exceeds the longest legitimate uninterrupted database or model
+operation on your equipment. These settings apply to monitoring and new work.
+Start and stop the Python processes in their own terminals.
 
 For a single scan, use `python -m ids_pipeline run --once`.
 

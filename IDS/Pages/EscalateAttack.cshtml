@@ -40,11 +40,15 @@
                     @if (Model.ExistingTicket != null)
                     {
                         <div class="alert-ids alert-ids-info">
-                            <div class="alert-ids-content">This detection has already been escalated as @Model.ExistingTicket.TicketNumber.</div>
+                            <div class="alert-ids-content">
+                                @(Model.ExistingTicket.Status == "Cancelled"
+                                    ? "The escalation for this detection was cancelled."
+                                    : "This detection already has an incident.")
+                            </div>
                         </div>
-                        @if (Model.ExistingTicket.SubmittedByUserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value || User.IsInRole("Support") || User.IsInRole("Admin"))
+                        @if (Model.CanViewExistingTicket)
                         {
-                            <a asp-page="/ViewTicket" asp-route-id="@Model.ExistingTicket.Id" class="btn-ids btn-ids-primary w-100">View incident</a>
+                            <a asp-page="/ViewTicket" asp-route-id="@Model.ExistingTicket.Id" class="btn-ids btn-ids-primary">View incident</a>
                         }
                     }
                     else if (Model.Responders.Count == 0)
@@ -73,7 +77,7 @@
                                 <textarea asp-for="Input.Reason" class="form-control-ids" rows="5" maxlength="2000" placeholder="Describe what needs investigation and any impact you observed."></textarea>
                                 <span asp-validation-for="Input.Reason" class="text-danger"></span>
                             </div>
-                            <button type="submit" class="btn-ids btn-ids-primary w-100">Create and assign incident</button>
+                            <button type="submit" class="btn-ids btn-ids-primary">Create and assign incident</button>
                         </form>
                     }
                 </div>

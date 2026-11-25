@@ -194,3 +194,9 @@ if (!text) return '';
     };
 
 })();
+
+// Confirm sensitive actions before ordinary form submission.
+document.addEventListener('submit', event => {
+    const prompt = event.target.dataset?.confirm;
+    if (prompt && !window.confirm(prompt)) event.preventDefault();
+});

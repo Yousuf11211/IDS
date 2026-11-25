@@ -85,3 +85,20 @@ Server or database compromise bypasses application approval checks. Audit record
 Identity credential tables and security settings are excluded from the generic database viewer. Personal-data exports exclude authenticator secrets. Direct detection-table writes remain controlled by the deployment setting `DatabaseViewer:AllowWrites`, which should remain false in production.
 
 The design follows OWASP guidance on [MFA recovery and factor changes](https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html) and [least-privilege authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
+
+
+## Administration settings and authenticator
+
+**Administration → Settings** links to the existing employee and security approval
+pages. Operating settings are saved in `SystemSettings` with an audit entry for
+each changed value. The page requires recent administrator verification and the
+current password to save settings or publish an inbox announcement.
+
+**My authenticator** shows enrollment and recovery status. Enrollment verifies
+the current password before revealing the QR code and verifies the password and
+a valid authenticator code before activation. Setup, reset, disabling and
+recovery-code changes are audited without including credential values. The
+organization's MFA requirement remains in force. An administrator covered by the
+existing Development administrator MFA exception can disable their enrollment
+with their current password and an authenticator or recovery code. Disabling
+revokes the old key and recovery codes and signs the administrator out.

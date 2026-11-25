@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import tempfile
 import sys
+import subprocess
+import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -26,6 +28,11 @@ def main():
     if not database.startswith('IDS_Shap_Test_'):
         raise ValueError('SQL integration fixtures require a dedicated IDS_Shap_Test_ database')
     os.environ['CONNECTION_STRING'] = connection
+    if len(sys.argv) == 4 and sys.argv[1] == "--idle-worker":
+        from ids_pipeline.__main__ import main as run_cli
+        folder = sys.argv[3]
+        Config.load = classmethod(lambda cls, _path: replace(cls(), webapp_dir=folder, data_dir=str(Path(folder) / "idle")))
+        return run_cli([sys.argv[2]])
     with tempfile.TemporaryDirectory() as tmp:
         config = replace(Config(), data_dir=str(Path(tmp) / 'traffic'), webapp_dir=tmp, max_attempts=1)
         models = load_models(config)
@@ -92,6 +99,7 @@ def main():
             assert len(payload['features']) == 120
             assert payload['reference'] is None
             assert payload['additivityError'] < 2e-4
+            verify_idle_workers(store, tmp)
             print(json.dumps(dict(attackId=str(selected['AttackTrafficId']), rawId=str(selected['RawPacketId']),
                 selectedClass=payload['explainedClass'], classIndex=payload['classIndex'],
                 probability=payload['probability'], modelRelease=models.release, stagesSaved=len(rows),
@@ -101,10 +109,57 @@ def main():
                 multiclassBase=payload['baseValue'], multiclassRawMargin=payload['rawMargin'],
                 observed={feature['name']: feature['value'] for feature in payload['features']
                           if feature['name'] in ('dst_port', 'duration', 'packets_rate')},
-                retryVerified=True, backfillVerified=True)))
+                retryVerified=True, backfillVerified=True, idleWorkerHeartbeatsVerified=True)))
         finally:
             store.close()
 
 
+def verify_idle_workers(store, folder):
+    # Release the fixture's locks before launching the real CLI entry points.
+    store.fetch("""DECLARE @result int;
+        EXEC @result=sys.sp_releaseapplock @Resource='IDS.CSV.Pipeline.v1', @LockOwner='Session';
+        EXEC @result=sys.sp_releaseapplock @Resource='IDS.SHAP.v1', @LockOwner='Session';
+        SELECT @result AS Result;""")
+    processes = []
+
+    def start(command):
+        worker = subprocess.Popen([sys.executable, __file__, "--idle-worker", command, folder],
+                                  stdout=subprocess.DEVNULL)
+        processes.append(worker)
+        return worker
+
+    def wait_for(worker, previous=None):
+        for _ in range(150):
+            rows = store.fetch("SELECT LastHeartbeatUtc FROM dbo.WorkerHeartbeats WHERE Worker=? AND IsRunning=1", (worker,))
+            if rows and (previous is None or rows[0]["LastHeartbeatUtc"] > previous):
+                return rows[0]["LastHeartbeatUtc"]
+            time.sleep(0.2)
+        raise AssertionError(f"Missing heartbeat from {worker}")
+
+    try:
+        detection = start("run")
+        detection_first = wait_for("detection")
+        explanation = start("explain")
+        explanation_first = wait_for("explanation")
+        wait_for("detection", detection_first)
+        wait_for("explanation", explanation_first)
+        assert store.fetch("SELECT COUNT(*) AS Total FROM dbo.FlowExplanations WHERE Status IN ('pending','processing')")[0]["Total"] == 0
+
+        explanation.kill()
+        explanation.wait(timeout=10)
+        last = wait_for("explanation")
+        start("explain")
+        wait_for("explanation", last)
+        assert detection.poll() is None
+    finally:
+        for worker in processes:
+            if worker.poll() is None:
+                worker.kill()
+                worker.wait(timeout=10)
+        with store.transaction():
+            store.conn.execute("UPDATE dbo.WorkerHeartbeats SET IsRunning=0")
+
+
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

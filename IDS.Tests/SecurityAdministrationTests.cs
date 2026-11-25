@@ -1,3 +1,10 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using IDS.Areas.Identity.Pages.Account.Manage;
+using IDS.Core.Services;
+using IDS.Pages.Admin;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using IDS.Data;
 using IDS.Data.Models;
 using IDS.Security;
@@ -167,6 +174,120 @@ public sealed class SecurityAdministrationTests : IDisposable
         Assert.True(await _users.IsInRoleAsync(employee, AppRoles.Admin));
         Assert.False(await _users.IsInRoleAsync(employee, AppRoles.Employee));
         Assert.NotEqual(oldStamp, employee.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task AdministratorEnrollmentRequiresPasswordAndValidCodeAndDisableHonorsPolicy()
+    {
+        var admin = await AddUserAsync("authenticator-admin", AppRoles.Admin);
+        await _users.SetTwoFactorEnabledAsync(admin, false);
+        var principal = PrincipalFor(admin);
+        var context = new DefaultHttpContext { RequestServices = _scope.ServiceProvider, User = principal };
+        _authentication.Ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), IdentityConstants.ApplicationScheme);
+        var signIn = _scope.ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>();
+        signIn.Context = context;
+        var pageContext = new PageContext { HttpContext = context };
+        var enrollment = new EnableAuthenticatorModel(_users, signIn, _database) { PageContext = pageContext };
+
+        Assert.IsType<PageResult>(await enrollment.OnGetAsync());
+        Assert.Null(enrollment.SharedKey);
+        enrollment.Password = "Incorrect1!";
+        Assert.IsType<PageResult>(await enrollment.OnPostPrepareAsync());
+        Assert.Null(enrollment.SharedKey);
+        enrollment.ModelState.Clear();
+        enrollment.Password = "ExamplePassword1!";
+        Assert.IsType<PageResult>(await enrollment.OnPostPrepareAsync());
+        var key = await _users.GetAuthenticatorKeyAsync(admin);
+        Assert.NotNull(key);
+        Assert.NotNull(enrollment.QrImage);
+
+        enrollment.Password = "ExamplePassword1!";
+        enrollment.Code = "invalid";
+        Assert.IsType<PageResult>(await enrollment.OnPostAsync());
+        Assert.False(admin.TwoFactorEnabled);
+        enrollment.ModelState.Clear();
+        enrollment.Password = "ExamplePassword1!";
+        enrollment.Code = CurrentTotp(key);
+        var enabled = Assert.IsType<RedirectToPageResult>(await enrollment.OnPostAsync());
+        Assert.Equal("./ShowRecoveryCodes", enabled.PageName);
+        Assert.True(admin.TwoFactorEnabled);
+        Assert.Equal(10, await _users.CountRecoveryCodesAsync(admin));
+        var disable = new Disable2faModel(_users, signIn, _policies, _database)
+        {
+            PageContext = pageContext, Password = "ExamplePassword1!", Code = CurrentTotp(key)
+        };
+        Assert.IsType<ForbidResult>(await disable.OnPostAsync());
+        Assert.True(admin.TwoFactorEnabled);
+
+        _configuration["Security:AdminMfaTestBypass"] = "true";
+        disable.Password = "Incorrect1!";
+        Assert.IsType<PageResult>(await disable.OnPostAsync());
+        Assert.True(admin.TwoFactorEnabled);
+        disable.ModelState.Clear();
+        disable.Password = "ExamplePassword1!";
+        disable.Code = Assert.IsType<string[]>(enrollment.RecoveryCodes)[0];
+        disable.UseRecoveryCode = true;
+        Assert.IsType<RedirectToPageResult>(await disable.OnPostAsync());
+        Assert.False(admin.TwoFactorEnabled);
+        Assert.Equal(0, await _users.CountRecoveryCodesAsync(admin));
+        Assert.Contains("Security.AuthenticatorEnabled", await _database.AuditLogs.Select(log => log.Action).ToListAsync());
+        Assert.Contains("Security.AuthenticatorDisabled", await _database.AuditLogs.Select(log => log.Action).ToListAsync());
+    }
+
+    [Fact]
+    public async Task AdministrativeSettingsAreReauthenticatedAuditedAndReloadedFromDatabase()
+    {
+        var admin = await AddUserAsync("operations-admin", AppRoles.Admin);
+        var page = new OperationsModel(_database, _users, _configuration)
+        {
+            PageContext = new PageContext
+            {
+                HttpContext = new DefaultHttpContext { User = PrincipalFor(admin), RequestServices = _scope.ServiceProvider }
+            },
+            Password = "Incorrect1!",
+            Input = new OperationsModel.OperationInput { Escalation = false, HeartbeatTimeoutSeconds = 90 }
+        };
+        Assert.IsType<PageResult>(await page.OnPostAsync(default));
+        Assert.Empty(await _database.SystemSettings.ToListAsync());
+        page.ModelState.Clear();
+        page.Password = "ExamplePassword1!";
+        Assert.IsType<RedirectToPageResult>(await page.OnPostAsync(default));
+        using var reopened = _provider.CreateScope();
+        var reloaded = reopened.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Assert.False(await OperationsSettings.IsEscalationEnabledAsync(reloaded));
+        var setting = await reloaded.SystemSettings.SingleAsync(s => s.Key == WorkerHealthService.TimeoutKey);
+        Assert.Equal("90", setting.Value);
+        Assert.Equal(admin.Id, setting.ModifiedByUserId);
+        Assert.Contains(await reloaded.AuditLogs.ToListAsync(),
+            log => log.Action == "UpdateOperationsSetting" && log.EntityId == WorkerHealthService.TimeoutKey && log.Details == "120 → 90");
+        var access = reopened.ServiceProvider.GetRequiredService<AccessControlService>();
+        var users = reopened.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var target = await users.FindByIdAsync(admin.Id);
+        await Assert.ThrowsAsync<SecurityChangeException>(() =>
+            access.SetExclusiveRoleAsync(users, target!, AppRoles.Suspended, allowAdministratorChange: true));
+    }
+
+    private static string CurrentTotp(string key)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var bytes = new List<byte>();
+        var buffer = 0;
+        var bits = 0;
+        foreach (var c in key.TrimEnd('=').ToUpperInvariant())
+        {
+            buffer = (buffer << 5) | alphabet.IndexOf(c);
+            bits += 5;
+            if (bits < 8) continue;
+            bits -= 8;
+            bytes.Add((byte)(buffer >> bits));
+        }
+
+        Span<byte> counter = stackalloc byte[8];
+        BinaryPrimitives.WriteInt64BigEndian(counter, DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30);
+        var hash = HMACSHA1.HashData(bytes.ToArray(), counter);
+        var offset = hash[^1] & 0xf;
+        var code = (BinaryPrimitives.ReadInt32BigEndian(hash.AsSpan(offset, 4)) & int.MaxValue) % 1000000;
+        return code.ToString("D6");
     }
 
     private async Task<ApplicationUser> AddUserAsync(string name, string role)

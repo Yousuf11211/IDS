@@ -64,6 +64,18 @@ class Store:
         if result < 0:
             raise RuntimeError("Another worker owns this database, or application lock was denied")
 
+    def write_heartbeat(self, worker, running):
+        with self.transaction():
+            if running:
+                self.conn.execute("""
+                    UPDATE dbo.WorkerHeartbeats SET LastHeartbeatUtc=SYSUTCDATETIME(), IsRunning=1 WHERE Worker=?;
+                    IF @@ROWCOUNT=0
+                        INSERT INTO dbo.WorkerHeartbeats (Worker, LastHeartbeatUtc, IsRunning)
+                        VALUES (?, SYSUTCDATETIME(), 1);
+                """, worker, worker)
+            else:
+                self.conn.execute("UPDATE dbo.WorkerHeartbeats SET IsRunning=0 WHERE Worker=?", worker)
+
     def initialize(self):
         with self.transaction():
             self.conn.execute((self.config.root / "database/001_pipeline.sql").read_text())
@@ -155,6 +167,7 @@ class Store:
         if len(rows) != len(predictions):
             raise ValueError("Prediction count does not match batch")
         with self.transaction():
+            enqueue = models is not None and any(p.attack for p in predictions) and self.shap_generation_enabled()
             for row, prediction in zip(rows, predictions, strict=True):
                 classification = "Attack" if prediction.attack else "Benign"
                 # Raw Label preserves source truth; classified Label always reflects prediction.
@@ -172,8 +185,14 @@ class Store:
                     SET State='completed',GateScore=?,TypeScore=?,ResultId=?,ProcessedAt=?
                     WHERE FileHash=? AND RowNumber=? AND State='pending'""",
                     (prediction.gate_score, prediction.type_score, result_id, utcnow(), digest, row["RowNumber"]))
-                if prediction.attack and models is not None:
+                if prediction.attack and enqueue:
                     self.enqueue_explanations(result_id, row["RawId"], row, prediction, models)
+
+    def shap_generation_enabled(self):
+        setting = self.conn.execute(
+            "SELECT Value FROM dbo.SystemSettings WHERE [Key]=?", "Operations.ShapJobGenerationEnabled"
+        ).fetchone()
+        return setting is None or setting[0].strip().lower() == "true"
 
     def enqueue_explanations(self, attack_id, raw_id, row, prediction, models):
         """Called in detection/backfill transaction; only freezes inputs, never runs SHAP."""
