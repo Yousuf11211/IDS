@@ -1,70 +1,36 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 using IDS.Data.Models;
-using IDS.Data.Services;
 using IDS.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace IDS.Areas.Identity.Pages.Account;
 
-public class ForgotPasswordModel : PageModel
+[AllowAnonymous]
+public sealed class ForgotPasswordModel(UserManager<ApplicationUser> users, AccountRecovery recovery) : PageModel
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly MailjetEmailSender _emailSender;
-    private readonly AccountLinkBuilder _accountLinks;
-    private readonly ILogger<ForgotPasswordModel> _logger;
+    [BindProperty] public InputModel Input { get; set; } = new();
 
-    public ForgotPasswordModel(
-        UserManager<ApplicationUser> userManager,
-        MailjetEmailSender emailSender,
-        AccountLinkBuilder accountLinks,
-        ILogger<ForgotPasswordModel> logger)
+    public sealed class InputModel
     {
-        _userManager = userManager;
-        _emailSender = emailSender;
-        _accountLinks = accountLinks;
-        _logger = logger;
+        [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
     }
 
-    [BindProperty]
-    public InputModel Input { get; set; } = new();
-
-    public class InputModel
+    public async Task<IActionResult> OnPostAsync(CancellationToken token)
     {
-        [Required, EmailAddress]
-        public string Email { get; set; } = string.Empty;
-    }
-
-    public async Task<IActionResult> OnPostAsync()
-    {
-        if (!ModelState.IsValid)
-            return Page();
-
-        var user = await _userManager.FindByEmailAsync(Input.Email.Trim());
-        if (user != null && await _userManager.IsEmailConfirmedAsync(user) &&
-            _emailSender.IsConfigured)
+        if (!ModelState.IsValid) return Page();
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var email = Input.Email.Trim();
+        if (await recovery.AllowAsync(HttpContext, "password-request", email, true, token) &&
+            await recovery.AvailableAsync(RecoverySettings.PasswordEnabled, token))
         {
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var link = _accountLinks.PasswordResetLink(Url, encodedToken);
-            if (link != null)
-            {
-                var name = string.IsNullOrWhiteSpace(user.FirstName) ? "Employee" : user.FirstName;
-                var (sent, error) = await _emailSender.SendAccountAccessLinkAsync(
-                    user.Email!, name, link, isInvitation: false);
-                if (!sent)
-                    _logger.LogWarning("Password reset email failed for user {UserId}: {Error}", user.Id, error);
-            }
-            else
-            {
-                _logger.LogWarning("Password reset email could not be sent: PUBLIC_BASE_URL is invalid.");
-            }
+            var user = await users.FindByEmailAsync(email);
+            if (await recovery.EligibleAsync(user))
+                await recovery.SendPasswordLinkAsync(user!, Url, admin: false, token);
         }
-
-        // The same response for every address prevents account enumeration.
+        await AccountRecovery.PadPublicRequestAsync(started, token);
         return RedirectToPage("./ForgotPasswordConfirmation");
     }
 }

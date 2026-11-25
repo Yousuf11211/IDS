@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
 using IDS.Data;
+using IDS.Core.Services;
 using IDS.Data.Models;
 using IDS.Data.Services;
 using IDS.Security;
@@ -18,7 +19,7 @@ public class EditUserModel(
     AccessControlService access,
     MailjetEmailSender emailSender,
     AccountLinkBuilder accountLinks,
-    ApplicationDbContext database) : PageModel
+    ApplicationDbContext database, AccountRecovery recovery, AccountEmailQueue queue) : PageModel
 {
     [BindProperty] public UserEditInput Input { get; set; } = new();
     [TempData] public string? StatusMessage { get; set; }
@@ -29,7 +30,7 @@ public class EditUserModel(
     public bool IsCurrentUser { get; private set; }
     public bool AccountLinksReady => emailSender.IsConfigured && accountLinks.IsConfigured;
     public string AccountLinksUnavailableReason => !emailSender.IsConfigured
-        ? "Email delivery is disabled or Mailjet credentials are missing. Configure email delivery and restart the application."
+        ? "Email delivery is disabled or Mailjet credentials are missing. Review email delivery in Administration."
         : !accountLinks.IsConfigured
             ? "The application URL for account links is missing or invalid. Configure PUBLIC_BASE_URL or Application:PublicBaseUrl and restart the application."
             : string.Empty;
@@ -80,10 +81,12 @@ public class EditUserModel(
         }
 
         await using var transaction = await database.Database.BeginTransactionAsync();
+        var previousEmail = user.EmailConfirmed ? user.Email : null;
+        var emailChanged = !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase);
         user.FirstName = Input.FirstName?.Trim() ?? "";
         user.LastName = Input.LastName?.Trim() ?? "";
         user.Department = Input.Department;
-        if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+        if (emailChanged)
         {
             // Changing the recovery address requires ownership verification again.
             user.Email = email;
@@ -98,6 +101,15 @@ public class EditUserModel(
         }
         if (CurrentRole != Input.Role) await access.SetExclusiveRoleAsync(users, user, Input.Role);
         RequireSuccess(await users.UpdateSecurityStampAsync(user));
+        if (emailChanged && !user.MustChangePassword)
+        {
+            if (previousEmail != null)
+                queue.Confirm(user, "Registered email changed", "An administrator changed your sign-in address. Your new address must be verified before use.", previousEmail, "previous-address");
+            await emailSender.LoadAsync();
+            if (AccountLinksReady) await QueueAddressVerificationAsync(user);
+            AccountRecovery.Audit(database, user, "Security.AdminUpdatedEmail");
+            await database.SaveChangesAsync();
+        }
         await transaction.CommitAsync();
         StatusMessage = $"User {email} updated. Existing sessions were revoked.";
         return RedirectToPage(new { id = user.Id });
@@ -107,9 +119,25 @@ public class EditUserModel(
     {
         var user = await ManageableEmployeeAsync(userId);
         if (user == null) return RedirectToPage("/Admin/Security");
+        await emailSender.LoadAsync();
         if (!AccountLinksReady)
         {
             StatusMessage = "Error: " + AccountLinksUnavailableReason;
+            return RedirectToPage(new { id = userId });
+        }
+        if (user.EmailConfirmed)
+        {
+            if (!await recovery.EligibleAsync(user)) return Forbid();
+            await recovery.SendPasswordLinkAsync(user, Url, admin: true, HttpContext.RequestAborted);
+            StatusMessage = "Password reset email queued.";
+            return RedirectToPage(new { id = userId });
+        }
+        if (user.Email == null) return Forbid();
+        if (!user.MustChangePassword)
+        {
+            await QueueAddressVerificationAsync(user);
+            await database.SaveChangesAsync();
+            StatusMessage = "Address verification email queued.";
             return RedirectToPage(new { id = userId });
         }
         var token = await users.GeneratePasswordResetTokenAsync(user);
@@ -119,10 +147,27 @@ public class EditUserModel(
             StatusMessage = "Error: Could not build the account link.";
             return RedirectToPage(new { id = userId });
         }
-        var (sent, _) = await emailSender.SendAccountAccessLinkAsync(user.Email ?? "",
-            string.IsNullOrWhiteSpace(user.FirstName) ? "Employee" : user.FirstName, link, !user.EmailConfirmed);
-        StatusMessage = sent ? $"Account link sent to {user.Email}." : "Error: The account link could not be sent.";
+        var now = DateTime.UtcNow;
+        queue.Enqueue("Welcome link reissued", token, new(user.Email, IncidentWorkflow.DisplayName(user),
+            "Set up your IDS account", "Choose your password within 24 hours, then sign in to complete authenticator setup.",
+            now, "Set your password", link), now.AddHours(24));
+        await database.SaveChangesAsync();
+        StatusMessage = "Welcome email queued.";
         return RedirectToPage(new { id = userId });
+    }
+
+    private async Task QueueAddressVerificationAsync(ApplicationUser user)
+    {
+        var token = await users.GenerateEmailConfirmationTokenAsync(user);
+        var link = accountLinks.Link(Url, "/Account/ConfirmEmail", new
+        {
+            area = "Identity", userId = user.Id, code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token))
+        });
+        if (link == null || user.Email == null) return;
+        var now = DateTime.UtcNow;
+        queue.Enqueue("Verify updated email", token, new(user.Email, IncidentWorkflow.DisplayName(user),
+            "Verify your updated IDS email", "An administrator updated your email address. Verify the new address before signing in.",
+            now, "Verify updated address", link), now.AddHours(24));
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(string userId)
@@ -172,6 +217,7 @@ public class EditUserModel(
 
     private async Task LoadDisplayAsync(ApplicationUser user)
     {
+        await emailSender.LoadAsync();
         UserEmail = user.Email ?? "";
         UserFullName = string.IsNullOrWhiteSpace(user.FirstName) ? UserEmail : $"{user.FirstName} {user.LastName}";
         CurrentRole = (await users.GetRolesAsync(user)).FirstOrDefault(AppRoles.IsManagedRole) ?? "None";

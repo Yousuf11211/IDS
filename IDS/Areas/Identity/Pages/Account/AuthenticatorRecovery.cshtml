@@ -1,0 +1,34 @@
+@page
+@model AuthenticatorRecoveryModel
+@{
+    ViewData["Title"] = "Request authenticator reset";
+}
+<section class="card-ids card-ids-body mx-auto" style="max-width: 38rem">
+    <h1 class="h3">Request authenticator reset</h1>
+    @if (Model.StatusMessage != null) { <p class="alert alert-info" role="status">@Model.StatusMessage</p> }
+    @if (!Model.Finished && Model.Verified)
+    {
+        <p class="text-muted">Tell the administrator why you need a replacement authenticator. Keep passwords and recovery codes out of this form.</p>
+        <form method="post" asp-page-handler="Submit">
+            <input asp-for="Code" type="hidden" />
+            <label asp-for="Reason" class="form-label">Reason for reset</label>
+            <textarea asp-for="Reason" class="form-control" rows="4" maxlength="2000" required></textarea>
+            <span asp-validation-for="Reason" class="text-danger"></span>
+            <button type="submit" class="btn-ids btn-ids-primary mt-3">Submit for review</button>
+        </form>
+    }
+    else if (!Model.Finished)
+    {
+        <p class="text-muted">Verify your registered email before submitting a request. An administrator will review it and may follow up to confirm your identity.</p>
+        <form method="post" asp-page-handler="Email">
+            <label asp-for="Email" class="form-label">Registered email</label>
+            <input asp-for="Email" class="form-control" autocomplete="email" required />
+            <span asp-validation-for="Email" class="text-danger"></span>
+            <button type="submit" class="btn-ids btn-ids-primary mt-3">Request verification link</button>
+        </form>
+    }
+    <div class="d-flex flex-wrap gap-3 mt-3">
+        <a asp-page="./Login">Back to sign in</a>
+        <a asp-page="./HelpSupport">Contact support</a>
+    </div>
+</section>

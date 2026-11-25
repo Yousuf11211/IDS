@@ -11,6 +11,24 @@ public static class OperationsSettings
     public const string ShapJobsKey = "Operations.ShapJobGenerationEnabled";
     public const string RefreshKey = "Operations.AnalyticsRefreshSeconds";
 
+    public const string DashboardAutoRefreshKey = "Operations.DashboardAutoRefresh";
+    public const string LiveRefreshKey = "Operations.LiveRefreshSeconds";
+    public const string DashboardRangeKey = "Operations.DashboardRange";
+    public const string LiveRangeKey = "Operations.LiveRange";
+    public const string TrafficSeriesKey = "Operations.DefaultTrafficSeries";
+    public const string DashboardAlertLimitKey = "Operations.DashboardAlertLimit";
+    public const string RecentDetectionsKey = "Operations.RecentDetectionLimit";
+
+    public static async Task<Dictionary<string, string>> ReadAsync(ApplicationDbContext db, string prefix,
+        CancellationToken token = default) => await db.SystemSettings.AsNoTracking()
+        .Where(s => s.Key.StartsWith(prefix)).ToDictionaryAsync(s => s.Key, s => s.Value, token);
+
+    public static bool Enabled(this IReadOnlyDictionary<string, string> settings, string key, bool fallback = true)
+        => bool.TryParse(settings.GetValueOrDefault(key), out var enabled) ? enabled : fallback;
+
+    public static int Number(this IReadOnlyDictionary<string, string> settings, string key, int fallback, int min, int max)
+        => Math.Clamp(int.TryParse(settings.GetValueOrDefault(key), out var value) ? value : fallback, min, max);
+
     public static Task<bool> IsEscalationEnabledAsync(ApplicationDbContext db) => EnabledAsync(db, EscalationKey);
     public static Task<bool> IsAssignmentEnabledAsync(ApplicationDbContext db) => EnabledAsync(db, AssignmentKey);
 

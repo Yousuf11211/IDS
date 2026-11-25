@@ -21,6 +21,7 @@
                 if (!response.ok) throw new Error('Worker health unavailable');
                 const health = await response.json();
                 show('overall', health.overall);
+                panel.querySelector('[data-shap-disabled]').hidden = health.shapJobsEnabled !== false;
                 for (const name of ['detection', 'explanation']) {
                     show(name, health[name].status, health[name].lastHeartbeatUtc);
                 }

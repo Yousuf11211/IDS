@@ -97,37 +97,77 @@ def main():
             }};
         """))
         page.goto(f'{base_url}/LiveDashboard', wait_until='networkidle')
+        page.locator('select[data-range]').select_option('24h')
         for label in ('PortScan', 'DoS_SYN_Flood'):
-            page.select_option('#filterType', 'label:' + label)
-            assert page.locator('#liveFeed .detection-item:visible').count() > 0
-            assert page.locator('#liveFeed .detection-item:visible').evaluate_all(
-                '(items, label) => items.every(i => i.dataset.attackType === label)', label)
-        page.wait_for_function("document.querySelector('[data-chart=types]').data?.[0]?.type === 'bar'")
-        page.wait_for_function("document.querySelector('[data-chart=categories]').data?.[0]?.type === 'pie'")
-        page.wait_for_selector('[data-alert-list] a')
-        assert page.locator('[data-alert-list] a').count() <= 12
+            page.locator('select[name=category]').select_option(label)
+            page.get_by_role('button', name='Apply filters').click()
+            page.wait_for_function(
+                'label => [...document.querySelectorAll("[data-feed-rows] [data-attack-label]")].length > 0 && '
+                '[...document.querySelectorAll("[data-feed-rows] [data-attack-label]")].every(n => n.dataset.attackLabel === label)',
+                arg=label)
+        page.wait_for_function("document.querySelector('[data-chart=distribution]').data?.[0]?.type === 'pie'")
+        page.wait_for_selector('[data-feed-recent] a')
+        assert page.locator('[data-feed-recent] tr').count() <= 12
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Mobile feed overflows'
-        panel = page.locator('[data-alert-list]')
-        assert panel.evaluate("node => node.clientHeight <= 320")
         page.wait_for_function("document.querySelector('[data-worker=overall]').textContent === 'Offline'")
-        page.locator('[data-alert-list] a').first.click()
-        assert 'DetectionHistory?id=' in page.url
-        page.get_by_role('heading', name='Detection history', exact=True).wait_for()
-        page.goto(f'{base_url}/LiveDashboard', wait_until='networkidle')
-        page.evaluate("""() => dashboardEvents.StatsUpdate({ benignLast24h: 1, attacksLast24h: 20,
-            benignLastHour: 1, attacksLastHour: 20, attackPercentage: 95, systemStatus: 'Warning',
-            attacksByType: { PortScan: 13, DoS_SYN_Flood: 7 } })""")
-        assert page.locator('#statAttacks24h').inner_text() == '20'
+        if os.environ.get('IDS_SHAP_SCREENSHOTS'):
+            page.screenshot(path=str(target / 'phase2-feed-mobile.png'), full_page=True)
+        page.locator('[data-pause]').click()
+        page.get_by_text('Live updates paused.', exact=True).first.wait_for()
+        page.evaluate("() => dashboardEvents.NewDetection({ isAttack: true, attackType: 'PortScan' })")
+        assert page.locator('[data-pause]').get_attribute('aria-pressed') == 'true'
+        page.locator('[data-pause]').click()
+        page.wait_for_function("document.querySelector('[data-chart-state]').textContent.includes('UTC')")
         page.goto(f'{base_url}/Dashboard', wait_until='networkidle')
         page.wait_for_function("document.querySelector('[data-chart=ratio]').data?.[0]?.type === 'pie'")
+        page.wait_for_function("document.querySelector('[data-chart=types]').data?.[0]?.type === 'bar'")
         assert page.evaluate("document.querySelector('footer').getBoundingClientRect().top >= window.innerHeight")
-        page.route('**/api/monitoring/analytics?range=1h', lambda route: route.fulfill(
+        page.locator('.navbar-toggler').click()
+        admin_nav = page.get_by_role('button', name='Administration')
+        assert not admin_nav.get_attribute('aria-current')
+        admin_nav.click()
+        assert admin_nav.get_attribute('aria-expanded') == 'true'
+        page.keyboard.press('Escape')
+        assert admin_nav.get_attribute('aria-expanded') == 'false'
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        page.evaluate("window.IDS.ThemeManager.select('light')")
+        page.wait_for_function("document.querySelector('[data-chart=traffic]').layout.font.color === '#0f172a'")
+        if os.environ.get('IDS_SHAP_SCREENSHOTS'):
+            page.screenshot(path=str(target / 'phase2-dashboard-light.png'), full_page=True)
+        page.evaluate("window.IDS.ThemeManager.select('dark')")
+        page.wait_for_function("document.querySelector('[data-chart=traffic]').layout.font.color === '#f1f5f9'")
+        if os.environ.get('IDS_SHAP_SCREENSHOTS'):
+            page.screenshot(path=str(target / 'phase2-dashboard-dark.png'), full_page=True)
+        page.route('**/api/monitoring/analytics?range=1h&live=false', lambda route: route.fulfill(
             content_type='application/json', body=json.dumps({
-                'snapshot': {'traffic': [], 'types': [], 'categories': [], 'incidents': [], 'explanations': []},
-                'refreshSeconds': 30
+                'snapshot': {'from': '2026-01-01T00:00:00Z', 'to': '2026-01-01T01:00:00Z',
+                             'bucketMinutes': 1, 'totals': {'benign': 0, 'malicious': 0},
+                             'traffic': [], 'types': [], 'incidents': [], 'incidentMetrics': [],
+                             'explanations': [], 'sources': [], 'ports': []},
+                'range': '1h', 'autoRefresh': False, 'refreshSeconds': 30
             })))
         page.locator('[data-range]').select_option('1h')
-        page.locator('[data-chart=traffic]').get_by_text('No records in this time range.').wait_for()
+        page.locator('[data-chart=traffic]').get_by_text('No records in this window.').wait_for()
+        for path, heading in [('/Admin/Alerts', 'Security alerts'),
+                              ('/Admin/Operations', 'Administration settings'),
+                              ('/Admin/EmailDelivery', 'Email delivery'),
+                              ('/Admin/RecoveryRequests', 'Authenticator reset requests'),
+                              ('/Admin/Logs', 'System Logs')]:
+            response = page.goto(base_url + path, wait_until='networkidle')
+            assert response.ok, (path, response.status)
+            page.get_by_role('heading', name=heading).first.wait_for()
+            assert page.get_by_role('button', name='Administration').get_attribute('aria-current') == 'location'
+            for theme in ('light', 'dark'):
+                page.evaluate('theme => window.IDS.ThemeManager.select(theme)', theme)
+                assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), path
+                if path == '/Admin/Logs':
+                    expected = 'rgb(255, 255, 255)' if theme == 'light' else 'rgb(30, 41, 59)'
+                    assert page.locator('.form-control-ids').first.evaluate(
+                        "element => getComputedStyle(element).backgroundColor") == expected
+                    assert page.locator('.metric-card').first.evaluate(
+                        "element => getComputedStyle(element).backgroundColor") == expected
+                if os.environ.get('IDS_SHAP_SCREENSHOTS') and path in ('/Admin/Alerts', '/Admin/Logs', '/Admin/RecoveryRequests'):
+                    page.screenshot(path=str(target / f'phase2-{path.rsplit("/", 1)[-1].lower()}-{theme}.png'), full_page=True)
         page.goto(f'{base_url}/Inbox', wait_until='networkidle')
         assert abs(page.evaluate("document.querySelector('footer').getBoundingClientRect().bottom - window.innerHeight")) <= 2
         # A fixture user signs in through real Identity cookies and a one-time recovery code.
@@ -135,6 +175,13 @@ def main():
         inbox_context.route('https://**/*', lambda route: route.abort())
         inbox = inbox_context.new_page()
         inbox.on('pageerror', lambda error: errors.append(str(error)))
+        for path in ('/Identity/Account/ForgotPassword', '/Identity/Account/AuthenticatorRecovery',
+                     '/Identity/Account/HelpSupport', '/Identity/Account/RecoveryEnrollment'):
+            response = inbox.goto(base_url + path)
+            assert response.ok, (path, response.status)
+            for theme in ('light', 'dark'):
+                inbox.evaluate('theme => window.IDS.ThemeManager.select(theme)', theme)
+                assert inbox.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), path
         inbox.goto(base_url + '/Identity/Account/Login?returnUrl=%2FInbox')
         inbox.locator('#Input_Email').fill(os.environ['IDS_TEST_INBOX_LOGIN'])
         inbox.locator('#Input_Password').fill(os.environ['IDS_TEST_INBOX_PASSWORD'])
@@ -144,6 +191,11 @@ def main():
         inbox.locator('button[type=submit]').first.click()
         inbox.get_by_role('heading', name='Notification inbox').wait_for()
         inbox.locator('[data-inbox-count]:text-is("1")').wait_for()
+        assert inbox.get_by_role('button', name='Inbox').get_attribute('aria-current') == 'page'
+        inbox.goto(base_url + '/Dashboard')
+        inbox.locator('[data-inbox-count]:text-is("1")').wait_for()
+        assert not inbox.get_by_role('button', name='Inbox').get_attribute('aria-current')
+        inbox.goto(base_url + '/Inbox')
         inbox.get_by_role('heading', name='Incident escalated Unread').wait_for()
         inbox.get_by_role('button', name='Open incident').click()
         inbox.get_by_text('Review fixture security incident', exact=True).wait_for()

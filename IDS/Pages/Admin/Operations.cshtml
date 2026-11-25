@@ -9,6 +9,8 @@
         <a class="btn-ids btn-ids-secondary" asp-page="/Admin/Security">Security policies and approvals</a>
         <a class="btn-ids btn-ids-secondary" asp-page="/Admin/UserList">Employees and roles</a>
         <a class="btn-ids btn-ids-secondary" asp-area="Identity" asp-page="/Account/Manage/TwoFactorAuthentication">My authenticator</a>
+        <a class="btn-ids btn-ids-secondary" asp-page="/Admin/EmailDelivery">Email delivery</a>
+        <a class="btn-ids btn-ids-secondary" asp-page="/Admin/RecoveryRequests">Authenticator reset requests</a>
     </nav>
 </header>
 @if (Model.StatusMessage != null)
@@ -41,18 +43,78 @@
             <label asp-for="Input.HeartbeatTimeoutSeconds" class="form-label">Worker heartbeat timeout in seconds</label>
             <input asp-for="Input.HeartbeatTimeoutSeconds" class="form-control" aria-describedby="heartbeat-timeout-help">
             <div class="form-text mb-3" id="heartbeat-timeout-help">30–3,600 seconds. IDS uses heartbeats to report worker health. Start and stop Python workers separately.</div>
-            <label asp-for="Input.AnalyticsRefreshSeconds" class="form-label">Chart refresh interval in seconds</label>
+            <label asp-for="Input.AnalyticsRefreshSeconds" class="form-label">Dashboard refresh interval in seconds</label>
             <input asp-for="Input.AnalyticsRefreshSeconds" class="form-control">
             <div class="form-text mb-3">15–300 seconds while the page is visible.</div>
-            <label asp-for="Input.RecentAlerts" class="form-label">Recent alerts to display</label>
+            <label asp-for="Input.RecentAlerts" class="form-label">Recent malicious flows to display</label>
             <input asp-for="Input.RecentAlerts" class="form-control">
-            <div class="form-text">0 hides recent alerts. Up to 50 can be shown. All detections remain in history.</div>
+            <div class="form-text">0 hides the recent malicious activity panel. Up to 50 flows can be shown.</div>
+            <label class="d-block mt-3"><input asp-for="Input.DashboardRefresh" class="form-check-input" /> Auto-refresh Dashboard</label>
+            <label asp-for="Input.LiveRefreshSeconds" class="form-label mt-3">Live Feed refresh seconds</label>
+            <input asp-for="Input.LiveRefreshSeconds" class="form-control" />
+            <label asp-for="Input.RecentDetections" class="form-label mt-3">Detection table rows per page</label>
+            <input asp-for="Input.RecentDetections" class="form-control" />
+            <label asp-for="Input.DashboardRange" class="form-label mt-3">Default Dashboard window</label>
+            <select asp-for="Input.DashboardRange" class="form-select">
+                <option value="1h">Last 60 minutes</option><option value="24h">Last 24 hours</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="all">All time</option>
+            </select>
+            <label asp-for="Input.DefaultTrafficSeries" class="form-label mt-3">Default traffic chart series</label>
+            <select asp-for="Input.DefaultTrafficSeries" class="form-select">
+                <option value="split">Benign and malicious</option><option value="total">Total flows</option>
+            </select>
+            <label asp-for="Input.DashboardAlertLimit" class="form-label mt-3">Security alerts in Dashboard recent activity</label>
+            <input asp-for="Input.DashboardAlertLimit" class="form-control" />
+            <div class="form-text">0 removes security alerts from Dashboard recent activity.</div>
+            <label asp-for="Input.LiveRange" class="form-label mt-3">Default Live Feed window</label>
+            <select asp-for="Input.LiveRange" class="form-select">
+                <option value="5m">Last 5 minutes</option><option value="15m">Last 15 minutes</option><option value="30m">Last 30 minutes</option><option value="1h">Last 60 minutes</option><option value="24h">Last 24 hours</option>
+            </select>
+        </fieldset>
+        <fieldset id="alert-settings" class="col-lg-6">
+            <legend class="h5">Security alerts</legend>
+            <label class="d-block"><input asp-for="Input.AlertsEnabled" class="form-check-input" /> Generate grouped alerts</label>
+            <label class="d-block"><input asp-for="Input.WorkerAlerts" class="form-check-input" /> Alert on observed worker outages</label>
+            <label class="d-block"><input asp-for="Input.AccountAlerts" class="form-check-input" /> Record account recovery security alerts</label>
+            <label class="d-block"><input asp-for="Input.AlertNotifications" class="form-check-input" /> Notify administrators of new high or critical alerts</label>
+            <p class="form-text">Flows are grouped by stored class, observed source address, destination port, and fixed UTC time interval. Confidence does not determine severity.</p>
+            <label asp-for="Input.AlertThreshold" class="form-label">Default detection threshold</label>
+            <input asp-for="Input.AlertThreshold" class="form-control mb-2" />
+            <label asp-for="Input.AlertWindow" class="form-label">Grouping interval in minutes</label>
+            <input asp-for="Input.AlertWindow" class="form-control mb-2" />
+            <label asp-for="Input.AlertSeverity" class="form-label">Default alert severity</label>
+            <select asp-for="Input.AlertSeverity" class="form-select mb-2">
+                @foreach (var severity in IDS.Core.Services.SecurityAlertSettings.Severities) { <option>@severity</option> }
+            </select>
+            <label asp-for="Input.AlertRules" class="form-label">Model class overrides</label>
+            <textarea asp-for="Input.AlertRules" class="form-control" rows="3" placeholder="Exact label | count threshold | severity"></textarea>
+            <p class="form-text">Enter one rule per line. Leave this blank to use the default threshold and severity.</p>
+            <label asp-for="Input.ResolvedAlertDays" class="form-label">Show resolved alerts for this many days in recent views</label>
+            <input asp-for="Input.ResolvedAlertDays" class="form-control" />
+            <p class="form-text">0 disables the age cutoff. All time continues to include archived alerts.</p>
+        </fieldset>
+        <fieldset class="col-lg-6">
+            <legend class="h5">Account recovery</legend>
+            <label class="d-block"><input asp-for="Input.PasswordRecovery" class="form-check-input" /> Enable self-service password reset</label>
+            <label class="d-block"><input asp-for="Input.AuthenticatorRecovery" class="form-check-input" /> Accept authenticator recovery requests</label>
+            <p class="form-text">Verified email is required. Authenticator requests are reviewed by administrators. Users must prove their password during replacement.</p>
+            <label asp-for="Input.PasswordMinutes" class="form-label">Password reset link lifetime in minutes</label>
+            <input asp-for="Input.PasswordMinutes" class="form-control mb-2" />
+            <label asp-for="Input.RequestHours" class="form-label">Pending request lifetime in hours</label>
+            <input asp-for="Input.RequestHours" class="form-control mb-2" />
+            <label asp-for="Input.ApprovalHours" class="form-label">Approved enrollment link lifetime in hours</label>
+            <input asp-for="Input.ApprovalHours" class="form-control mb-2" />
+            <label asp-for="Input.RequestLimit" class="form-label">Requests per account per hour</label>
+            <input asp-for="Input.RequestLimit" class="form-control mb-2" />
+            <label asp-for="Input.AttemptLimit" class="form-label">Verification attempts per account per hour</label>
+            <input asp-for="Input.AttemptLimit" class="form-control" />
         </fieldset>
     </div>
     <details class="mt-4">
         <summary>Review and confirm settings</summary>
         <label for="operations-password" class="form-label mt-3">Current password</label>
         <input name="Password" id="operations-password" type="password" class="form-control mb-3" autocomplete="current-password" required>
+        <label for="operations-code" class="form-label">Authenticator code for alert and recovery changes</label>
+        <input asp-for="Code" id="operations-code" class="form-control mb-3" autocomplete="one-time-code" inputmode="numeric" />
         <button type="submit" class="btn-ids btn-ids-primary">Save settings</button>
     </details>
 </form>

@@ -11,6 +11,8 @@ public sealed record WorkerStatus(bool Online, DateTime? LastHeartbeatUtc)
 
 public sealed record SystemHealth(WorkerStatus Detection, WorkerStatus Explanation)
 {
+    public bool ShapJobsEnabled { get; init; } = true;
+
     public string Overall => (Detection.Online, Explanation.Online) switch
     {
         (true, true) => "Operational",
@@ -31,7 +33,10 @@ public sealed class WorkerHealthService(ApplicationDbContext database, IConfigur
             .Select(heartbeat => new { Heartbeat = heartbeat, DatabaseNow = DateTime.UtcNow })
             .ToListAsync(cancellationToken);
         var now = readings.Count == 0 ? DateTime.UtcNow : readings[0].DatabaseNow;
-        return Evaluate(readings.Select(reading => reading.Heartbeat), now, TimeSpan.FromSeconds(seconds));
+        return Evaluate(readings.Select(reading => reading.Heartbeat), now, TimeSpan.FromSeconds(seconds)) with
+        {
+            ShapJobsEnabled = await OperationsSettings.GeneratesShapJobsAsync(database)
+        };
     }
 
     public static SystemHealth Evaluate(IEnumerable<WorkerHeartbeat> rows, DateTime utcNow, TimeSpan timeout)

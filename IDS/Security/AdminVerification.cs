@@ -31,6 +31,17 @@ public sealed class AdminVerification(UserManager<ApplicationUser> users, Securi
             items.TryGetValue(VerifiedStampKey, out var stamp) && stamp == user.SecurityStamp;
     }
 
+    public async Task<bool> CheckCredentialsAsync(ApplicationUser user, string? password, string? code,
+        bool requireAuthenticator)
+    {
+        if (await users.IsLockedOutAsync(user) || string.IsNullOrEmpty(password)) return false;
+        var verified = await users.CheckPasswordAsync(user, password) &&
+            (!requireAuthenticator || !user.TwoFactorEnabled || await AccountRecovery.VerifyFactorAsync(users, user, code, false));
+        if (verified) await users.ResetAccessFailedCountAsync(user);
+        else await users.AccessFailedAsync(user);
+        return verified;
+    }
+
     public async Task MarkVerifiedAsync(HttpContext context, ApplicationUser user)
     {
         var authentication = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @using Microsoft.AspNetCore.Http.Features
 @model TwoFactorAuthenticationModel
 @{
@@ -207,3 +207,22 @@ else
 @section Scripts {
  <partial name="_ValidationScriptsPartial" />
 }
+
+<section id="recovery-requests" class="card-ids card-ids-body mt-4">
+    <h2 class="h5">Recent authenticator reset requests</h2>
+    @if (Model.Requests.Count == 0)
+    {
+        <p class="mb-0 text-muted">You have no authenticator reset requests.</p>
+    }
+    else
+    {
+        <dl class="monitoring-list">
+            @foreach (var request in Model.Requests)
+            {
+                var status = request.Status is "Pending" or "Approved" && request.ExpiresAt <= DateTime.UtcNow ? "Expired" : request.Status;
+                <div><dt>Request #@request.Id · @request.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</dt><dd>@status</dd></div>
+            }
+        </dl>
+        <p class="mb-0 text-muted">Use the link in your approval email to complete replacement.</p>
+    }
+</section>

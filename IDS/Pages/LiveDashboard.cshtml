@@ -1,571 +1,80 @@
 @page
 @model IDS.Pages.LiveDashboardModel
 @{
- ViewData["Title"] = "Live Dashboard";
+    ViewData["Title"] = "Detection live feed";
+    var canInspect = User.IsInRole("Admin") || User.IsInRole("Support");
 }
 
-@section HeadContent {
-    <style>
-    .live-indicator {
-  display: inline-flex;
-        align-items: center;
-            gap: 0.5rem;
-       padding: 0.25rem 0.75rem;
-  background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-       border-radius: var(--radius-full);
-          font-size: 0.75rem;
-       font-weight: 600;
-   color: var(--success);
-        }
-      
- .live-indicator.disconnected {
-          background: rgba(239, 68, 68, 0.1);
-     border-color: rgba(239, 68, 68, 0.3);
-       color: var(--danger);
-        }
-      
-        .live-indicator .pulse {
-    width: 8px;
-   height: 8px;
-         background: currentColor;
-     border-radius: 50%;
-      }
-        
-        .live-feed {
-       max-height: 500px;
-    overflow-y: auto;
-        }
-        
-    .detection-item {
-  display: flex;
-            align-items: center;
-     gap: 1rem;
- padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border-color);
-            transition: background var(--transition-fast);
-        }
-        
-   .detection-item:hover {
-        background: var(--bg-tertiary);
-        }
-
-    .detection-item.attack {
-       border-left: 3px solid var(--danger);
-        }
-     
-        .detection-item.benign {
- border-left: 3px solid var(--success);
-        }
-        
-        .detection-type {
-    width: 70px;
-  text-align: center;
-        }
-        
-        .detection-details {
-  flex: 1;
-    min-width: 0;
-     }
-        
-        .detection-ips {
-            font-family: 'Courier New', monospace;
-          font-size: 0.875rem;
- color: var(--text-primary);
-        }
-   
-      .detection-meta {
-      font-size: 0.75rem;
-        color: var(--text-muted);
-            display: flex;
-    gap: 1rem;
-            margin-top: 0.25rem;
-        }
-     
-    .detection-time {
-        font-size: 0.75rem;
-      color: var(--text-muted);
-   white-space: nowrap;
-        }
-   
-    </style>
-}
-
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-hero">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-            <div>
-   <h1 class="page-header-title">
-           <i class="fa-solid fa-satellite-dish"></i>
-           Live Detection Feed
-                </h1>
-                <p class="page-header-subtitle">
-                Real-time intrusion detection monitoring from the IDS pipeline
-    </p>
-       </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="live-indicator" id="connectionStatus">
-       <span class="pulse"></span>
-        <span id="connectionText">Connecting...</span>
-       </div>
-       <a asp-page="/Dashboard" class="btn-ids btn-ids-secondary">
-        <i class="fa-solid fa-gauge"></i> Standard Dashboard
-       </a>
-    </div>
-        </div>
- </div>
-</div>
-
-<!-- Live Stats -->
-<div class="metrics-grid mb-4">
-    <div class="metric-card stat-card-live" style="--metric-accent: var(--success);">
-        <div class="metric-icon gradient-green">
-            <i class="fa-solid fa-shield-check"></i>
-    </div>
-        <div class="metric-content">
-            <div class="metric-label">Benign Traffic (24h)</div>
-       <div class="metric-value" id="statBenign24h">@Model.InitialStats?.BenignLast24h.ToString("N0")</div>
-            <div class="metric-change positive" id="statBenignHour">
-        <i class="fa-solid fa-arrow-up"></i> @Model.InitialStats?.BenignLastHour last hour
-            </div>
-     </div>
-    </div>
-    
-  <div class="metric-card stat-card-live" style="--metric-accent: var(--danger);">
-        <div class="metric-icon gradient-red">
-    <i class="fa-solid fa-skull-crossbones"></i>
-        </div>
-     <div class="metric-content">
-        <div class="metric-label">Attacks Detected (24h)</div>
-            <div class="metric-value" id="statAttacks24h">@Model.InitialStats?.AttacksLast24h.ToString("N0")</div>
-   <div class="metric-change negative" id="statAttacksHour">
-    <i class="fa-solid fa-triangle-exclamation"></i> @Model.InitialStats?.AttacksLastHour last hour
-   </div>
-        </div>
-    </div>
-    
-    <div class="metric-card stat-card-live" style="--metric-accent: var(--primary);">
-        <div class="metric-icon gradient-blue">
-    <i class="fa-solid fa-percent"></i>
-      </div>
-        <div class="metric-content">
-  <div class="metric-label">Attack Rate</div>
- <div class="metric-value" id="statAttackRate">@Model.InitialStats?.AttackPercentage.ToString("F1")%</div>
-      <div class="metric-change" id="statStatus">
-      Threat activity: <strong>@Model.InitialStats?.SystemStatus</strong>
-         </div>
-   </div>
-    </div>
-    
-  <div class="metric-card stat-card-live" style="--metric-accent: var(--info);">
-  <div class="metric-icon gradient-cyan">
-          <i class="fa-solid fa-clock"></i>
-  </div>
-        <div class="metric-content">
-<div class="metric-label">Last Updated</div>
-         <div class="metric-value" id="statLastUpdate" style="font-size: 1.25rem;">--:--:--</div>
-      <div class="metric-change">
-    <span id="eventsPerSecond">0</span> events/sec
-        </div>
-        </div>
-    </div>
-</div>
-
-<section class="card-ids card-ids-body mb-4" aria-label="Worker health">
-    <partial name="_WorkerHealth" />
-</section>
-
-<div class="row g-4">
-    <!-- Live Feed -->
-    <div class="col-lg-8">
-        <div class="card-ids">
-            <div class="card-ids-header">
-   <h3 class="card-ids-title">
-        <i class="fa-solid fa-stream text-primary"></i>
-      Live Detection Feed
-          <span class="badge bg-primary ms-2" id="feedCount">@Model.InitialEvents.Count</span>
-       </h3>
- <div class="d-flex gap-2">
-    <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnPause" title="Pause feed" aria-label="Pause or resume feed">
-    <i class="fa-solid fa-pause"></i>
-    </button>
-         <button class="btn-ids btn-ids-ghost btn-ids-sm" id="btnClear" title="Clear feed" aria-label="Clear feed">
-              <i class="fa-solid fa-trash"></i>
-    </button>
-        <select class="form-control-ids form-select-ids" style="width: auto; padding: 0.25rem 2rem 0.25rem 0.5rem;" id="filterType" aria-label="Filter detections">
-            <option value="all">All Events</option>
- <option value="attack">Attacks Only</option>
-      <option value="benign">Benign Only</option>
-            <optgroup label="Attack types" id="attackTypeOptions">
-                @foreach (var label in (Model.InitialStats?.AttacksByType.Keys.AsEnumerable() ?? Enumerable.Empty<string>())
-                    .Concat(Model.InitialEvents.Where(e => e.IsAttack).Select(e => e.AttackType ?? ""))
-                    .Where(label => label.Length > 0).Distinct().OrderBy(label => label))
-                {
-                    <option value="label:@label">@label</option>
-                }
-            </optgroup>
-   </select>
-     </div>
-            </div>
-      <div class="card-ids-body p-0">
-                <div class="live-feed" id="liveFeed">
-        @if (!Model.InitialEvents.Any())
-             {
-    <div class="empty-state py-4" id="emptyState">
-     <i class="fa-solid fa-satellite-dish text-muted" style="font-size: 2rem;"></i>
-       <p class="mt-2 mb-0 text-muted">Waiting for detection events...</p>
-         </div>
-                 }
-       else
-        {
-     @foreach (var evt in Model.InitialEvents)
-    {
-       <div class="detection-item @(evt.IsAttack ? "attack" : "benign")" data-type="@(evt.IsAttack ? "attack" : "benign")" data-attack-type="@evt.AttackType">
-             <div class="detection-type">
-        @if (evt.IsAttack)
-            {
-     <span class="severity-badge @(evt.Severity?.ToLower() == "critical" ? "severity-critical" : evt.Severity?.ToLower() == "high" ? "severity-high" : "severity-medium")">
-            @(evt.Severity ?? "Attack")
-            </span>
-          }
-    else
-  {
-   <span class="severity-badge severity-low">Benign</span>
-         }
- </div>
-      <div class="detection-details">
- <div class="detection-ips">
-         @evt.SrcIp <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port @(evt.DstPort?.ToString() ?? "Unavailable")
-                 </div>
-        <div class="detection-meta">
-    <span><i class="fa-solid fa-tag me-1"></i>@evt.Label</span>
-     @if (evt.IsAttack && !string.IsNullOrEmpty(evt.AttackType))
-       {
-       <span><i class="fa-solid fa-bug me-1"></i>@evt.AttackType</span>
-        }
-       <span><i class="fa-solid fa-percent me-1"></i>@((evt.ConfidenceScore * 100).ToString("F0"))% @(evt.IsAttack ? "category probability" : "benign probability")</span>
-        </div>
-           </div>
-              <div class="detection-time">
-       @evt.Timestamp.ToString("HH:mm:ss")
-       @if (Model.EscalationEnabled && evt.IsAttack && (evt.Severity == "High" || evt.Severity == "Critical"))
-       {
-           <a asp-page="/EscalateAttack" asp-route-id="@evt.Id" class="btn-ids btn-ids-primary btn-ids-sm d-block mt-2">Escalate</a>
-       }
-       @if (evt.IsAttack && (User.IsInRole("Admin") || User.IsInRole("Support")))
-       {
-           <a asp-page="/InspectAttack" asp-route-id="@evt.Id" class="btn-ids btn-ids-ghost btn-ids-sm d-block mt-2">Inspect</a>
-       }
-    </div>
-     </div>
-         }
-         }
-    </div>
-       </div>
-        </div>
-    </div>
-    
-    <aside class="col-lg-4">
-        <partial name="_RecentDetectionAlerts" />
-      <div class="card-ids mt-4">
-            <div class="card-ids-header">
- <h3 class="card-ids-title">
-          <i class="fa-solid fa-gear text-muted"></i>
-    Feed Settings
-                </h3>
-            </div>
-            <div class="card-ids-body">
-  <div class="form-group">
- <label class="form-label-ids" for="maxEvents">Max events in feed</label>
-     <select class="form-control-ids form-select-ids" id="maxEvents">
-     <option value="50">50 events</option>
-         <option value="100" selected>100 events</option>
-        <option value="200">200 events</option>
-    <option value="500">500 events</option>
-     </select>
-        </div>
-         <div class="form-check mt-3">
-     <input class="form-check-input" type="checkbox" id="soundAlerts" checked>
-     <label class="form-check-label" for="soundAlerts">
-     Sound alerts for attacks
-           </label>
-         </div>
-   <div class="form-check mt-2">
-     <input class="form-check-input" type="checkbox" id="desktopNotifications">
-       <label class="form-check-label" for="desktopNotifications">
- Desktop notifications
-    </label>
-              </div>
-            </div>
-        </div>
-    </aside>
-</div>
-
-<div class="mt-4">
+<div class="monitoring-page">
+    <header class="monitoring-heading">
+        <h1>Detection live feed</h1>
+        <a asp-page="/DetectionHistory" class="btn-ids btn-ids-secondary btn-ids-sm">Detection history</a>
+    </header>
+    <section class="card-ids card-ids-body monitoring-health" aria-label="Worker health">
+        <partial name="_WorkerHealth" />
+    </section>
     <partial name="_TrafficAnalytics" model='"live"' />
+    <div class="monitoring-page" data-feed data-url="@Url.Content("~/api/monitoring/feed")"
+         data-hub="@Url.Content("~/hubs/dashboard")" data-inspect="@(canInspect ? Url.Page("/InspectAttack", new { id = 1 }) : null)"
+         data-history="@Url.Page("/DetectionHistory")" data-escalate="@Url.Page("/EscalateAttack", new { id = 1 })"
+         data-ticket="@Url.Page("/ViewTicket", new { id = 1 })">
+        <section class="card-ids" data-recent-section>
+            <header class="card-ids-header"><h2 class="h5 mb-0">Recent malicious activity</h2></header>
+            <div class="table-responsive monitoring-scroll" tabindex="0" aria-label="Recent malicious flows">
+                <table class="table-ids mb-0">
+                    <thead><tr><th>Detected (UTC)</th><th>Model class</th><th>Source</th><th>Destination port</th>
+                        <th>Confidence</th><th>Severity</th><th>SHAP job</th><th>Investigation</th></tr></thead>
+                    <tbody data-feed-recent><tr><td colspan="8">Loading recent activity…</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+        <section class="card-ids">
+            <header class="card-ids-header"><h2 class="h5 mb-0">Detection records</h2><span class="small text-muted" data-feed-status role="status"></span></header>
+            <div class="card-ids-body">
+                <form class="monitoring-filters" data-feed-form>
+                    <label>Search source, port or class
+                        <input type="search" name="search" maxlength="100" class="form-control form-control-sm" />
+                    </label>
+                    <label>Binary classification
+                        <select class="form-select form-select-sm" name="traffic"><option value="">All traffic</option><option value="benign">Benign</option><option value="malicious">Malicious</option></select>
+                    </label>
+                    <label>Model class
+                        <select class="form-select form-select-sm" name="category"><option value="">All classes</option></select>
+                    </label>
+                    <label>Explanation
+                        <select class="form-select form-select-sm" name="explanation"><option value="">Any status</option><option>Available</option><option>Pending</option><option>Failed</option><option>No job</option><option value="not-applicable">Not applicable</option></select>
+                    </label>
+                    <label>Sort
+                        <select class="form-select form-select-sm" name="sort"><option value="latest">Newest first</option><option value="oldest">Oldest first</option><option value="confidence">Highest confidence</option><option value="source">Source address</option></select>
+                    </label>
+                    <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Apply filters</button>
+                    <button type="reset" class="btn-ids btn-ids-secondary btn-ids-sm">Clear filters</button>
+                </form>
+            </div>
+            <div class="table-responsive" tabindex="0" aria-label="Detection records">
+                <table class="table-ids mb-0">
+                    <thead><tr><th>Detected (UTC)</th><th>Source</th><th>Destination port</th><th>Classification</th>
+                        <th>Model class</th><th>Confidence</th><th>Severity</th><th>SHAP job</th><th>Incident</th><th>Investigation</th></tr></thead>
+                    <tbody data-feed-rows><tr><td colspan="10">Loading detections…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="card-ids-footer d-flex gap-2 align-items-center flex-wrap">
+                <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm" data-page-step="-1" disabled>Previous</button>
+                <span class="small" data-page-number>Page 1</span>
+                <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm" data-page-step="1" disabled>Next</button>
+                <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm ms-auto" data-hide-feed>Clear display</button>
+                <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm" data-refresh-feed>Refresh records</button>
+            </div>
+        </section>
+        <div class="d-flex flex-wrap gap-3 small">
+            <label><input type="checkbox" data-feed-sound /> Malicious detection sound</label>
+            <label><input type="checkbox" data-feed-desktop /> Browser notifications</label>
+            <span class="text-muted" data-feed-connection>Connecting to live events…</span>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-    
-    <script>
-        const canInspect = @((User.IsInRole("Admin") || User.IsInRole("Support")).ToString().ToLowerInvariant());
-    (function() {
-        'use strict';
-        
-        let isPaused = false;
-        let maxEvents = 100;
-        let filterType = 'all';
-   let eventCount = 0;
-        let eventsLastSecond = 0;
-        let lastAlertAt = 0;
-        const escalationEnabled = @Model.EscalationEnabled.ToString().ToLowerInvariant();
-        
-        const connection = new signalR.HubConnectionBuilder()
- .withUrl("/hubs/dashboard")
-      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-    .configureLogging(signalR.LogLevel.Information)
-            .build();
-        
-        connection.onreconnecting(error => {
-            updateConnectionStatus(false, 'Reconnecting...');
-   console.warn('SignalR reconnecting:', error);
-        });
-        
-        connection.onreconnected(connectionId => {
- updateConnectionStatus(true, 'Feed connected');
-            console.log('SignalR reconnected:', connectionId);
-        });
-        
-        connection.onclose(error => {
-            updateConnectionStatus(false, 'Disconnected');
-            console.error('SignalR connection closed:', error);
-        });
-        
-      connection.on("NewDetection", (event) => {
-     if (isPaused) return;
-      addDetectionToFeed(event);
-      if (!canInspect && event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())) {
-          showAttackAlert(event);
-      }
-        eventsLastSecond++;
-        });
- 
-        connection.on("StatsUpdate", (stats) => {
-            updateStats(stats);
-        });
-        
-     connection.on("AttackAlert", (attack) => {
-            showAttackAlert(attack);
-        });
-        
-        function updateConnectionStatus(connected, text) {
-     const indicator = document.getElementById('connectionStatus');
- const textEl = document.getElementById('connectionText');
-            
-  if (connected) {
-       indicator.classList.remove('disconnected');
-      } else {
-      indicator.classList.add('disconnected');
-      }
-       textEl.textContent = text;
-        }
-     
-     function addDetectionToFeed(event) {
-       if (event.isAttack && event.attackType) addAttackTypeOption(event.attackType);
-      
-    const emptyState = document.getElementById('emptyState');
-            if (emptyState) emptyState.remove();
-            
-     const feed = document.getElementById('liveFeed');
-       const item = createDetectionElement(event);
- 
-      feed.insertBefore(item, feed.firstChild);
-       
-         while (feed.children.length > maxEvents) {
-      feed.removeChild(feed.lastChild);
-       }
-            
-        eventCount++;
-   document.getElementById('feedCount').textContent = Math.min(eventCount, maxEvents);
-        }
-
-        function createDetectionElement(event) {
-      const div = document.createElement('div');
-            div.className = `detection-item ${event.isAttack ? 'attack' : 'benign'}`;
-            div.dataset.type = event.isAttack ? 'attack' : 'benign';
-            div.dataset.attackType = event.attackType || '';
-            applyFeedFilter(div);
-
-            const severityClass = event.severity?.toLowerCase() === 'critical' ? 'severity-critical' :
-          event.severity?.toLowerCase() === 'high' ? 'severity-high' : 'severity-medium';
-            
-       const time = new Date(event.timestamp).toLocaleTimeString('en-US', { hour12: false });
-      const confidence = (event.confidenceScore * 100).toFixed(0);
-            
-    div.innerHTML = `
-        <div class="detection-type">
-           ${event.isAttack 
-      ? `<span class="severity-badge ${severityClass}">${escapeHtml(event.severity || 'Attack')}</span>`
-  : '<span class="severity-badge severity-low">Benign</span>'}
-  </div>
-   <div class="detection-details">
-  <div class="detection-ips">
-             ${escapeHtml(event.srcIp)} <i class="fa-solid fa-arrow-right mx-2 text-muted"></i> Port ${event.dstPort ?? 'Unavailable'}
-        </div>
-         <div class="detection-meta">
-                  <span><i class="fa-solid fa-tag me-1"></i>${escapeHtml(event.label)}</span>
-                ${event.isAttack && event.attackType ? `<span><i class="fa-solid fa-bug me-1"></i>${escapeHtml(event.attackType)}</span>` : ''}
-       <span><i class="fa-solid fa-percent me-1"></i>${confidence}% ${event.isAttack ? 'category probability' : 'benign probability'}</span>
-            </div>
-   </div>
-  <div class="detection-time">${time}</div>
-  `;
-            
-        // The live feed includes attack table IDs, so the same incident can be
-        // opened from a newly arrived detection or from the initial page load.
-        const id = Number(event.id);
-        if (escalationEnabled && event.isAttack && ['high', 'critical'].includes(String(event.severity).toLowerCase())
-            && Number.isSafeInteger(id) && id > 0) {
-            const link = document.createElement('a');
-            link.href = `/EscalateAttack/${id}`;
-            link.className = 'btn-ids btn-ids-primary btn-ids-sm d-block mt-2';
-            link.textContent = 'Escalate';
-            div.querySelector('.detection-time').appendChild(link);
-        }
-
-        if (event.isAttack && canInspect && Number.isSafeInteger(id) && id > 0) {
-            const inspect = document.createElement('a');
-            inspect.href = `/InspectAttack/${id}`;
-            inspect.className = 'btn-ids btn-ids-ghost btn-ids-sm d-block mt-2';
-            inspect.textContent = 'Inspect';
-            div.querySelector('.detection-time').appendChild(inspect);
-        }
-        return div;
-        }
-        
-        function updateStats(stats) {
-         document.getElementById('statBenign24h').textContent = stats.benignLast24h.toLocaleString();
-            document.getElementById('statAttacks24h').textContent = stats.attacksLast24h.toLocaleString();
-    document.getElementById('statBenignHour').innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${stats.benignLastHour} last hour`;
-      document.getElementById('statAttacksHour').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${stats.attacksLastHour} last hour`;
-            document.getElementById('statAttackRate').textContent = stats.attackPercentage.toFixed(1) + '%';
-            document.getElementById('statStatus').innerHTML = `Threat activity: <strong>${stats.systemStatus}</strong>`;
-            const types = Object.entries(stats.attacksByType || {}).sort((a, b) => b[1] - a[1]);
-            types.forEach(([label]) => addAttackTypeOption(label));
-            document.getElementById('statLastUpdate').textContent = new Date(stats.lastUpdated ?? Date.now()).toLocaleTimeString();
-        }
- 
-        function showAttackAlert(attack) {
-            if (isPaused || Date.now() - lastAlertAt < 3000) return;
-            lastAlertAt = Date.now();
-            if (document.getElementById('soundAlerts').checked) playAlertSound();
-            if ('Notification' in window && document.getElementById('desktopNotifications').checked &&
-                Notification.permission === 'granted') {
-                new Notification('IDS attack alert', {
-                    body: `${attack.attackType} detected from ${attack.srcIp}`, tag: `ids-attack-${attack.id}`
-                });
-            }
-        }
-
-        function playAlertSound() {
-     try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
- const gainNode = audioCtx.createGain();
-   
-    oscillator.connect(gainNode);
-     gainNode.connect(audioCtx.destination);
-    
-     oscillator.frequency.value = 800;
-         oscillator.type = 'sine';
-    gainNode.gain.value = 0.3;
-  
-        oscillator.addEventListener("ended", () => audioCtx.close());
-        oscillator.start();
-                setTimeout(() => oscillator.stop(), 200);
-            } catch (e) {
-     console.warn('Could not play alert sound:', e);
-    }
-        }
-
-    function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
- }
-   
-        async function startConnection() {
-    try {
-    await connection.start();
-   updateConnectionStatus(true, 'Feed connected');
-              console.log('SignalR connected');
-  
-     await connection.invoke("RequestLatestStats");
-} catch (err) {
-        updateConnectionStatus(false, 'Connection failed');
-          console.error('SignalR connection error:', err);
-                setTimeout(startConnection, 5000);
-            }
-        }
-        
-        startConnection();
- 
-  document.getElementById('btnPause').addEventListener('click', function() {
-        isPaused = !isPaused;
-            this.innerHTML = isPaused 
-   ? '<i class="fa-solid fa-play"></i>' 
-         : '<i class="fa-solid fa-pause"></i>';
-            this.title = isPaused ? 'Resume feed' : 'Pause feed';
-        });
-     
-        document.getElementById('btnClear').addEventListener('click', function() {
-      document.getElementById('liveFeed').innerHTML = `
-             <div class="empty-state py-4" id="emptyState">
-          <i class="fa-solid fa-satellite-dish text-muted" style="font-size: 2rem;"></i>
-      <p class="mt-2 mb-0 text-muted">Waiting for detection events...</p>
-         </div>
- `;
-      eventCount = 0;
- document.getElementById('feedCount').textContent = '0';
-        });
-      
-        function addAttackTypeOption(label) {
-            const group = document.getElementById('attackTypeOptions');
-            const value = 'label:' + label;
-            if (!Array.from(group.children).some(option => option.value === value))
-                group.append(new Option(label, value));
-        }
-
-        function applyFeedFilter(item) {
-            const visible = filterType === 'all' || filterType === item.dataset.type ||
-                (item.dataset.type === 'attack' && filterType === 'label:' + item.dataset.attackType);
-            item.style.display = visible ? '' : 'none';
-        }
-
-        document.getElementById('filterType').addEventListener('change', function() {
-            filterType = this.value;
-            document.querySelectorAll('.detection-item').forEach(applyFeedFilter);
-        });
-
-        document.getElementById('maxEvents').addEventListener('change', function() {
-            maxEvents = parseInt(this.value);
-        });
-        
-     document.getElementById('desktopNotifications').addEventListener('change', function() {
-            if (this.checked && 'Notification' in window && Notification.permission !== 'granted') {
-           Notification.requestPermission();
-            }
-   });
-        
- setInterval(() => {
-   document.getElementById('eventsPerSecond').textContent = eventsLastSecond;
-            eventsLastSecond = 0;
-   }, 1000);
-        
-
-    })();
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js" defer></script>
+    <script src="~/js/live-feed.js" asp-append-version="true" defer></script>
 }

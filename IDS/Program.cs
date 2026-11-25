@@ -11,6 +11,8 @@ using DotNetEnv;
 using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
+// Request-start diagnostics include query strings, which can contain recovery links.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
 // =====================================================
 // Load environment variables from .env file
@@ -129,8 +131,12 @@ builder.Services.AddHostedService<RealtimeSessionMonitor>();
 
 // Register MailjetEmailSender as both IEmailSender and its concrete type
 // This allows injection of either interface or concrete class
-builder.Services.AddSingleton<MailjetEmailSender>();
-builder.Services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<MailjetEmailSender>());
+builder.Services.AddScoped<EmailConfiguration>();
+builder.Services.AddScoped<MailjetEmailSender>();
+builder.Services.AddScoped<IEmailSender>(sp => sp.GetRequiredService<MailjetEmailSender>());
+builder.Services.AddScoped<AccountEmailQueue>();
+builder.Services.AddScoped<AccountRecovery>();
+builder.Services.AddHostedService<AccountEmailDispatcher>();
 
 builder.Services.AddScoped<IAuditService, AuditService>();
 
@@ -146,6 +152,8 @@ builder.Services.AddScoped<IChatService, ChatService>();
 
 // Background service to monitor detection tables and push updates via SignalR
 builder.Services.AddHostedService<DetectionMonitorService>();
+builder.Services.AddScoped<SecurityAlertService>();
+builder.Services.AddHostedService<SecurityAlertMonitor>();
 
 var app = builder.Build();
 
@@ -157,7 +165,8 @@ var setupTestAdmins = args.Contains("--setup-test-admins", StringComparer.Ordina
 if (setupTestAdmins && !app.Environment.IsDevelopment())
     throw new InvalidOperationException("Test administrator setup is available only in Development mode.");
 var operatorCommand = args.Any(argument => argument.StartsWith("--provision-admin=", StringComparison.Ordinal) ||
-    argument.StartsWith("--recover-admin=", StringComparison.Ordinal) || argument.StartsWith("--suspend-admin=", StringComparison.Ordinal));
+    argument.StartsWith("--recover-admin=", StringComparison.Ordinal) || argument.StartsWith("--suspend-admin=", StringComparison.Ordinal) ||
+    argument.StartsWith("--recover-account=", StringComparison.Ordinal));
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;

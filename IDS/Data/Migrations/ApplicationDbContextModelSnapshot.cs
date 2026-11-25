@@ -742,6 +742,72 @@ namespace IDS.Data.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("IDS.Data.Models.AuthenticatorResetRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdentityVerification")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewerId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("VerifiedEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("AuthenticatorResetRequests");
+                });
+
             modelBuilder.Entity("IDS.Data.Models.BenignTraffic", b =>
                 {
                     b.Property<long>("Id")
@@ -1521,8 +1587,14 @@ namespace IDS.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("AuthenticatorResetRequestId")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAccountSecurity")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -1536,6 +1608,9 @@ namespace IDS.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int?>("SecurityAlertId")
+                        .HasColumnType("int");
 
                     b.Property<string>("SenderName")
                         .HasMaxLength(200)
@@ -2258,6 +2333,25 @@ namespace IDS.Data.Migrations
                     b.ToTable("RawPackets", (string)null);
                 });
 
+            modelBuilder.Entity("IDS.Data.Models.RecoveryThrottle", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("WindowStart")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("WindowStart");
+
+                    b.ToTable("RecoveryThrottles");
+                });
+
             modelBuilder.Entity("IDS.Data.Models.SecurityAlert", b =>
                 {
                     b.Property<int>("Id")
@@ -2277,6 +2371,10 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("AttackLabel")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("DestinationIP")
                         .IsRequired()
                         .HasMaxLength(45)
@@ -2285,8 +2383,22 @@ namespace IDS.Data.Migrations
                     b.Property<int?>("DestinationPort")
                         .HasColumnType("int");
 
+                    b.Property<long>("DetectionCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("EventCategory")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("GroupKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
                     b.Property<bool>("IsAcknowledged")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastObservedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -2301,8 +2413,21 @@ namespace IDS.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("RawPacketData")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("RepresentativeAttackId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResolvedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Severity")
                         .IsRequired()
@@ -2317,14 +2442,25 @@ namespace IDS.Data.Migrations
                     b.Property<int?>("SourcePort")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TicketId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GroupKey")
+                        .IsUnique()
+                        .HasFilter("[GroupKey] IS NOT NULL");
+
                     b.HasIndex("IsAcknowledged");
 
+                    b.HasIndex("LastObservedAt");
+
                     b.HasIndex("Severity");
+
+                    b.HasIndex("TicketId");
 
                     b.HasIndex("Timestamp");
 
@@ -2401,6 +2537,66 @@ namespace IDS.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SecurityChangeRequests");
+                });
+
+            modelBuilder.Entity("IDS.Data.Models.SecurityEmail", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AcceptedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DueAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("Lease")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProtectedPayload")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DueAt")
+                        .HasFilter("[AcceptedAt] IS NULL AND [FailedAt] IS NULL");
+
+                    b.HasIndex("EventKey")
+                        .IsUnique();
+
+                    b.ToTable("SecurityEmails");
                 });
 
             modelBuilder.Entity("IDS.Data.Models.SupportTicket", b =>
@@ -2782,6 +2978,16 @@ namespace IDS.Data.Migrations
                         .HasForeignKey("TicketId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Ticket");
+                });
+
+            modelBuilder.Entity("IDS.Data.Models.SecurityAlert", b =>
+                {
+                    b.HasOne("IDS.Data.Models.SupportTicket", "Ticket")
+                        .WithMany()
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Ticket");
                 });

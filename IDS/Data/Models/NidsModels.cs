@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 namespace IDS.Data.Models
 {
     /// <summary>
@@ -20,6 +21,18 @@ namespace IDS.Data.Models
      public string? AcknowledgedByUserId { get; set; }
   public DateTime? AcknowledgedAt { get; set; }
         public string? Notes { get; set; }
+        [MaxLength(80)] public string? GroupKey { get; set; }
+        [MaxLength(100)] public string? AttackLabel { get; set; }
+        [MaxLength(30)] public string? EventCategory { get; set; }
+        public long DetectionCount { get; set; }
+        public long? RepresentativeAttackId { get; set; }
+        public DateTime? LastObservedAt { get; set; }
+        public DateTime? PublishedAt { get; set; }
+        public DateTime? ResolvedAt { get; set; }
+        [MaxLength(450)] public string? ResolvedByUserId { get; set; }
+        public int? TicketId { get; set; }
+        public SupportTicket? Ticket { get; set; }
+
     }
 
     /// <summary>

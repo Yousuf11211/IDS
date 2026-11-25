@@ -123,16 +123,22 @@ Use the <strong>"Forgot password"</strong> link on the login screen.
    <p class="text-muted mb-3">
   Can't find what you're looking for? Contact support for assistance.
     </p>
- <a href="mailto:support@ids-system.local" class="btn-ids btn-ids-primary w-100 mb-2">
-            <i class="fa-solid fa-envelope me-2"></i> Email Support
-      </a>
+    @if (Model.SupportEmail != null)
+    {
+        <a href="mailto:@Model.SupportEmail" class="btn-ids btn-ids-secondary w-100 mb-2">Email support</a>
+    }
+    else
+    {
+        <p>Contact your organization’s IDS administrator through its established support channel.</p>
+    }
      <a href="/Help" class="btn-ids btn-ids-secondary w-100">
   <i class="fa-solid fa-book-open me-2"></i> Full Help Center
      </a>
      </div>
         </div>
         
-     <!-- Quick Links -->
+    @if (User.Identity?.IsAuthenticated == true)
+    {
    <div class="card-ids mt-4">
       <div class="card-ids-header">
    <h3 class="card-ids-title">
@@ -154,5 +160,6 @@ Use the <strong>"Forgot password"</strong> link on the login screen.
       </nav>
             </div>
         </div>
+    }
     </div>
 </div>

@@ -1,0 +1,13 @@
+IDS Security
+{Title}
+
+Hello {Name},
+
+{Description}
+
+Event time: {OccurredAt}
+{ActionLabel} {ActionUrl}
+
+{Warning}
+
+Support: {Contact}

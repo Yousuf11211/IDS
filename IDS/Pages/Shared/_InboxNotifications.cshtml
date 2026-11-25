@@ -1,7 +1,10 @@
+@{
+    var inboxActive = string.Equals(ViewContext.RouteData.Values["page"]?.ToString(), "/Inbox", StringComparison.OrdinalIgnoreCase);
+}
 <div class="nav-item dropdown" data-inbox-url="@Url.Page("/Inbox", "Recent", new { area = "" })">
-    <button class="nav-link dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <button class="nav-link dropdown-toggle text-nowrap @(inboxActive ? "active" : "")" aria-current="@(inboxActive ? "page" : null)" type="button" data-bs-toggle="dropdown" aria-expanded="false">
         <i class="fa-solid fa-inbox" aria-hidden="true"></i> Inbox
-        <span class="badge text-bg-primary" data-inbox-count hidden></span>
+        <span class="badge inbox-count" data-inbox-count hidden></span>
     </button>
     <div class="dropdown-menu dropdown-menu-end inbox-dropdown">
         <form method="post" asp-area="" asp-page="/Inbox" asp-page-handler="Open" data-inbox-form>

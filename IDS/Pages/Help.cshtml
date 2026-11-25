@@ -216,10 +216,12 @@ Quick Start Guide
  <div class="card-ids-body">
          <p style="color: var(--text-secondary); margin-bottom: 1rem;">Need additional help? Reach out to our support team.</p>
      <div class="d-flex flex-column gap-3">
-    <a href="mailto:support@ids-system.local" class="btn-ids btn-ids-secondary w-100">
-<i class="fa-solid fa-envelope me-2"></i>
- <span>Email Support</span>
-</a>
+    @if (Model.SupportEmail != null)
+    {
+        <a href="mailto:@Model.SupportEmail" class="btn-ids btn-ids-secondary w-100">
+            <i class="fa-solid fa-envelope me-2" aria-hidden="true"></i> Email support
+        </a>
+    }
     <a asp-page="/SubmitTicket" class="btn-ids btn-ids-primary w-100">
        <i class="fa-solid fa-ticket me-2"></i>
   <span>Submit Ticket</span>

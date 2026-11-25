@@ -1,37 +1,141 @@
 @model string
-<section class="card-ids mb-4" data-analytics="@Model" data-url="@Url.Content("~/api/monitoring/analytics")">
-    <header class="card-ids-header flex-wrap gap-2">
-        <h2 class="h5 mb-0">Traffic analytics</h2>
-        <label class="d-flex align-items-center gap-2">
-            <span class="small text-nowrap">Time range</span>
-            <select class="form-select form-select-sm" data-range>
-                <option value="1h">Last hour</option>
-                <option value="24h" selected>Last 24 hours</option>
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
-            </select>
-        </label>
-    </header>
-    <div class="card-ids-body">
-        <p class="text-muted mb-2" role="status" data-chart-state>Loading analytics…</p>
-        <div class="analytics-grid">
-            <div><h3 class="h6">Detections over time</h3><div data-chart="traffic"></div></div>
-            @if (Model == "dashboard")
+@{
+    var live = Model == "live";
+    var canInvestigate = User.IsInRole("Admin") || User.IsInRole("Support");
+    var metrics = new (string Key, string Label, string Icon)[]
+    {
+        ("total", "Processed flows", "fa-network-wired"), ("benign", "Benign flows", "fa-shield"),
+        ("malicious", "Malicious flows", "fa-triangle-exclamation"), ("ratio", "Malicious traffic", "fa-percent")
+    };
+}
+<div class="monitoring-page" data-analytics="@Model" data-url="@Url.Content("~/api/monitoring/analytics")"
+     data-history="@Url.Page("/DetectionHistory")" data-tickets="@Url.Page("/Support/Tickets")">
+    <div class="monitoring-heading">
+        <h2 class="h5 mb-0">@(live ? "Current network activity" : "Network security overview")</h2>
+        <form class="monitoring-filters" data-window-form>
+            <label>Time window
+                <select class="form-select form-select-sm" data-range>
+                    <option value="" selected>Configured default</option>
+                    @if (live)
+                    {
+                        <option value="5m">Last 5 minutes</option>
+                        <option value="15m">Last 15 minutes</option>
+                        <option value="30m">Last 30 minutes</option>
+                    }
+                    <option value="1h">Last 60 minutes</option>
+                    <option value="24h">Last 24 hours</option>
+                    @if (!live)
+                    {
+                        <option value="7d">Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                        <option value="all">All time</option>
+                        <option value="custom">Custom UTC dates</option>
+                    }
+                </select>
+            </label>
+            <div class="monitoring-filters" data-custom hidden>
+                <label>From <input class="form-control form-control-sm" type="date" data-from /></label>
+                <label>Through <input class="form-control form-control-sm" type="date" data-through /></label>
+                <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Apply</button>
+            </div>
+            @if (live)
             {
-                <div><h3 class="h6">Benign and malicious traffic</h3><div data-chart="ratio"></div></div>
+                <button type="button" class="btn-ids btn-ids-secondary btn-ids-sm" data-pause aria-pressed="false">Pause refresh</button>
             }
-            else
+        </form>
+    </div>
+    <p class="small text-muted mb-0" role="status" data-chart-state>Loading analytics…</p>
+    <div class="monitoring-grid">
+        @foreach (var metric in metrics)
+        {
+            <div class="monitor-metric">
+                <i class="fa-solid @metric.Icon" aria-hidden="true"></i><span>@metric.Label</span>
+                <strong data-metric="@metric.Key">—</strong><small data-context="@metric.Key"></small>
+            </div>
+        }
+    </div>
+    <div class="small text-muted d-flex flex-wrap gap-3">
+        <span>Detected classes <strong data-metric="classes">—</strong></span>
+        @if (live)
+        {
+            <span>Average flows/min <strong data-metric="rate">—</strong></span>
+            <span>Pending SHAP jobs queued in window <strong data-metric="pending">—</strong></span>
+        }
+    </div>
+    <section class="card-ids">
+        <header class="card-ids-header">
+            <h2 class="h5 mb-0">Traffic over time</h2>
+            <label class="small">Series
+                <select class="form-select form-select-sm d-inline-block w-auto" data-traffic-mode>
+                    <option value="split">Benign and malicious</option><option value="total">Total traffic</option>
+                </select>
+            </label>
+        </header>
+        <div class="card-ids-body monitoring-panels">
+            <div><div data-chart="traffic" aria-label="Network flows by time"></div></div>
+            <div>
+                <h3 class="h6">@(live ? "Recent malicious traffic by model class" : "Traffic composition")</h3>
+                <div data-chart="@(live ? "distribution" : "ratio")"></div>
+            </div>
+        </div>
+    </section>
+    <section class="card-ids">
+        <header class="card-ids-header"><h2 class="h5 mb-0">@(live ? "Most detected attack categories" : "Attack category analytics")</h2></header>
+        <div class="card-ids-body">
+            @if (!live)
             {
-                <div><h3 class="h6">Top attack types</h3><div data-chart="types"></div></div>
-                <div><h3 class="h6">Attack categories</h3><div data-chart="categories"></div></div>
+                <div class="monitoring-panels mb-3">
+                    <div class="monitoring-scroll"><h3 class="h6">Detections by model class</h3><div data-chart="types"></div></div>
+                    <div><h3 class="h6">Share of malicious flows</h3><div data-chart="distribution"></div></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="attackTrends">Attack trends · select up to 6 classes</label>
+                    <select id="attackTrends" class="form-select form-select-sm" data-trend-labels multiple size="3"></select>
+                    <div data-chart="trends"></div>
+                </div>
             }
-            @if (Model == "dashboard" && (User.IsInRole("Admin") || User.IsInRole("Support")))
+            <div class="table-responsive monitoring-scroll" tabindex="0" aria-label="Attack category statistics">
+                <table class="table-ids mb-0">
+                    <thead><tr><th scope="col">Model class</th><th scope="col">Detections</th><th scope="col">Share</th>
+                        @if (!live) { <th scope="col">First observed (UTC)</th><th scope="col">Last observed (UTC)</th> }
+                    </tr></thead>
+                    <tbody data-class-rows></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    @if (!live)
+    {
+        <div class="monitoring-panels">
+            <section class="card-ids">
+                <header class="card-ids-header"><h2 class="h5 mb-0">Threat observations</h2></header>
+                <div class="card-ids-body">
+                    <h3 class="h6">Observed source addresses</h3><dl class="monitoring-list mb-3" data-insight="sources"></dl>
+                    <h3 class="h6">Destination ports</h3><dl class="monitoring-list mb-3" data-insight="ports"></dl>
+                    <h3 class="h6">Most recently observed classes</h3><dl class="monitoring-list" data-insight="recent"></dl>
+                </div>
+            </section>
+            @if (canInvestigate)
             {
-                <div><h3 class="h6">Status of security incidents opened in this range</h3><div data-chart="incidents"></div></div>
-                <div><h3 class="h6">Status of SHAP jobs queued in this range</h3><div data-chart="explanations"></div></div>
+                <section class="card-ids">
+                    <header class="card-ids-header"><h2 class="h5 mb-0">Security incidents</h2></header>
+                    <div class="card-ids-body">
+                        <p class="small text-muted">Current status of incidents opened in this window.</p>
+                        <dl class="monitoring-list" data-insight="incidents"></dl>
+                        <div data-chart="incidents"></div>
+                    </div>
+                </section>
+                <section class="card-ids">
+                    <header class="card-ids-header"><h2 class="h5 mb-0">SHAP explanation jobs</h2></header>
+                    <div class="card-ids-body">
+                        <p class="small text-muted">Jobs queued in this window, across model stages.</p>
+                        <dl class="monitoring-list" data-insight="explanations"></dl>
+                        <a asp-page="/DetectionHistory" asp-route-explanation="completed" data-explanation-link>Find completed explanations</a>
+                    </div>
+                </section>
             }
         </div>
-    </div>
-</section>
+    }
+</div>
 <script defer src="~/lib/plotly/plotly-basic-3.1.0.min.js" asp-append-version="true"></script>
 <script defer src="~/js/traffic-analytics.js" asp-append-version="true"></script>

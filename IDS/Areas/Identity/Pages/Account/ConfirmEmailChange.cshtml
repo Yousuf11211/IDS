@@ -1,8 +1,23 @@
-﻿@page
+@page
 @model ConfirmEmailChangeModel
 @{
     ViewData["Title"] = "Confirm email change";
 }
-
-<h1>@ViewData["Title"]</h1>
-<partial name="_StatusMessage" model="Model.StatusMessage" />
+<section class="card-ids card-ids-body mx-auto" style="max-width:36rem">
+    <h1 class="h3">Confirm email change</h1>
+    @if (Model.StatusMessage != null)
+    {
+        <p role="status">@Model.StatusMessage</p>
+    }
+    @if (Model.Confirmable)
+    {
+        <p>Confirm this address for your IDS account.</p>
+        <form method="post" asp-page="./ConfirmEmailChange">
+            <input type="hidden" name="userId" value="@Model.Request.Query["userId"]" />
+            <input type="hidden" name="email" value="@Model.Request.Query["email"]" />
+            <input type="hidden" name="code" value="@Model.Request.Query["code"]" />
+            <button type="submit" class="btn-ids btn-ids-primary">Confirm address</button>
+        </form>
+    }
+    <a asp-page="./Login" class="mt-3">Go to sign in</a>
+</section>

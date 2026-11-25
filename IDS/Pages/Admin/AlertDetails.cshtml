@@ -1,45 +1,64 @@
 @page "{id:int}"
 @model IDS.Pages.Admin.AlertDetailsModel
 @{
-    ViewData["Title"] = "Alert Details";
+    ViewData["Title"] = "Alert details";
+    var alert = Model.Alert;
 }
-
-<div class="page-header">
-    <div class="page-header-hero">
-        <h1 class="page-header-title"><i class="fa-solid fa-shield-halved"></i> Alert Details</h1>
-        <p class="page-header-subtitle">Review the recorded event and its response status.</p>
-    </div>
-</div>
-
-<div class="card-ids">
-    <div class="card-ids-header">
-        <h2 class="card-ids-title">@Model.Alert.AlertType</h2>
-        <span class="status-badge @(Model.Alert.IsAcknowledged ? "status-normal" : "status-warning")">
-            @(Model.Alert.IsAcknowledged ? "Acknowledged" : "Pending")
-        </span>
-    </div>
-    <div class="card-ids-body">
-        <p>@Model.Alert.Message</p>
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Severity</dt><dd class="col-sm-9">@Model.Alert.Severity</dd>
-            <dt class="col-sm-3">Detected at</dt><dd class="col-sm-9">@Model.Alert.Timestamp.ToString("u")</dd>
-            <dt class="col-sm-3">Source</dt><dd class="col-sm-9">@Model.Alert.SourceIP:@Model.Alert.SourcePort</dd>
-            <dt class="col-sm-3">Destination</dt><dd class="col-sm-9">@Model.Alert.DestinationIP:@Model.Alert.DestinationPort</dd>
-            <dt class="col-sm-3">Protocol</dt><dd class="col-sm-9">@Model.Alert.Protocol</dd>
-            @if (Model.Alert.IsAcknowledged)
+<div class="monitoring-page">
+    <header class="monitoring-heading">
+        <h1 data-attack-label="@alert.AttackLabel">@alert.AlertType</h1>
+        <a asp-page="/Admin/Alerts">All security alerts</a>
+    </header>
+    @if (Model.Result != null) { <div class="alert alert-info" role="status">@Model.Result</div> }
+    <section class="card-ids card-ids-body">
+        <p>@alert.Message</p>
+        <dl class="monitoring-list">
+            <div><dt>Category</dt><dd>@(alert.EventCategory ?? "Recorded alert")</dd></div>
+            <div><dt>Severity</dt><dd>@alert.Severity</dd></div>
+            <div><dt>Status</dt><dd>@IDS.Pages.Admin.AlertsModel.State(alert)</dd></div>
+            <div><dt>First observed (UTC)</dt><dd>@alert.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</dd></div>
+            <div><dt>Last observed (UTC)</dt><dd>@((alert.LastObservedAt ?? alert.Timestamp).ToString("yyyy-MM-dd HH:mm:ss"))</dd></div>
+            @if (alert.EventCategory == "Detection")
             {
-                <dt class="col-sm-3">Acknowledged at</dt>
-                <dd class="col-sm-9">@Model.Alert.AcknowledgedAt?.ToString("u")</dd>
+                <div><dt>Associated detections</dt><dd>@alert.DetectionCount.ToString("N0")</dd></div>
             }
-            @if (!string.IsNullOrWhiteSpace(Model.Alert.Notes))
+            @if (!string.IsNullOrEmpty(alert.SourceIP)) { <div><dt>Observed source</dt><dd>@alert.SourceIP</dd></div> }
+            @if (!string.IsNullOrEmpty(alert.DestinationIP)) { <div><dt>Destination</dt><dd>@alert.DestinationIP</dd></div> }
+            @if (alert.DestinationPort.HasValue) { <div><dt>Destination port</dt><dd>@alert.DestinationPort</dd></div> }
+            @if (alert.Ticket != null)
             {
-                <dt class="col-sm-3">Notes</dt><dd class="col-sm-9">@Model.Alert.Notes</dd>
+                <div><dt>Incident</dt><dd><a asp-page="/Support/ManageTicket" asp-route-id="@alert.TicketId">@alert.Ticket.TicketNumber</a></dd></div>
+                <div><dt>Assigned</dt><dd>@(alert.Ticket.AssignedToName ?? "Unassigned")</dd></div>
             }
         </dl>
-    </div>
-    <div class="card-ids-footer">
-        <a asp-page="/Admin/Alerts" class="btn-ids btn-ids-secondary">
-            <i class="fa-solid fa-arrow-left"></i> Back to alerts
-        </a>
-    </div>
+        @if (alert.RepresentativeAttackId.HasValue)
+        {
+            <a class="mt-3" asp-page="/InspectAttack" asp-route-id="@alert.RepresentativeAttackId">Inspect representative detection</a>
+        }
+        @if (!string.IsNullOrWhiteSpace(alert.Notes)) { <p class="mt-3 mb-0">@alert.Notes</p> }
+    </section>
+    @if (alert.ResolvedAt == null)
+    {
+        <div class="monitoring-panels">
+            @if (alert.TicketId == null)
+            {
+                <section class="card-ids card-ids-body">
+                    <h2 class="h6">Incident association</h2>
+                    <form method="post" asp-page-handler="Incident" class="monitoring-filters">
+                        <label>Existing incident ID (optional, blank creates an incident)
+                            <input name="ticketId" type="number" min="1" class="form-control form-control-sm" />
+                        </label>
+                        <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Link or create incident</button>
+                    </form>
+                </section>
+            }
+            <section class="card-ids card-ids-body">
+                <h2 class="h6">Resolve alert</h2>
+                <form method="post" asp-page-handler="Resolve" class="monitoring-filters">
+                    <label>Resolution reason <input name="reason" required maxlength="1000" class="form-control form-control-sm" /></label>
+                    <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Resolve alert</button>
+                </form>
+            </section>
+        </div>
+    }
 </div>

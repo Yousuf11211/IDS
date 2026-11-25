@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Data.Services;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,17 +17,19 @@ public class ResetAuthenticatorModel : PageModel
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ILogger<ResetAuthenticatorModel> _logger;
     private readonly ApplicationDbContext _database;
+    private readonly AccountEmailQueue _email;
 
     public ResetAuthenticatorModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         ILogger<ResetAuthenticatorModel> logger,
-        ApplicationDbContext database)
+        ApplicationDbContext database, AccountEmailQueue email)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _logger = logger;
         _database = database;
+        _email = email;
     }
 
     [BindProperty]
@@ -99,6 +103,8 @@ public class ResetAuthenticatorModel : PageModel
             return Page();
         }
 
+        _email.Confirm(user, "Authenticator reset started", "Your existing IDS authenticator and recovery codes were reset. Finish enrolling a replacement.");
+        AccountRecovery.NotifyUser(_database, user, "Authenticator reset started", "Your existing IDS authenticator and recovery codes were reset. Finish enrolling a replacement.");
         _database.AuditLogs.Add(new AuditLog
         {
             UserId = user.Id, UserEmail = user.Email ?? "", EntityId = user.Id, EntityType = "Authentication",

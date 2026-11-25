@@ -1,0 +1,74 @@
+@page
+@model IDS.Pages.Admin.EmailDeliveryModel
+@{
+    ViewData["Title"] = "Email delivery";
+}
+<div class="monitoring-page">
+    <header class="monitoring-heading"><h1>Email delivery</h1><a asp-page="/Admin/Operations">Administration settings</a></header>
+    @if (Model.StatusMessage != null) { <p class="alert alert-info" role="status">@Model.StatusMessage</p> }
+    @if (!Model.Ready || !Model.TrustedOrigin)
+    {
+        <div class="alert alert-warning" role="status">
+            @if (!Model.Ready) { <p class="mb-0">Mailjet is disabled or missing credentials. Email-dependent recovery is unavailable.</p> }
+            @if (!Model.TrustedOrigin) { <p class="mb-0">Set the trusted public application URL before sending recovery or welcome links.</p> }
+        </div>
+    }
+    <form method="post" class="card-ids card-ids-body">
+        <h2 class="h5">Mailjet SMTP</h2>
+        <p class="text-muted">Provider host · @Model.Host. Supply a verified Mailjet sender address.</p>
+        <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+        <div class="monitoring-panels mb-3">
+            <label><input asp-for="Input.Enabled" class="form-check-input" /> Enable email submission</label>
+            <label><input asp-for="Input.SupportCopies" class="form-check-input" /> Send support copies for new recovery requests</label>
+            <label>SMTP port <input asp-for="Input.Port" class="form-control" /></label>
+            <label>Sender email <input asp-for="Input.SenderEmail" class="form-control" /></label>
+            <label>Sender name <input asp-for="Input.SenderName" class="form-control" /></label>
+            <label>Administrator contact email <input asp-for="Input.AdministratorEmail" class="form-control" /></label>
+            <label>Support contact email <input asp-for="Input.SupportEmail" class="form-control" /></label>
+            <label>Replacement Mailjet API key <input asp-for="Input.ApiKey" class="form-control" autocomplete="new-password" /></label>
+            <label>Replacement Mailjet secret <input asp-for="Input.Secret" class="form-control" autocomplete="new-password" /></label>
+        </div>
+        <p class="small text-muted">Leave credential fields blank to retain the current values. Account security messages are retained for submission while email is disabled.</p>
+        <div class="monitoring-filters">
+            <label>Current password <input asp-for="Password" class="form-control form-control-sm" autocomplete="current-password" required /></label>
+            <label>Authenticator code <input asp-for="Code" class="form-control form-control-sm" autocomplete="one-time-code" inputmode="numeric" /></label>
+            <button type="submit" class="btn-ids btn-ids-primary btn-ids-sm">Save email settings</button>
+        </div>
+    </form>
+    <section class="card-ids card-ids-body">
+        <h2 class="h5">Test email</h2>
+        <p class="text-muted">Queue a test to your verified address. The delivery log records SMTP provider acceptance.</p>
+        <form method="post" asp-page-handler="Test" class="monitoring-filters">
+            <label>Current password <input name="Password" type="password" class="form-control form-control-sm" autocomplete="current-password" required /></label>
+            <label>Authenticator code <input name="Code" class="form-control form-control-sm" autocomplete="one-time-code" inputmode="numeric" /></label>
+            <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm" disabled="@(!Model.Ready)">Queue test</button>
+        </form>
+    </section>
+    <section class="card-ids">
+        <header class="card-ids-header"><h2 class="h5 mb-0">Recent email submissions</h2></header>
+        <div class="table-responsive">
+            <table class="table-ids mb-0">
+                <thead><tr><th>Event</th><th>Queued (UTC)</th><th>Last attempt (UTC)</th><th>Attempts</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                @foreach (var item in Model.Recent)
+                {
+                    <tr>
+                        <td>@item.EventType</td><td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@(item.LastAttemptAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td><td>@item.Attempts</td>
+                        <td>@(item.AcceptedAt.HasValue ? "Accepted by Mailjet" : item.FailedAt.HasValue ? "Failed · " + item.FailureCode : item.FailureCode == null ? "Queued" : "Retry scheduled")</td>
+                        <td>
+                            @if (item.CanRetry)
+                            {
+                                <form method="post" asp-page-handler="Retry" asp-route-id="@item.Id">
+                                    <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Retry</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Recent.Count == 0) { <tr><td colspan="6" class="p-4 text-muted">No account security emails have been queued.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

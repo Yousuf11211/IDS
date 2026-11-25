@@ -14,97 +14,34 @@ namespace IDS.Data.Services
     public class MailjetEmailSender : IEmailSender
     {
         private readonly ILogger<MailjetEmailSender> _logger;
-        private readonly IWebHostEnvironment _environment;
   
-        // Configuration loaded from environment variables
-        private readonly string _apiKey;
-        private readonly string _secretKey;
-        private readonly string _smtpServer;
-        private readonly int _smtpPort;
-        private readonly string _fromEmail;
-        private readonly string _fromName;
-        private readonly string _supportEmail;
-        private readonly bool _emailEnabled;
-        private readonly bool _ignoreSSLErrors;
+        private readonly EmailConfiguration _configuration;
         private readonly string _templateBasePath;
         private readonly string _logoUrl;
+        private readonly bool _ignoreSSLErrors;
+        private MailjetSettings? _settings;
 
-        /// <summary>
-        /// Initializes the Mailjet email sender with configuration from environment variables.
-        /// </summary>
-        public MailjetEmailSender(ILogger<MailjetEmailSender> logger, IWebHostEnvironment environment)
+        public MailjetEmailSender(ILogger<MailjetEmailSender> logger, IWebHostEnvironment environment,
+            EmailConfiguration configuration)
         {
             _logger = logger;
-            _environment = environment;
-
-            // =====================================================
-            // Load configuration from environment variables
-            // Falls back to defaults for development
-            // =====================================================
-            _apiKey = Environment.GetEnvironmentVariable("MAILJET_API_KEY") ?? string.Empty;
-            _secretKey = Environment.GetEnvironmentVariable("MAILJET_SECRET_KEY") ?? string.Empty;
-            _smtpServer = Environment.GetEnvironmentVariable("MAILJET_SMTP_SERVER") ?? "in-v3.mailjet.com";
-            _smtpPort = int.TryParse(Environment.GetEnvironmentVariable("MAILJET_SMTP_PORT"), out var port) ? port : 587;
-            _fromEmail = Environment.GetEnvironmentVariable("MAILJET_FROM_EMAIL") ?? "no-reply@intrusiondetectionsystem.great-site.net";
-            _fromName = Environment.GetEnvironmentVariable("MAILJET_FROM_NAME") ?? "IDS System";
-            _supportEmail = Environment.GetEnvironmentVariable("SUPPORT_EMAIL") ?? "support@intrusiondetectionsystem.great-site.net";
-            
-            // EMAIL_STATUS controls whether emails are actually sent
-       // When false, emails are logged but not sent (useful for development)
-            var emailStatus = Environment.GetEnvironmentVariable("EMAIL_STATUS") ?? "false";
-            _emailEnabled = emailStatus.Equals("true", StringComparison.OrdinalIgnoreCase);
-
-            // SECURITY: Allows bypassing SSL certificate checks (useful for dev/corporate networks but UNSAFE for production)
-            var ignoreSSL = Environment.GetEnvironmentVariable("MAILJET_IGNORE_CERTIFICATE_ERRORS") ?? "false";
-         _ignoreSSLErrors = _environment.IsDevelopment() &&
-             ignoreSSL.Equals("true", StringComparison.OrdinalIgnoreCase);
-  
-       // Logo URL - can be set via environment variable or defaults to local path
- // NOTE: For emails, the logo must be publicly accessible. Local files won't work in email clients.
-            // In production, use a full URL like https://yourdomain.com/Email_logo/Email_logo.png
-      _logoUrl = Environment.GetEnvironmentVariable("EMAIL_LOGO_URL") ?? string.Empty;
-     
-    // Template path relative to content root
-  _templateBasePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
-
-            // Log configuration status (without sensitive data)
-            _logger.LogInformation("MailjetEmailSender initialized. Email sending is {Status}. SMTP: {Server}:{Port}. SSL Bypass: {SSL}", 
-                _emailEnabled ? "ENABLED" : "DISABLED", _smtpServer, _smtpPort, _ignoreSSLErrors);
+            _configuration = configuration;
+            _templateBasePath = Path.Combine(environment.ContentRootPath, "Templates", "Email");
+            _logoUrl = Environment.GetEnvironmentVariable("EMAIL_LOGO_URL") ?? "";
+            _ignoreSSLErrors = environment.IsDevelopment() &&
+                string.Equals(Environment.GetEnvironmentVariable("MAILJET_IGNORE_CERTIFICATE_ERRORS"), "true",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Check if email sending is properly configured.
-        /// </summary>
-        public bool IsConfigured => !string.IsNullOrEmpty(_apiKey) && !string.IsNullOrEmpty(_secretKey) && _emailEnabled;
+        public async Task<MailjetSettings> LoadAsync(CancellationToken token = default) =>
+            _settings ??= await _configuration.ReadAsync(token);
 
-        /// <summary>
-        /// Sends a password setup link without putting a reusable password in email.
-        /// The reset token is validated by ASP.NET Identity when the recipient opens the link.
-        /// </summary>
-        public Task<(bool Success, string? ErrorMessage)> SendAccountAccessLinkAsync(
-            string toEmail, string userName, string resetUrl, bool isInvitation)
-        {
-            var title = isInvitation ? "Set up your IDS account" : "Reset your IDS password";
-            var action = isInvitation ? "Set your password" : "Reset your password";
-            var encodedName = HtmlEncoder.Default.Encode(userName);
-            var encodedUrl = HtmlEncoder.Default.Encode(resetUrl);
-            var html = $"""
-                <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#172033">
-                  <h1 style="font-size:24px">{title}</h1>
-                  <p>Hello {encodedName},</p>
-                  <p>{(isInvitation ? "An administrator created your IDS account." : "An administrator requested a password reset for your IDS account.")} Use the link below to choose your own password. The link expires after 24 hours.</p>
-                  <p><a href="{encodedUrl}" style="display:inline-block;padding:12px 18px;background:#155eef;color:#fff;text-decoration:none;border-radius:6px">{action}</a></p>
-                  <p>After signing in, complete authenticator setup if prompted. If you did not expect this message, contact your administrator.</p>
-                </div>
-                """;
-            var plainText = $"Hello {userName},\n\n{title}. Open this link within 24 hours to choose your password:\n{resetUrl}\n\nIf you did not expect this message, contact your administrator.";
-            return SendEmailAsync(toEmail, userName, title, html, plainText);
-        }
+        public bool IsConfigured => (_settings ?? MailjetSettings.EnvironmentDefaults()).Ready;
 
         /// <summary>
         /// Gets the support email address from configuration.
         /// </summary>
-        public string SupportEmail => _supportEmail;
+        public string SupportEmail => (_settings ?? MailjetSettings.EnvironmentDefaults()).SupportEmail;
 
         /// <summary>
         /// Gets the logo URL for email branding.
@@ -134,116 +71,67 @@ namespace IDS.Data.Services
         /// <param name="subject">Email subject</param>
         /// <param name="htmlBody">HTML body content</param>
         /// <param name="textBody">Plain text body content (optional - auto-generated if not provided)</param>
-        public async Task<(bool Success, string? ErrorMessage)> SendEmailAsync(string toEmail, string? toName, string subject, string htmlBody, string? textBody = null)
+        public async Task<(bool Success, string? ErrorMessage)> SendEmailAsync(string toEmail, string? toName,
+            string subject, string htmlBody, string? textBody = null, string? messageId = null,
+            CancellationToken cancellationToken = default)
         {
-            // =====================================================
-            // Validate inputs
-            // =====================================================
-            if (string.IsNullOrWhiteSpace(toEmail))
-            {
-                var msg = "SendEmailAsync called with empty recipient email. Skipping.";
-                _logger.LogWarning(msg);
-                return (false, msg);
-            }
-
-            // =====================================================
-            // Check if email sending is enabled
-            // =====================================================
-            if (!_emailEnabled)
-            {
-                var msg = $"[EMAIL DISABLED] Would send email to: {toEmail}. Set EMAIL_STATUS=true to enable.";
-                _logger.LogInformation(
-                    "[EMAIL DISABLED] Would send email to: {ToEmail}\n" +
-                    "Subject: {Subject}\n" +
-                    "HTML Body Preview: {Preview}...",
-                    toEmail, 
-                    subject, 
-                    htmlBody?.Length > 200 ? htmlBody[..200] : htmlBody);
-                return (true, msg); // Return true because it "succeeded" in doing what it was told (not sending)
-            }
-
-            // =====================================================
-            // Check if API credentials are configured
-            // =====================================================
-            if (string.IsNullOrEmpty(_apiKey) || string.IsNullOrEmpty(_secretKey))
-            {
-                var msg = "Mailjet API credentials not set. Set MAILJET_API_KEY and MAILJET_SECRET_KEY.";
-                _logger.LogWarning(
-                    "[EMAIL NOT CONFIGURED] {Msg} Email to {ToEmail} was NOT sent.",
-                    msg, toEmail);
-                return (false, msg);
-            }
+            var settings = await LoadAsync(cancellationToken);
+            if (!settings.Ready) return (false, "Mailjet is disabled or unavailable.");
+            if (!MailboxAddress.TryParse(toEmail, out var recipient)) return (false, "Invalid recipient address.");
 
             try
             {
-                // =====================================================
-                // Build the email message
-                // =====================================================
                 var message = new MimeMessage();
-            
-                // Set sender
-                message.From.Add(new MailboxAddress(_fromName, _fromEmail));
-        
-                // Set recipient
-                if (!string.IsNullOrEmpty(toName))
-                {
-                    message.To.Add(new MailboxAddress(toName, toEmail));
-                }
-                else
-                {
-                    message.To.Add(MailboxAddress.Parse(toEmail));
-                }
-                
-                // Set subject
+                message.From.Add(new MailboxAddress(settings.SenderName, settings.SenderEmail));
+                message.To.Add(new MailboxAddress(toName ?? recipient.Name, recipient.Address));
                 message.Subject = subject;
+                if (messageId != null) message.MessageId = messageId;
+                message.Body = new BodyBuilder { HtmlBody = htmlBody, TextBody = textBody ?? StripHtmlTags(htmlBody) }.ToMessageBody();
 
-                // =====================================================
-                // Build multipart body (HTML + plain text)
-                // =====================================================
-                var builder = new BodyBuilder();
-            
-                // Plain text version (auto-generate from HTML if not provided)
-                builder.TextBody = textBody ?? StripHtmlTags(htmlBody);
-        
-                // HTML version
-                builder.HtmlBody = htmlBody;
-                    
-                message.Body = builder.ToMessageBody();
-
-                // =====================================================
-                // Send via SMTP
-                // =====================================================
-                using var client = new SmtpClient();
-
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                deadline.CancelAfter(TimeSpan.FromSeconds(20));
+                using var client = new SmtpClient { Timeout = 15000 };
                 if (_ignoreSSLErrors)
                 {
-                    // WARNING: Only use this in development or if strictly necessary due to network/firewall issues
-                    // This creates a security risk (Man-in-the-Middle attacks)
                     client.CheckCertificateRevocation = false;
-                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-                    _logger.LogWarning("SSL Certificate validation is DISABLED. This is unsafe for production.");
+                    client.ServerCertificateValidationCallback = (_, _, _, _) => true;
+                    _logger.LogWarning("SMTP certificate verification is disabled in Development.");
                 }
-        
-                // Connect to Mailjet SMTP server
-                await client.ConnectAsync(_smtpServer, _smtpPort, SecureSocketOptions.StartTls);
-                
-                // Authenticate with API Key (username) and Secret Key (password)
-                await client.AuthenticateAsync(_apiKey, _secretKey);
-                
-                // Send the message
-                await client.SendAsync(message);
-            
-                // Disconnect cleanly
-                await client.DisconnectAsync(true);
 
-                _logger.LogInformation("Email sent successfully to {ToEmail} with subject '{Subject}'", toEmail, subject);
+                await client.ConnectAsync(settings.Host, settings.Port,
+                    settings.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls, deadline.Token);
+                await client.AuthenticateAsync(settings.ApiKey, settings.Secret, deadline.Token);
+                await client.SendAsync(message, deadline.Token);
+                // The provider has accepted the message. A disconnect error must not cause another send.
+                try { await client.DisconnectAsync(true, deadline.Token); }
+                catch { }
                 return (true, null);
             }
-            catch (Exception ex)
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested)
             {
-                _logger.LogError(ex, "Failed to send email to {ToEmail} with subject '{Subject}'", toEmail, subject);
-                return (false, ex.Message);
+                _logger.LogWarning("Mailjet SMTP submission failed ({ErrorType}).", error.GetType().Name);
+                return (false, "Mailjet submission failed.");
             }
+        }
+
+        public virtual async Task<(bool Success, string? ErrorMessage)> SendAccountSecurityAsync(AccountEmail payload,
+            string messageId, CancellationToken token)
+        {
+            var settings = await LoadAsync(token);
+            var contact = string.IsNullOrWhiteSpace(settings.SupportEmail) ? settings.AdministratorEmail ?? "your administrator" : settings.SupportEmail;
+            var values = GetBasePlaceholders();
+            values["Name"] = payload.Name;
+            values["Title"] = payload.Title;
+            values["Description"] = payload.Description;
+            values["OccurredAt"] = payload.OccurredAt.ToString("yyyy-MM-dd HH:mm 'UTC'");
+            values["Contact"] = contact;
+            values["ActionLabel"] = payload.ActionLabel ?? "";
+            values["ActionUrl"] = payload.ActionUrl ?? "";
+            values["Warning"] = payload.Confirmation
+                ? "Your IDS account security settings have been updated. If you authorized this change, no further action is required. If you did not make this change, contact your administrator or support immediately."
+                : "If you did not expect this message, contact your administrator or support.";
+            var (html, text) = await LoadTemplateAsync("AccountSecurity", values, encodeHtml: true);
+            return await SendEmailAsync(payload.To, payload.Name, payload.Title + " · IDS Security", html, text, messageId, token);
         }
 
         /// <summary>
@@ -326,7 +214,7 @@ namespace IDS.Data.Services
         {
           return new Dictionary<string, string>
             {
-    { "SupportEmail", _supportEmail },
+    { "SupportEmail", SupportEmail },
     { "Year", DateTime.Now.Year.ToString() },
      { "LogoUrl", _logoUrl },
          { "HasLogo", string.IsNullOrEmpty(_logoUrl) ? "false" : "true" }
@@ -345,11 +233,13 @@ namespace IDS.Data.Services
         /// <returns>Tuple of (HTML body, plain text body)</returns>
         private async Task<(string HtmlBody, string TextBody)> LoadTemplateAsync(
   string templateName, 
-     Dictionary<string, string> placeholders)
+     Dictionary<string, string> placeholders, bool encodeHtml = false)
      {
    var htmlPath = Path.Combine(_templateBasePath, $"{templateName}.html");
          var textPath = Path.Combine(_templateBasePath, $"{templateName}.txt");
 
+            var htmlValues = encodeHtml ? placeholders.ToDictionary(item => item.Key,
+                item => HtmlEncoder.Default.Encode(item.Value)) : placeholders;
             string htmlBody;
             string textBody;
 
@@ -359,12 +249,12 @@ namespace IDS.Data.Services
     if (File.Exists(htmlPath))
         {
             htmlBody = await File.ReadAllTextAsync(htmlPath);
-                htmlBody = ReplacePlaceholders(htmlBody, placeholders);
+                htmlBody = ReplacePlaceholders(htmlBody, htmlValues);
     }
    else
   {
   _logger.LogWarning("HTML template not found: {Path}. Using fallback.", htmlPath);
-          htmlBody = GenerateFallbackHtml(templateName, placeholders);
+          htmlBody = GenerateFallbackHtml(templateName, htmlValues);
        }
 
             // =====================================================
@@ -389,12 +279,8 @@ namespace IDS.Data.Services
   /// </summary>
         private static string ReplacePlaceholders(string template, Dictionary<string, string> placeholders)
 {
-            var result = template;
-        foreach (var (key, value) in placeholders)
-            {
-      result = result.Replace($"{{{key}}}", value ?? string.Empty);
-  }
-         return result;
+            return System.Text.RegularExpressions.Regex.Replace(template, @"\{([A-Za-z][A-Za-z0-9]*)\}",
+                match => placeholders.GetValueOrDefault(match.Groups[1].Value) ?? match.Value);
         }
 
         /// <summary>

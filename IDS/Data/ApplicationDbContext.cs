@@ -31,9 +31,28 @@ namespace IDS.Data
         public DbSet<IncidentEscalation> IncidentEscalations => Set<IncidentEscalation>();
         public DbSet<WorkerHeartbeat> WorkerHeartbeats => Set<WorkerHeartbeat>();
 
+        public DbSet<SecurityEmail> SecurityEmails => Set<SecurityEmail>();
+        public DbSet<AuthenticatorResetRequest> AuthenticatorResetRequests => Set<AuthenticatorResetRequest>();
+        public DbSet<RecoveryThrottle> RecoveryThrottles => Set<RecoveryThrottle>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<SecurityEmail>(b =>
+            {
+                b.HasIndex(e => e.EventKey).IsUnique();
+                b.HasIndex(e => e.DueAt).HasFilter("[AcceptedAt] IS NULL AND [FailedAt] IS NULL");
+            });
+            builder.Entity<AuthenticatorResetRequest>(b =>
+            {
+                b.HasIndex(r => new { r.UserId, r.Status });
+                b.HasIndex(r => new { r.Status, r.ExpiresAt });
+            });
+            builder.Entity<RecoveryThrottle>(b =>
+            {
+                b.HasKey(t => t.Key);
+                b.HasIndex(t => t.WindowStart);
+            });
             builder.Entity<InboxNotification>(b =>
             {
                 b.HasIndex(n => new { n.RecipientId, n.CreatedAt, n.Id });
@@ -76,6 +95,9 @@ namespace IDS.Data
                 b.HasIndex(a => a.Timestamp);
                 b.HasIndex(a => a.Severity);
                 b.HasIndex(a => a.IsAcknowledged);
+                b.HasIndex(a => a.GroupKey).IsUnique().HasFilter("[GroupKey] IS NOT NULL");
+                b.HasIndex(a => a.LastObservedAt);
+                b.HasOne(a => a.Ticket).WithMany().OnDelete(DeleteBehavior.SetNull);
             });
 
             // =====================================================

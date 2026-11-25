@@ -1,11 +1,13 @@
+using IDS.Data.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace IDS.Areas.Identity.Pages.Account
+namespace IDS.Areas.Identity.Pages.Account;
+
+[AllowAnonymous]
+public sealed class HelpSupportModel(EmailConfiguration email) : PageModel
 {
- [Authorize]
- public class HelpSupportModel : PageModel
- {
- public void OnGet() { }
- }
+    public string? SupportEmail { get; private set; }
+
+    public async Task OnGetAsync(CancellationToken token) => SupportEmail = await email.ContactAsync(token);
 }

@@ -20,9 +20,12 @@ public sealed class AccountLinkBuilder
     public bool IsConfigured => GetPublicOrigin() != null;
 
     public string? PasswordResetLink(IUrlHelper url, string encodedToken)
+        => Link(url, "/Account/ResetPassword", new { area = "Identity", code = encodedToken });
+
+    public string? Link(IUrlHelper url, string page, object values)
     {
         var origin = GetPublicOrigin();
-        var path = url.Page("/Account/ResetPassword", values: new { area = "Identity", code = encodedToken });
+        var path = url.Page(page, values: values);
         return origin == null || string.IsNullOrWhiteSpace(path) ? null : origin + path;
     }
 

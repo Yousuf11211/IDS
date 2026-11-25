@@ -46,14 +46,16 @@ namespace IDS.Core.Services
     public class LiveDetectionService : ILiveDetectionService
     {
         private readonly ApplicationDbContext _db;
+        private readonly WorkerHealthService _workerHealth;
 private readonly ILogger<LiveDetectionService> _logger;
 
 public LiveDetectionService(
             ApplicationDbContext db,
-      ILogger<LiveDetectionService> logger)
+      ILogger<LiveDetectionService> logger, WorkerHealthService workerHealth)
   {
  _db = db;
      _logger = logger;
+            _workerHealth = workerHealth;
   }
 
         public async Task<LiveDashboardStats> GetCurrentStatsAsync()
@@ -107,7 +109,8 @@ status = "Warning";
   BenignLastHour = benignHour,
   AttacksLastHour = attacksHour,
   AttackPercentage = Math.Round(attackPercentage, 2),
-SystemStatus = status,
+SystemStatus = (await _workerHealth.GetAsync(CancellationToken.None)).Overall,
+   ThreatActivity = status,
          LastUpdated = now,
      AttacksByType = attacksByType,
    AttacksBySeverity = attacksBySeverity

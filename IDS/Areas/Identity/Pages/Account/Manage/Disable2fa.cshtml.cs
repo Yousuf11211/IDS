@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Data.Services;
 using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +13,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage;
 [Authorize(Roles = AppRoles.Admin)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class Disable2faModel(UserManager<ApplicationUser> users, SignInManager<ApplicationUser> signIn,
-    SecurityPolicyService policy, ApplicationDbContext database) : PageModel
+    SecurityPolicyService policy, ApplicationDbContext database, AccountEmailQueue email) : PageModel
 {
     public bool CanDisable { get; private set; }
     [BindProperty, DataType(DataType.Password)] public string? Password { get; set; }
@@ -69,6 +70,8 @@ public sealed class Disable2faModel(UserManager<ApplicationUser> users, SignInMa
             return Page();
         }
 
+        email.Confirm(user, "Authenticator disabled", "Your IDS authenticator was deactivated.");
+        AccountRecovery.NotifyUser(database, user, "Authenticator disabled", "Your IDS authenticator was deactivated.");
         database.AuditLogs.Add(new AuditLog
         {
             UserId = user.Id, UserEmail = user.Email ?? "", EntityId = user.Id, EntityType = "Authentication",

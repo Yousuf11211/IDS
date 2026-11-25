@@ -125,7 +125,7 @@ if (!text) return '';
     const FormValidation = {
         init() {
             // Add validation styling on form submit
-      document.querySelectorAll('form').forEach(form => {
+      document.querySelectorAll('form:not([data-feed-form])').forEach(form => {
      form.addEventListener('submit', (e) => {
       if (!form.checkValidity()) {
            e.preventDefault();
@@ -200,3 +200,26 @@ document.addEventListener('submit', event => {
     const prompt = event.target.dataset?.confirm;
     if (prompt && !window.confirm(prompt)) event.preventDefault();
 });
+
+(() => {
+    function attackColor(label) {
+        let hash = 2166136261;
+        for (const char of label) hash = Math.imul(hash ^ char.codePointAt(0), 16777619);
+        hash = Math.imul(hash ^ (hash >>> 16), 0x7feb352d);
+        hash ^= hash >>> 15;
+        const hue = (hash >>> 0) % 360;
+        const offset = (hash >>> 9) % 9;
+        const lightness = (document.documentElement.dataset.theme === 'dark' ? 61 : 36) + offset;
+        return label === 'Unclassified' ? '#778392' : `hsl(${hue} 52% ${lightness}%)`;
+    }
+    function applyAttackColors(scope = document) {
+        scope.querySelectorAll('[data-attack-label]').forEach(node => {
+            node.classList.add('category-mark');
+            node.style.setProperty('--category-color', attackColor(node.dataset.attackLabel));
+        });
+    }
+    window.IDS = { ...window.IDS, attackColor, applyAttackColors };
+    applyAttackColors();
+    new MutationObserver(() => applyAttackColors()).observe(document.documentElement,
+        { attributes: true, attributeFilter: ['data-theme'] });
+})();

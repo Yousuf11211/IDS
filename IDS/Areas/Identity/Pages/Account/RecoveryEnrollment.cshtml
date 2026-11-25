@@ -1,0 +1,50 @@
+@page
+@model RecoveryEnrollmentModel
+@{
+    ViewData["Title"] = "Replace your authenticator";
+}
+<section class="card-ids card-ids-body mx-auto" style="max-width: 38rem">
+    <h1 class="h3">Replace your authenticator</h1>
+    @if (Model.RecoveryCodes != null)
+    {
+        <p>Your replacement authenticator is active. Save these one-time recovery codes somewhere secure before signing in.</p>
+        <ul class="row list-unstyled font-monospace">
+        @foreach (var code in Model.RecoveryCodes) { <li class="col-6">@code</li> }
+        </ul>
+        <a asp-page="./Login" class="btn-ids btn-ids-primary align-self-start">Sign in</a>
+    }
+    else if (Model.ValidLink)
+    {
+        <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+        @if (Model.QrImage != null)
+        {
+            <p>Scan this QR code with your authenticator or enter the setup key manually. Enter a code from the replacement authenticator to finish.</p>
+            <img src="@Model.QrImage" class="align-self-start bg-light" width="200" height="200" alt="Authenticator setup QR code" />
+            <p class="font-monospace text-break">@Model.SharedKey</p>
+            <form method="post" asp-page-handler="Complete">
+                <input asp-for="Link" type="hidden" />
+                <input asp-for="Setup" type="hidden" />
+                <label asp-for="Password" class="form-label">Current password</label>
+                <input asp-for="Password" class="form-control mb-3" autocomplete="current-password" required />
+                <label asp-for="Code" class="form-label">New authenticator code</label>
+                <input asp-for="Code" class="form-control mb-3" autocomplete="one-time-code" inputmode="numeric" required />
+                <button type="submit" class="btn-ids btn-ids-primary">Verify and replace</button>
+            </form>
+        }
+        else
+        {
+            <p class="text-muted">Verify your password to start replacement. Contact support if you also lost your password.</p>
+            <form method="post" asp-page-handler="Prepare">
+                <input asp-for="Link" type="hidden" />
+                <label asp-for="Password" class="form-label">Current password</label>
+                <input asp-for="Password" class="form-control mb-3" autocomplete="current-password" required />
+                <button type="submit" class="btn-ids btn-ids-primary">Verify password</button>
+            </form>
+        }
+    }
+    else
+    {
+        <p class="text-muted">The enrollment link is invalid, expired, already used, or unavailable. Start a new request or contact support.</p>
+        <a asp-page="./AuthenticatorRecovery">Request authenticator reset</a>
+    }
+</section>

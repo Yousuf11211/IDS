@@ -15,6 +15,8 @@ public sealed class PrivateResponseCacheMiddleware(RequestDelegate next)
                 context.Request.Path.StartsWithSegments("/Identity/Account"))
             {
                 context.Response.Headers.CacheControl = "no-store, no-cache, private, max-age=0";
+                if (context.Request.Path.StartsWithSegments("/Identity/Account"))
+                    context.Response.Headers["Referrer-Policy"] = "no-referrer";
                 context.Response.Headers.Pragma = "no-cache";
                 context.Response.Headers.Expires = "0";
             }

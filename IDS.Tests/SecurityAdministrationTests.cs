@@ -6,6 +6,7 @@ using IDS.Pages.Admin;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using IDS.Data;
+using IDS.Data.Services;
 using IDS.Data.Models;
 using IDS.Security;
 using Microsoft.AspNetCore.Identity;
@@ -44,6 +45,7 @@ public sealed class SecurityAdministrationTests : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDataProtection();
+        services.AddScoped<AccountEmailQueue>();
         services.AddSingleton<IConfiguration>(_configuration);
         services.AddSingleton<IHostEnvironment>(_environment);
         services.AddAuthentication();
@@ -187,7 +189,7 @@ public sealed class SecurityAdministrationTests : IDisposable
         var signIn = _scope.ServiceProvider.GetRequiredService<SignInManager<ApplicationUser>>();
         signIn.Context = context;
         var pageContext = new PageContext { HttpContext = context };
-        var enrollment = new EnableAuthenticatorModel(_users, signIn, _database) { PageContext = pageContext };
+        var enrollment = new EnableAuthenticatorModel(_users, signIn, _database, _scope.ServiceProvider.GetRequiredService<AccountEmailQueue>()) { PageContext = pageContext };
 
         Assert.IsType<PageResult>(await enrollment.OnGetAsync());
         Assert.Null(enrollment.SharedKey);
@@ -212,7 +214,7 @@ public sealed class SecurityAdministrationTests : IDisposable
         Assert.Equal("./ShowRecoveryCodes", enabled.PageName);
         Assert.True(admin.TwoFactorEnabled);
         Assert.Equal(10, await _users.CountRecoveryCodesAsync(admin));
-        var disable = new Disable2faModel(_users, signIn, _policies, _database)
+        var disable = new Disable2faModel(_users, signIn, _policies, _database, _scope.ServiceProvider.GetRequiredService<AccountEmailQueue>())
         {
             PageContext = pageContext, Password = "ExamplePassword1!", Code = CurrentTotp(key)
         };
@@ -267,7 +269,7 @@ public sealed class SecurityAdministrationTests : IDisposable
             access.SetExclusiveRoleAsync(users, target!, AppRoles.Suspended, allowAdministratorChange: true));
     }
 
-    private static string CurrentTotp(string key)
+    internal static string CurrentTotp(string key)
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
         var bytes = new List<byte>();

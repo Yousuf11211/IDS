@@ -1,5 +1,10 @@
-﻿@inject IDS.Security.SecurityPolicyService SecurityPolicies
+@inject IDS.Security.SecurityPolicyService SecurityPolicies
 @{
+    var page = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+    var area = ViewContext.RouteData.Values["area"]?.ToString();
+    bool At(params string[] pages) => string.IsNullOrEmpty(area) && pages.Any(value => page.Equals(value, StringComparison.OrdinalIgnoreCase));
+    var adminActive = string.IsNullOrEmpty(area) && page.StartsWith("/Admin/", StringComparison.OrdinalIgnoreCase);
+    var supportActive = string.IsNullOrEmpty(area) && page.StartsWith("/Support/", StringComparison.OrdinalIgnoreCase);
     var messagingEnabled = User?.Identity?.IsAuthenticated == true && (await SecurityPolicies.GetAsync()).MessagingEnabled;
 }
 <!DOCTYPE html>
@@ -49,14 +54,14 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
 @if (User?.Identity?.IsAuthenticated == true)
        {
 <li class="nav-item">
-    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Dashboard" ? "active" : "")" asp-area="" asp-page="/Dashboard">
+    <a class="nav-link @(At("/Dashboard") ? "active" : "")" aria-current="@(At("/Dashboard") ? "page" : null)" asp-area="" asp-page="/Dashboard">
     <i class="fa-solid fa-gauge me-1"></i> Dashboard
   </a>
           </li>
   
 <!-- Live Dashboard Link -->
 <li class="nav-item">
-    <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/LiveDashboard" ? "active" : "")" asp-area="" asp-page="/LiveDashboard">
+    <a class="nav-link @(At("/LiveDashboard", "/DetectionHistory", "/InspectAttack", "/EscalateAttack") ? "active" : "")" aria-current="@(At("/LiveDashboard") ? "page" : At("/DetectionHistory", "/InspectAttack", "/EscalateAttack") ? "location" : null)" asp-area="" asp-page="/LiveDashboard">
   <i class="fa-solid fa-satellite-dish me-1"></i> Live Feed
     </a>
 </li>
@@ -64,8 +69,8 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
 @if (messagingEnabled)
 {
     <li class="nav-item">
-        <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Chat" ? "active" : "")"
-           asp-area="" asp-page="/Chat">
+        <a class="nav-link @(At("/Chat") ? "active" : "")"
+           aria-current="@(At("/Chat") ? "page" : null)" asp-area="" asp-page="/Chat">
             <i class="fa-solid fa-comments me-1"></i> Messages
         </a>
     </li>
@@ -74,16 +79,17 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
    @if (User.IsInRole("Admin"))
        {
           <li class="nav-item dropdown">
-              <button class="nav-link dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <button class="nav-link dropdown-toggle text-nowrap @(adminActive ? "active" : "")" aria-current="@(adminActive ? "location" : null)" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="fa-solid fa-user-shield me-1" aria-hidden="true"></i> Administration
               </button>
               <div class="dropdown-menu">
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Operations">Settings</a>
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Security">Security approvals</a>
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/UserList">Employees and roles</a>
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Alerts">Security alerts</a>
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/DatabaseViewer">Database</a>
-                  <a class="dropdown-item" asp-area="" asp-page="/Admin/Logs">Audit and logs</a>
+                  <a class="dropdown-item @(At("/Admin/Operations", "/Admin/EmailDelivery") ? "active" : "")" aria-current="@(At("/Admin/Operations", "/Admin/EmailDelivery") ? "location" : null)" asp-area="" asp-page="/Admin/Operations">Settings</a>
+                  <a class="dropdown-item @(At("/Admin/Security") ? "active" : "")" aria-current="@(At("/Admin/Security") ? "location" : null)" asp-area="" asp-page="/Admin/Security">Security approvals</a>
+                  <a class="dropdown-item @(At("/Admin/RecoveryRequests") ? "active" : "")" aria-current="@(At("/Admin/RecoveryRequests") ? "page" : null)" asp-area="" asp-page="/Admin/RecoveryRequests">Authenticator reset requests</a>
+                  <a class="dropdown-item @(At("/Admin/UserList", "/Admin/EditUser", "/Admin/CreateUser") ? "active" : "")" aria-current="@(At("/Admin/UserList", "/Admin/EditUser", "/Admin/CreateUser") ? "location" : null)" asp-area="" asp-page="/Admin/UserList">Employees and roles</a>
+                  <a class="dropdown-item @(At("/Admin/Alerts", "/Admin/AlertDetails") ? "active" : "")" aria-current="@(At("/Admin/Alerts", "/Admin/AlertDetails") ? "location" : null)" asp-area="" asp-page="/Admin/Alerts">Security alerts</a>
+                  <a class="dropdown-item @(At("/Admin/DatabaseViewer") ? "active" : "")" aria-current="@(At("/Admin/DatabaseViewer") ? "location" : null)" asp-area="" asp-page="/Admin/DatabaseViewer">Database</a>
+                  <a class="dropdown-item @(At("/Admin/Logs") ? "active" : "")" aria-current="@(At("/Admin/Logs") ? "location" : null)" asp-area="" asp-page="/Admin/Logs">Audit and logs</a>
               </div>
           </li>
       }
@@ -92,7 +98,7 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
               @if (User.IsInRole("Admin") || User.IsInRole("Support"))
      {
            <li class="nav-item">
- <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.StartsWith("/Support/") == true ? "active" : "")" asp-area="" asp-page="/Support/Tickets">
+ <a class="nav-link @(supportActive ? "active" : "")" aria-current="@(At("/Support/Tickets") ? "page" : supportActive ? "location" : null)" asp-area="" asp-page="/Support/Tickets">
           <i class="fa-solid fa-headset me-1"></i> Support Tickets
         </a>
              </li>
@@ -100,7 +106,7 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
     
         @* Submit Ticket - visible to all authenticated users *@
      <li class="nav-item">
-      <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/SubmitTicket" || ViewContext.RouteData.Values["page"]?.ToString() == "/ViewTicket" ? "active" : "")" asp-area="" asp-page="/SubmitTicket">
+      <a class="nav-link @(At("/SubmitTicket", "/ViewTicket") ? "active" : "")" aria-current="@(At("/SubmitTicket") ? "page" : At("/ViewTicket") ? "location" : null)" asp-area="" asp-page="/SubmitTicket">
   <i class="fa-solid fa-ticket me-1"></i> My Tickets
       </a>
    </li>
@@ -108,14 +114,14 @@ aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
 else
         {
              <li class="nav-item">
-   <a class="nav-link" asp-area="" asp-page="/Index">
+   <a class="nav-link @(At("/Index") ? "active" : "")" aria-current="@(At("/Index") ? "page" : null)" asp-area="" asp-page="/Index">
      <i class="fa-solid fa-home me-1"></i> Home
   </a>
          </li>
             }
        
          <li class="nav-item">
-     <a class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString() == "/Help" ? "active" : "")" asp-area="" asp-page="/Help">
+     <a class="nav-link @(At("/Help") ? "active" : "")" aria-current="@(At("/Help") ? "page" : null)" asp-area="" asp-page="/Help">
         <i class="fa-solid fa-circle-question me-1"></i> Help
          </a>
   </li>

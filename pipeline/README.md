@@ -130,8 +130,8 @@ from the real models. These synthetic detections persist in the database.
 
 Open **Live Dashboard** (`/LiveDashboard`) or `/Dashboard` in the web app. The
 existing monitor broadcasts detections about every two seconds and stats about
-every ten seconds. The separate administrative `SecurityAlerts` table is not part
-of this flow.
+every ten seconds. The ASP.NET Core alert monitor reads persisted malicious flow
+results and groups eligible events separately. See the [Phase 2 operations guide](../IDS/Docs/Phase2.md).
 
 ### Worker health
 

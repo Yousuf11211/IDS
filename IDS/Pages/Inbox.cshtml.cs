@@ -2,6 +2,7 @@ using System.Security.Claims;
 using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -49,9 +50,24 @@ public sealed class InboxModel(ApplicationDbContext database) : PageModel
             notification.ReadAt = DateTime.UtcNow;
             await database.SaveChangesAsync();
         }
-        return notification.TicketId is int ticketId
-            ? RedirectToPage("/ViewTicket", new { id = ticketId })
-            : RedirectToPage("/Inbox", pageHandler: null, routeValues: null, fragment: $"notification-{id}");
+        if (notification.TicketId is int ticketId) return RedirectToPage("/ViewTicket", new { id = ticketId });
+        if (User.IsInRole(AppRoles.Admin))
+        {
+            if (notification.SecurityAlertId is int alertId) return RedirectToPage("/Admin/AlertDetails", new { id = alertId });
+            if (notification.AuthenticatorResetRequestId is long requestId)
+                return RedirectToPage("/Admin/RecoveryRequests", new { id = requestId });
+            if (notification.Type == "Security email needs attention") return RedirectToPage("/Admin/EmailDelivery");
+        }
+        if (notification.IsAccountSecurity)
+        {
+            if (notification.Type.StartsWith("Password", StringComparison.Ordinal))
+                return RedirectToPage("/Account/Manage/ChangePassword", new { area = "Identity" });
+            if (notification.Type.StartsWith("Registered email", StringComparison.Ordinal))
+                return RedirectToPage("/Account/Manage/Email", new { area = "Identity" });
+            return RedirectToPage("/Account/Manage/TwoFactorAuthentication", pageHandler: null,
+                routeValues: new { area = "Identity" }, fragment: "recovery-requests");
+        }
+        return RedirectToPage("/Inbox", pageHandler: null, routeValues: null, fragment: $"notification-{id}");
     }
 
     public async Task<IActionResult> OnPostStateAsync(long id, bool unread, int p = 1)

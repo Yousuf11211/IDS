@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Data.Services;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +14,7 @@ namespace IDS.Areas.Identity.Pages.Account.Manage;
 [Authorize]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public sealed class EnableAuthenticatorModel(UserManager<ApplicationUser> users,
-    SignInManager<ApplicationUser> signIn, ApplicationDbContext database) : PageModel
+    SignInManager<ApplicationUser> signIn, ApplicationDbContext database, AccountEmailQueue email) : PageModel
 {
     public string? SharedKey { get; private set; }
     public string? QrImage { get; private set; }
@@ -74,6 +76,8 @@ public sealed class EnableAuthenticatorModel(UserManager<ApplicationUser> users,
             return Page();
         }
 
+        email.Confirm(user, "Authenticator enabled", "An authenticator was activated for your IDS account.");
+        AccountRecovery.NotifyUser(database, user, "Authenticator enabled", "An authenticator was activated for your IDS account.");
         database.AuditLogs.Add(new AuditLog
         {
             UserId = user.Id, UserEmail = user.Email ?? "", Action = "Security.AuthenticatorEnabled",

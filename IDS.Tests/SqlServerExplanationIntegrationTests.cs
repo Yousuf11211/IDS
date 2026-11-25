@@ -8,6 +8,7 @@ using System.Text.Json;
 using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
+using IDS.Data.Services;
 using IDS.Data.Migrations;
 using IDS.Pages;
 using IDS.Hubs;
@@ -73,7 +74,7 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         await using (var database = new ApplicationDbContext(options))
         {
             var model = database.GetService<IDesignTimeModel>().Model;
-            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs(), new PreserveFractionalSubflows(), new AddOperationsMonitoringAndInbox() })
+            foreach (var migration in new Migration[] { new AddFlowExplanations(), new SupportNullableFlowInputs(), new PreserveFractionalSubflows(), new AddOperationsMonitoringAndInbox(), new AddMonitoringAlertsAndAccountRecovery() })
             {
                 var commands = database.GetService<IMigrationsSqlGenerator>().Generate(migration.UpOperations, model);
                 foreach (var command in commands) await database.Database.ExecuteSqlRawAsync(command.CommandText);
@@ -85,7 +86,8 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
             Assert.Equal(123456789d, legacy.SubflowFwdBytes);
             // UI fixtures cover both new labels even when synthetic traffic predicts other classes.
             database.AddRange(new AttackTraffic { AttackType = "PortScan", Severity = "Medium" },
-                new AttackTraffic { AttackType = "DoS_SYN_Flood", Severity = "High" });
+                new AttackTraffic { AttackType = "DoS_SYN_Flood", Severity = "High" },
+                new AttackTraffic { AttackType = "UnknownAttack", Severity = "Medium" });
             await database.SaveChangesAsync();
         }
         var fixture = new ProcessStartInfo(python) { WorkingDirectory = pipeline, RedirectStandardOutput = true,
@@ -137,6 +139,13 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         builder.Services.AddControllers();
         builder.Services.AddMemoryCache();
         builder.Services.AddScoped<WorkerHealthService>();
+        builder.Services.AddScoped<SecurityAlertService>();
+        builder.Services.AddSingleton<AccountLinkBuilder>();
+        builder.Services.AddScoped<EmailConfiguration>();
+        builder.Services.AddScoped<MailjetEmailSender>();
+        builder.Services.AddScoped<AccountEmailQueue>();
+        builder.Services.AddScoped<AccountRecovery>();
+        builder.Services.AddScoped<AdminVerification>();
         builder.Services.AddSignalR();
         builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
         builder.Services.AddSingleton<DashboardNotificationService>();
@@ -190,14 +199,47 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         Assert.InRange(recent.RootElement.GetProperty("alerts").GetArrayLength(), 1, 12);
         Assert.Equal(HttpStatusCode.OK, (await http.GetAsync($"/DetectionHistory?id={attackId}")).StatusCode);
         Assert.Contains("Detection Service", dashboard);
+        Assert.Contains("Detection records", dashboard);
+        var feed = JsonDocument.Parse(await http.GetStringAsync("/api/monitoring/feed?range=24h"));
+        Assert.NotEmpty(feed.RootElement.GetProperty("rows").EnumerateArray());
+        var filtered = JsonDocument.Parse(await http.GetStringAsync("/api/monitoring/feed?range=24h&category=PortScan&traffic=malicious"));
+        Assert.NotEmpty(filtered.RootElement.GetProperty("rows").EnumerateArray());
+        Assert.All(filtered.RootElement.GetProperty("rows").EnumerateArray(), row =>
+            Assert.Equal("PortScan", row.GetProperty("category").GetString()));
+        var typeTotal = snapshot.GetProperty("types").EnumerateArray().Sum(row => row.GetProperty("count").GetInt64());
+        Assert.Equal(snapshot.GetProperty("totals").GetProperty("malicious").GetInt64(), typeTotal);
         Assert.Contains("Detection Service", await http.GetStringAsync("/Dashboard"));
         await VerifyWorkerStatusesAsync(app.Services, http);
         foreach (var label in new[] { "PortScan", "DoS_SYN_Flood", "Attack" })
         {
             Assert.True(stats.RootElement.GetProperty(label).GetInt32() >= 1);
-            Assert.Contains($"value=\"label:{label}\"", dashboard);
-            Assert.Contains(label, aliases);
+            Assert.Contains(label == "Attack" ? "Unclassified" : label, aliases);
         }
+        var unknown = snapshot.GetProperty("types").EnumerateArray().Single(row => row.GetProperty("label").GetString() == "Unclassified");
+        Assert.True(unknown.GetProperty("count").GetInt64() >= 2);
+        using (var analyticsScope = app.Services.CreateScope())
+        {
+            var db = analyticsScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var first = new DateTime(2021, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+            db.BenignTraffic.AddRange(new BenignTraffic { Timestamp = first },
+                new BenignTraffic { Timestamp = first.AddDays(2) });
+            db.AttackTraffic.AddRange(new AttackTraffic { Timestamp = first.AddDays(1), AttackType = "PortScan" },
+                new AttackTraffic { Timestamp = first.AddDays(2), AttackType = "UnknownAttack" });
+            await db.SaveChangesAsync();
+        }
+        foreach (var (date, benign, malicious) in new[]
+        {
+            ("2021-06-01", 1, 0), ("2021-06-02", 0, 1), ("2021-06-03", 1, 1), ("2021-06-04", 0, 0)
+        })
+        {
+            using var filteredSnapshot = JsonDocument.Parse(await http.GetStringAsync(
+                $"/api/monitoring/analytics?range=custom&from={date}&through={date}"));
+            var totals = filteredSnapshot.RootElement.GetProperty("snapshot").GetProperty("totals");
+            Assert.Equal(benign, totals.GetProperty("benign").GetInt64());
+            Assert.Equal(malicious, totals.GetProperty("malicious").GetInt64());
+        }
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync("/DetectionHistory?category=Unclassified")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync("/DetectionHistory?explanation=completed")).StatusCode);
         var data = json.RootElement.GetProperty("stages")[1].GetProperty("data");
         Assert.Equal(trace.RootElement.GetProperty("selectedClass").GetString(), data.GetProperty("explainedClass").GetString());
         var features = data.GetProperty("features").EnumerateArray().ToDictionary(f => f.GetProperty("name").GetString()!);
@@ -341,6 +383,16 @@ public sealed class InspectionBaselineContext(DbContextOptions<ApplicationDbCont
         builder.Ignore<InboxNotification>();
         builder.Ignore<IncidentEscalation>();
         builder.Ignore<WorkerHeartbeat>();
+        builder.Ignore<AuthenticatorResetRequest>();
+        builder.Ignore<RecoveryThrottle>();
+        builder.Ignore<SecurityEmail>();
+        var alerts = builder.Entity<SecurityAlert>();
+        alerts.Ignore(a => a.Ticket);
+        foreach (var property in new[] { nameof(SecurityAlert.AttackLabel), nameof(SecurityAlert.DetectionCount),
+            nameof(SecurityAlert.EventCategory), nameof(SecurityAlert.GroupKey), nameof(SecurityAlert.LastObservedAt),
+            nameof(SecurityAlert.PublishedAt), nameof(SecurityAlert.RepresentativeAttackId), nameof(SecurityAlert.ResolvedAt),
+            nameof(SecurityAlert.ResolvedByUserId), nameof(SecurityAlert.TicketId) })
+            alerts.Ignore(property);
         foreach (var type in new[] { typeof(RawPacket), typeof(AttackTraffic), typeof(BenignTraffic) })
         {
             var entity = builder.Entity(type);

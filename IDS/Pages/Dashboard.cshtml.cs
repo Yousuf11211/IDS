@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using IDS.Core.Services;
 using IDS.Data;
 using IDS.Data.Models;
 using IDS.Security;
@@ -72,12 +73,16 @@ namespace IDS.Pages
                     log.Message,
                     log.UserId,
                     Classification = log.Level == "NetworkNormal" ? "Normal"
-                        : log.Level == "NetworkAttack" || log.Level == "Error" || log.Level == "Warning"
+                        : log.Level == "NetworkAttack"
                             ? "Attack" : "Activity"
                 })
                 .ToListAsync(HttpContext.RequestAborted);
 
-            return new JsonResult(data);
+            return new JsonResult(data.Select(log => new
+            {
+                Timestamp = DateTime.SpecifyKind(log.Timestamp, DateTimeKind.Utc),
+                log.Level, log.Message, log.UserId, log.Classification
+            }));
         }
 
         public async Task<JsonResult> OnGetRecentActivityAsync()
@@ -131,13 +136,15 @@ namespace IDS.Pages
                     .ToListAsync(cancellationToken);
                 activity.AddRange(logs);
 
-                var alerts = await _db.SecurityAlerts.AsNoTracking()
-                    .Where(alert => !alert.IsAcknowledged)
-                    .OrderByDescending(alert => alert.Timestamp)
-                    .Take(activityLimit)
+                var alertLimit = await OperationsSettings.NumberAsync(_db, OperationsSettings.DashboardAlertLimitKey,
+                    10, 0, 20, cancellationToken);
+                var alerts = await SecurityAlertService.Published(_db.SecurityAlerts.AsNoTracking())
+                    .Where(alert => !alert.IsAcknowledged && alert.ResolvedAt == null)
+                    .OrderByDescending(alert => alert.LastObservedAt ?? alert.Timestamp)
+                    .Take(alertLimit)
                     .Select(alert => new DashboardActivity
                     {
-                        Timestamp = alert.Timestamp,
+                        Timestamp = alert.LastObservedAt ?? alert.Timestamp,
                         Message = alert.Message,
                         Severity = alert.Severity.ToLower(),
                         Type = alert.AlertType
@@ -146,15 +153,14 @@ namespace IDS.Pages
                 activity.AddRange(alerts);
             }
 
-            return new JsonResult(activity
-                .OrderByDescending(item => item.Timestamp)
-                .Take(activityLimit)
-                .ToList());
+            var recent = activity.OrderByDescending(item => item.Timestamp).Take(activityLimit).ToList();
+            foreach (var item in recent) item.Timestamp = DateTime.SpecifyKind(item.Timestamp, DateTimeKind.Utc);
+            return new JsonResult(recent);
         }
 
         public class DashboardActivity
         {
-            public DateTime Timestamp { get; init; }
+            public DateTime Timestamp { get; set; }
             public string Message { get; init; } = string.Empty;
             public string Severity { get; init; } = "low";
             public string Type { get; init; } = string.Empty;

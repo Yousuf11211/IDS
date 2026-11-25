@@ -12,8 +12,9 @@ and random C# detector have been removed.
 
 Results are persisted to `RawPackets`, `Benign_Table`, and `Attack_Table` and shown
 in `/Dashboard` and `/LiveDashboard`. `DetectionMonitorService` broadcasts newly
-saved results through SignalR. The separate administrative `SecurityAlerts` table
-is not populated by this flow.
+saved results through SignalR. ASP.NET Core reads classified detections and
+persists actionable groups according to the configured security alert rules. The
+Python pipeline continues to write detections, SHAP jobs, and worker heartbeats.
 
 Both workers verify the ordered 120-feature contract in
 `pipeline/Features_used/features_used.json`. The gate uses the configured 0.50

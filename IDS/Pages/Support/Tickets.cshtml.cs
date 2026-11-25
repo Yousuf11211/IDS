@@ -45,7 +45,7 @@ namespace IDS.Pages.Support
  [TempData]
         public string? StatusMessage { get; set; }
 
-        public async Task OnGetAsync(string? status, string? search, string? priority)
+        public async Task OnGetAsync(string? status, string? search, string? priority, string? incident = null, DateTimeOffset? from = null, DateTimeOffset? to = null)
         {
   CurrentFilter = status ?? "All";
         AssignmentEnabled = await OperationsSettings.IsAssignmentEnabledAsync(_context);
@@ -59,6 +59,23 @@ namespace IDS.Pages.Support
 
             // Build query
      var query = _context.SupportTickets.AsQueryable();
+            if (incident != null)
+            {
+                query = query.Where(t => t.Category == "Security Concern");
+                if (from.HasValue) query = query.Where(t => t.CreatedAt >= from.Value.UtcDateTime);
+                if (to.HasValue) query = query.Where(t => t.CreatedAt < to.Value.UtcDateTime);
+                var active = query.Where(t => t.Status == "Open" || t.Status == "InProgress");
+                query = incident switch
+                {
+                    "open" => active,
+                    "high-priority" => active.Where(t => t.Priority == "High" || t.Priority == "Critical"),
+                    "assigned" => active.Where(t => t.AssignedToUserId != null && t.AssignedToUserId != ""),
+                    "unassigned" => active.Where(t => t.AssignedToUserId == null || t.AssignedToUserId == ""),
+                    "escalated" => query.Where(t => _context.IncidentEscalations.Any(e => e.TicketId == t.Id && e.CancelledAt == null)),
+                    "InProgress" or "Resolved" => query.Where(t => t.Status == incident),
+                    _ => query
+                };
+            }
 
             // Apply status filter
             if (!string.IsNullOrEmpty(status) && status != "All")

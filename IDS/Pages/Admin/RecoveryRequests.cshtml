@@ -1,0 +1,89 @@
+@page
+@model IDS.Pages.Admin.RecoveryRequestsModel
+@{
+    ViewData["Title"] = "Authenticator reset requests";
+}
+<div class="monitoring-page">
+    <header class="monitoring-heading"><h1>Authenticator reset requests</h1></header>
+    @if (Model.Result != null) { <p class="alert alert-info" role="status">@Model.Result</p> }
+    @if (Model.Selected is { } request)
+    {
+        <section class="card-ids card-ids-body">
+            <h2 class="h5">Request #@request.Id · @IDS.Pages.Admin.RecoveryRequestsModel.State(request)</h2>
+            <dl class="monitoring-list">
+                <div><dt>Verified address</dt><dd>@request.VerifiedEmail</dd></div>
+                <div><dt>Account</dt><dd>@(Model.Account == null ? "Unavailable" : $"{Model.Account.FirstName} {Model.Account.LastName}")</dd></div>
+                <div><dt>Authenticator active</dt><dd>@(Model.Account?.TwoFactorEnabled == true ? "Yes" : "No")</dd></div>
+                <div><dt>Submitted (UTC)</dt><dd>@request.CreatedAt.ToString("yyyy-MM-dd HH:mm")</dd></div>
+                <div><dt>Expires (UTC)</dt><dd>@request.ExpiresAt.ToString("yyyy-MM-dd HH:mm")</dd></div>
+            </dl>
+            <h3 class="h6 mt-3">Submitted reason</h3><p class="text-break">@request.Reason</p>
+            @if (request.ReviewedAt.HasValue)
+            {
+                <h3 class="h6">Decision</h3>
+                <p>@request.ReviewedAt.Value.ToString("yyyy-MM-dd HH:mm") UTC · Reviewer @request.ReviewerId</p>
+                <p class="text-break">@request.ReviewReason</p>
+                @if (request.IdentityVerification != null) { <p class="text-break">Identity verification · @request.IdentityVerification</p> }
+            }
+            @if (IDS.Pages.Admin.RecoveryRequestsModel.State(request) == "Pending")
+            {
+                if (request.UserId == Model.ActorId)
+                {
+                    <p class="text-muted mb-0">A different administrator must review this request.</p>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="Review" asp-route-id="@request.Id" asp-route-status="@Model.Status">
+                        <div class="monitoring-panels mb-3">
+                            <label>Identity verification record
+                                <textarea asp-for="Input.Verification" class="form-control" rows="2" placeholder="Record the independently verified method."></textarea>
+                            </label>
+                            <label>Decision reason
+                                <textarea asp-for="Input.Reason" class="form-control" rows="2" required></textarea>
+                            </label>
+                            <label>Current administrator password
+                                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" required />
+                            </label>
+                            <label>Current authenticator code
+                                <input asp-for="Input.Code" class="form-control" autocomplete="one-time-code" inputmode="numeric" />
+                            </label>
+                        </div>
+                        <button type="submit" name="approve" value="true" class="btn-ids btn-ids-primary">Approve enrollment</button>
+                        <button type="submit" name="approve" value="false" class="btn-ids btn-ids-secondary">Reject request</button>
+                    </form>
+                }
+            }
+        </section>
+    }
+    <form method="get" class="monitoring-filters">
+        <label>Status
+            <select asp-for="Status" class="form-select form-select-sm">
+                <option value="all">All statuses</option>
+                @foreach (var status in IDS.Pages.Admin.RecoveryRequestsModel.Statuses) { <option>@status</option> }
+            </select>
+        </label>
+        <label>Search address or request ID <input asp-for="Search" class="form-control form-control-sm" maxlength="256" type="search" /></label>
+        <button type="submit" class="btn-ids btn-ids-secondary btn-ids-sm">Apply filters</button>
+    </form>
+    <div class="card-ids table-responsive">
+        <table class="table-ids mb-0">
+            <thead><tr><th>Request</th><th>Verified address</th><th>Status</th><th>Submitted (UTC)</th><th>Expires (UTC)</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Requests)
+            {
+                <tr>
+                    <td><a asp-route-id="@item.Id" asp-route-status="@Model.Status" asp-route-search="@Model.Search" asp-route-p="@Model.P">#@item.Id</a></td>
+                    <td>@item.VerifiedEmail</td><td>@IDS.Pages.Admin.RecoveryRequestsModel.State(item)</td>
+                    <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td><td>@item.ExpiresAt.ToString("yyyy-MM-dd HH:mm")</td>
+                </tr>
+            }
+            @if (Model.Requests.Count == 0) { <tr><td colspan="5" class="p-4 text-muted">No authenticator reset requests match these filters.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+    <nav class="d-flex gap-2" aria-label="Recovery request pages">
+        @if (Model.P > 1) { <a asp-route-p="@(Model.P - 1)" asp-route-status="@Model.Status" asp-route-search="@Model.Search">Previous</a> }
+        <span>Page @Model.P</span>
+        @if (Model.HasNext) { <a asp-route-p="@(Model.P + 1)" asp-route-status="@Model.Status" asp-route-search="@Model.Search">Next</a> }
+    </nav>
+</div>

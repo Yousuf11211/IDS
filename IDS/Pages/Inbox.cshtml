@@ -22,14 +22,14 @@
                     @item.Type
                     @if (item.ReadAt == null)
                     {
-                        <span class="badge text-bg-primary ms-1">Unread</span>
+                        <span class="badge inbox-count ms-1">Unread</span>
                     }
                 </h2>
                 <p class="mb-1">@item.Message</p>
                 <small class="text-muted">@(item.SenderName ?? "IDS Security") · @item.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</small>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                @if (item.TicketId.HasValue || item.ReadAt == null)
+                @if (item.TicketId.HasValue || item.IsAccountSecurity || item.SecurityAlertId.HasValue || item.AuthenticatorResetRequestId.HasValue || item.ReadAt == null)
                 {
                     <form method="post" asp-page-handler="Open" asp-route-id="@item.Id">
                         <button type="submit" class="btn-ids btn-ids-primary btn-sm">@(item.TicketId.HasValue ? "Open incident" : "Open notification")</button>

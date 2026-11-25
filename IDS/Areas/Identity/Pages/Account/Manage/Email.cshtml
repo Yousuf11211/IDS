@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model EmailModel
 @{
     ViewData["Title"] = "Manage Email";
@@ -34,6 +34,17 @@
                 <label asp-for="Input.NewEmail" class="form-label"></label>
                 <span asp-validation-for="Input.NewEmail" class="text-danger"></span>
             </div>
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label">Current password</label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="current-password" />
+            </div>
+            @if (Model.RequiresAuthenticator)
+            {
+                <div class="mb-3">
+                    <label asp-for="Input.Factor" class="form-label">Authenticator code</label>
+                    <input asp-for="Input.Factor" class="form-control" autocomplete="one-time-code" inputmode="numeric" />
+                </div>
+            }
             <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="w-100 btn btn-lg btn-primary">Change email</button>
         </form>
     </div>

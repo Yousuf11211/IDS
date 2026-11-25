@@ -1,71 +1,59 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
-
-using System;
 using System.Text;
-using System.Threading.Tasks;
+using IDS.Data;
+using IDS.Data.Models;
+using IDS.Data.Services;
+using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 
-using IDS.Data.Models;
+namespace IDS.Areas.Identity.Pages.Account;
 
-namespace IDS.Areas.Identity.Pages.Account
+[AllowAnonymous]
+public sealed class ConfirmEmailChangeModel(UserManager<ApplicationUser> users, ApplicationDbContext db,
+    AccountEmailQueue queue) : PageModel
 {
-    public class ConfirmEmailChangeModel : PageModel
+    public string? StatusMessage { get; private set; }
+    public bool Confirmable { get; private set; }
+
+    public void OnGet(string? userId, string? email, string? code)
+        => Confirmable = Valid(userId, email, code);
+
+    public async Task<IActionResult> OnPostAsync(string? userId, string? email, string? code, CancellationToken token)
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        if (!Valid(userId, email, code)) return Invalid();
+        string decoded;
+        try { decoded = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code!)); }
+        catch (FormatException) { return Invalid(); }
+        await using var transaction = await db.Database.BeginTransactionAsync(token);
+        await AccountRecovery.LockPasswordAsync(db, token);
+        var user = await users.FindByIdAsync(userId!);
+        if (user == null || await users.IsInRoleAsync(user, AppRoles.Suspended)) return Invalid();
+        var oldEmail = user.EmailConfirmed ? user.Email : null;
+        var result = await users.ChangeEmailAsync(user, email!, decoded);
+        if (!result.Succeeded || !(await users.SetUserNameAsync(user, email!)).Succeeded ||
+            !(await users.UpdateSecurityStampAsync(user)).Succeeded) return Invalid();
 
-        public ConfirmEmailChangeModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-        }
+        const string message = "The registered email for your IDS account changed. Previously authenticated sessions were revoked.";
+        queue.Confirm(user, "Registered email changed", message);
+        if (!string.IsNullOrEmpty(oldEmail) && !string.Equals(oldEmail, email, StringComparison.OrdinalIgnoreCase))
+            queue.Confirm(user, "Registered email changed", message, oldEmail, "previous-address");
+        AccountRecovery.Audit(db, user, "Security.EmailChanged");
+        AccountRecovery.NotifyUser(db, user, "Registered email changed", message);
+        await db.SaveChangesAsync(token);
+        await transaction.CommitAsync(token);
+        StatusMessage = "Your email is confirmed. Sign in again with your updated address.";
+        return Page();
+    }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
-        [TempData]
-        public string StatusMessage { get; set; }
+    private static bool Valid(string? userId, string? email, string? code)
+        => userId?.Length is > 0 and <= 450 && email?.Length is > 0 and <= 256 && code?.Length is > 0 and <= 4096;
 
-        public async Task<IActionResult> OnGetAsync(string userId, string email, string code)
-        {
-            if (userId == null || email == null || code == null)
-            {
-                return RedirectToPage("/Index");
-            }
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{userId}'.");
-            }
-
-            code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
-            var result = await _userManager.ChangeEmailAsync(user, email, code);
-            if (!result.Succeeded)
-            {
-                StatusMessage = "Error changing email.";
-                return Page();
-            }
-
-            // In our UI email and user name are one and the same, so when we update the email
-            // we need to update the user name.
-            var setUserNameResult = await _userManager.SetUserNameAsync(user, email);
-            if (!setUserNameResult.Succeeded)
-            {
-                StatusMessage = "Error changing user name.";
-                return Page();
-            }
-
-            await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Thank you for confirming your email change.";
-            return Page();
-        }
+    private PageResult Invalid()
+    {
+        StatusMessage = "This email change link is invalid or expired.";
+        return Page();
     }
 }

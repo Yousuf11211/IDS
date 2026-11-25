@@ -11,6 +11,9 @@ public sealed class InboxNotification
     [MaxLength(2200)] public string Message { get; set; } = "";
     public int? TicketId { get; set; }
     public SupportTicket? Ticket { get; set; }
+    public int? SecurityAlertId { get; set; }
+    public long? AuthenticatorResetRequestId { get; set; }
+    public bool IsAccountSecurity { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ReadAt { get; set; }
 }

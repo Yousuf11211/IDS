@@ -122,7 +122,8 @@ namespace IDS.Data.Models
       public long BenignLastHour { get; set; }
    public long AttacksLastHour { get; set; }
         public double AttackPercentage { get; set; }
-        public string SystemStatus { get; set; } = "Normal";
+        public string SystemStatus { get; set; } = "Unavailable";
+        public string ThreatActivity { get; set; } = "Normal";
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
    public Dictionary<string, int> AttacksByType { get; set; } = new();
         public Dictionary<string, int> AttacksBySeverity { get; set; } = new();

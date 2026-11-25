@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
+using IDS.Data;
+using IDS.Core.Services;
 using IDS.Data.Models;
 using IDS.Data.Services;
 using IDS.Security;
@@ -20,19 +22,23 @@ public class CreateUserModel : PageModel
     private readonly MailjetEmailSender _emailSender;
     private readonly AccountLinkBuilder _accountLinks;
     private readonly SecurityPolicyService _policies;
+    private readonly ApplicationDbContext _database;
+    private readonly AccountEmailQueue _email;
 
     public CreateUserModel(
         UserManager<ApplicationUser> userManager,
         AccessControlService accessControl,
         MailjetEmailSender emailSender,
         AccountLinkBuilder accountLinks,
-        SecurityPolicyService policies)
+        SecurityPolicyService policies, ApplicationDbContext database, AccountEmailQueue email)
     {
         _userManager = userManager;
         _accessControl = accessControl;
         _emailSender = emailSender;
         _accountLinks = accountLinks;
         _policies = policies;
+        _database = database;
+        _email = email;
     }
 
     [BindProperty]
@@ -50,12 +56,16 @@ public class CreateUserModel : PageModel
     public string InvitationsUnavailableReason => !InvitationsAllowed
         ? "Employee invitations are paused in Security controls."
         : !EmailConfigured
-            ? "Email delivery is disabled or Mailjet credentials are missing. Configure email delivery and restart the application."
+            ? "Email delivery is disabled or Mailjet credentials are missing. Review email delivery in Administration."
             : !AccountLinksConfigured
                 ? "The application URL for account links is missing or invalid. Configure PUBLIC_BASE_URL or Application:PublicBaseUrl and restart the application."
                 : string.Empty;
 
-    public async Task OnGetAsync() => InvitationsAllowed = (await _policies.GetAsync()).EmployeeInvitationsEnabled;
+    public async Task OnGetAsync()
+    {
+        await _emailSender.LoadAsync();
+        InvitationsAllowed = (await _policies.GetAsync()).EmployeeInvitationsEnabled;
+    }
 
     public class InputModel
     {
@@ -105,6 +115,7 @@ public class CreateUserModel : PageModel
         // The employee chooses their password from a single-use Identity link.
         // A random initial password keeps the account unusable until then.
         var initialPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
+        await using var transaction = await _database.Database.BeginTransactionAsync();
         var result = await _userManager.CreateAsync(user, initialPassword);
         if (!result.Succeeded)
         {
@@ -121,15 +132,16 @@ public class CreateUserModel : PageModel
         var link = _accountLinks.PasswordResetLink(Url, encodedToken);
         if (link == null)
         {
-            StatusMessage = "User created, but the setup link could not be built. Check PUBLIC_BASE_URL and resend the link from the user's page.";
-            return RedirectToPage("/Admin/UserList");
+            ModelState.AddModelError(string.Empty, "The setup link could not be built. Review the configured public application URL.");
+            return Page();
         }
-
-        var (sent, emailError) = await _emailSender.SendAccountAccessLinkAsync(
-            email, user.FirstName, link, isInvitation: true);
-        StatusMessage = sent
-            ? $"User {email} created. A password setup link was emailed to them."
-            : $"User {email} created, but the setup email failed: {emailError}. Resend the link from the user's page.";
+        var now = DateTime.UtcNow;
+        _email.Enqueue("New user welcome", user.Id, new(email, IncidentWorkflow.DisplayName(user), "Set up your IDS account",
+            "An administrator created your IDS account. Choose your password within 24 hours, then sign in and follow the authenticator setup instructions.",
+            now, "Set your password", link), now.AddHours(24));
+        await _database.SaveChangesAsync();
+        await transaction.CommitAsync();
+        StatusMessage = $"User {email} created. The welcome email is queued.";
         return RedirectToPage("/Admin/UserList");
     }
 }
