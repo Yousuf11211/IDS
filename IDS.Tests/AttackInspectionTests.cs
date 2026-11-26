@@ -7,6 +7,9 @@ using IDS.Data.Models;
 using IDS.Pages;
 using IDS.Security;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -92,6 +95,81 @@ public sealed class AttackInspectionTests : IDisposable
         var other = (await service.LoadAsync(second.Id, support))!;
         Assert.Equal("DDoS", other.AttackType);
         Assert.Empty(other.Stages);
+    }
+
+    [Fact]
+    public async Task HistoricalSnapshotGetsVerifiedReferenceOnReadWithoutChangingStoredShap()
+    {
+        var artifactPath = Path.Combine(AppContext.BaseDirectory, "Explainability", "benign-reference.json");
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(artifactPath));
+        var profile = document.RootElement;
+        var names = profile.GetProperty("featureNames").EnumerateArray().Select(name => name.GetString()!).ToList();
+        Assert.Equal(120, names.Count);
+        var data = new ModelExplanationData
+        {
+            SchemaVersion = 1,
+            Fingerprint = profile.GetProperty("modelFingerprint").GetString(),
+            FeatureNames = names,
+            Features = names.Select(name => new ExplainedFeature(name, name == "dst_port" ? 443 : 1.25, .125, "model input units", null)).ToList(),
+            BaseValue = -.5,
+            RawMargin = 14.5,
+            ReconstructedMargin = 14.5
+        };
+        var snapshot = JsonSerializer.Serialize(data, JsonOptions);
+        var attack = new AttackTraffic { AttackType = "Historical fixture" };
+        db.Add(attack);
+        await db.SaveChangesAsync();
+        db.FlowExplanations.Add(new() { AttackTrafficId = attack.Id, Stage = "gatekeeper", Status = "completed",
+            PayloadJson = snapshot, ContextJson = "{}", Fingerprint = data.Fingerprint!, ModelVersion = "fixture" });
+        await db.SaveChangesAsync();
+
+        var referenceService = new AttackInspectionService(db, NullLogger<AttackInspectionService>.Instance, Catalog(artifactPath));
+        var report = await referenceService.LoadAsync(attack.Id, Principal(AppRoles.Support));
+        var actual = Assert.Single(report!.Stages).Data!;
+        Assert.Null(actual.ReferenceDiagnostic);
+        Assert.Equal(362127, actual.Reference!.BenignSampleCount);
+        Assert.All(actual.Features, feature =>
+        {
+            Assert.NotNull(feature.Metadata);
+            Assert.True(feature.Reference!.SampleCount > 0);
+            Assert.Equal(.125, feature.Contribution);
+        });
+        var port = actual.Features.Single(feature => feature.Name == "dst_port");
+        Assert.Equal("categorical", port.Reference!.Kind);
+        Assert.Equal(443, port.Value);
+        Assert.NotNull(port.Reference.ObservedCount);
+        Assert.InRange(port.Reference.Frequencies!.Count, 1, 9);
+        Assert.Equal("s", actual.Features.Single(feature => feature.Name == "duration").Units);
+        Assert.Equal(snapshot, await db.FlowExplanations.Select(item => item.PayloadJson).SingleAsync());
+
+        var missingProfile = Catalog(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"));
+        missingProfile.Enrich(data);
+        Assert.Contains("artifact is missing", data.ReferenceDiagnostic);
+        Assert.All(data.Features, feature => Assert.Null(feature.Reference));
+        data.Fingerprint = new string('0', 64);
+        Catalog(artifactPath).Enrich(data);
+        Assert.Contains("different model release", data.ReferenceDiagnostic);
+        Assert.Null(data.Reference);
+        Assert.Equal(.125, data.Features[0].Contribution);
+    }
+
+    private static ExplanationReferenceCatalog Catalog(string path)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Explainability:BenignReferencePath"] = path
+        }).Build();
+        return new(configuration, new TestWebEnvironment(), NullLogger<ExplanationReferenceCatalog>.Instance);
+    }
+
+    private sealed class TestWebEnvironment : IWebHostEnvironment
+    {
+        public string ApplicationName { get; set; } = "IDS";
+        public string EnvironmentName { get; set; } = "Testing";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public string WebRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
     }
 
     [Fact]

@@ -56,19 +56,26 @@ def build_profile(config, manifest_path):
                 createdAt=datetime.now(timezone.utc).isoformat(), features=features)
 
 
-def load_reference(config):
+def load_reference(config, models=None):
     if not config.reference_profile:
         return None
     try:
-        return validate_reference(json.loads((config.root / config.reference_profile).read_text()))
-    except (OSError, ValueError, KeyError, TypeError):
-        logging.getLogger(__name__).warning("Reference unavailable: configured artifact is missing or invalid")
+        result = validate_reference(json.loads((config.root / config.reference_profile).read_text(encoding="utf-8")))
+        if models is not None and (result["modelFingerprint"] != models.fingerprint or
+                (result["schemaVersion"] == 2 and result["featureNames"] != models.feature_names)):
+            raise ValueError("profile does not match the active model fingerprint and feature order")
+        return result
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        logging.getLogger(__name__).warning("Benign reference unavailable (%s): %s",
+            config.reference_profile, error if isinstance(error, ValueError) else type(error).__name__)
         return None
 
 
 def validate_reference(result):
     if not isinstance(result, dict) or not isinstance(result.get("features"), dict):
         raise ValueError("Reference profile must contain a feature statistics object")
+    if result.get("schemaVersion") == 2:
+        return validate_training_reference(result)
     if result.get("schemaVersion") != 1 or result.get("split") not in ("training", "reference"):
         raise ValueError("Unsupported/unverified benign reference profile")
     if (not result.get("datasetVersion") or not result.get("provenance") or
@@ -81,6 +88,39 @@ def validate_reference(result):
                 statistics["p05"] <= statistics["p25"] <= statistics["median"] <= statistics["p75"] <= statistics["p95"]):
             raise ValueError("Invalid numerical benign reference statistics")
     return result
+
+
+def validate_training_reference(profile):
+    names = profile["featureNames"]
+    if (profile["split"] != "training" or not profile["datasetVersion"] or not profile["provenance"] or
+            not profile["preprocessingVersion"] or not isinstance(profile["featureSchemaVersion"], int) or
+            profile["featureSchemaVersion"] <= 0 or len(profile["datasetSha256"]) != 64 or
+            len(profile["modelFingerprint"]) != 64 or not isinstance(names, list) or not names or
+            len(set(names)) != len(names) or set(names) != set(profile["features"]) or
+            hashlib.sha256("\n".join(names).encode()).hexdigest() != profile["featureSchemaSha256"]):
+        raise ValueError("Training reference lacks matching feature and model provenance")
+    total = profile["benignSampleCount"]
+    if not isinstance(total, int) or total < 1:
+        raise ValueError("Training reference sample count is invalid")
+    for stats in profile["features"].values():
+        count, missing = stats["sampleCount"], stats["missingCount"]
+        if (not isinstance(count, int) or not isinstance(missing, int) or min(count, missing) < 0 or
+                count + missing != total or stats["kind"] not in ("continuous", "discrete", "categorical", "binary")):
+            raise ValueError("Training reference feature counts are invalid")
+        if not count:
+            continue
+        bounds = [stats[key] for key in ("minimum", "p05", "p25", "median", "p75", "p95", "maximum")]
+        if (not np.isfinite([*bounds, stats["mean"], stats["standardDeviation"]]).all() or
+                bounds != sorted(bounds) or stats["standardDeviation"] < 0):
+            raise ValueError("Training reference feature statistics are invalid")
+        if stats["kind"] != "continuous":
+            frequencies = stats["frequencies"]
+            other = stats["otherCount"]
+            if (other < 0 or sum(item["count"] for item in frequencies) + other != count or
+                    len({item["value"] for item in frequencies}) != len(frequencies) or
+                    any(item["count"] <= 0 or not np.isfinite(item["value"]) for item in frequencies)):
+                raise ValueError("Training reference frequencies are invalid")
+    return profile
 
 
 def main():

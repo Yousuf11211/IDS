@@ -138,8 +138,9 @@ class Worker:
                 self.store.update(digest, Status="classifying", LastError=None)
             while rows := self.store.pending(digest, self.config.batch_size):
                 self.pulse()
-                predictions = self.models.predict(rows)
-                self.store.complete_batch(digest, rows, predictions, self.models.release, models=self.models)
+                timings = {}
+                predictions = self.models.predict(rows, timings=timings)
+                self.store.complete_batch(digest, rows, predictions, self.models.release, models=self.models, timings=timings)
                 LOG.info("Import %s committed %d predictions (%d benign, %d attacks)",
                          digest[:12], len(rows), sum(not p.attack for p in predictions),
                          sum(p.attack for p in predictions))

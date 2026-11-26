@@ -18,6 +18,7 @@ from ids_pipeline.database import Store
 from ids_pipeline.explanations import ExplanationService, ExplanationWorker
 from ids_pipeline.features import HANDSHAKE
 from ids_pipeline.models import load_models
+from ids_pipeline.reference import load_reference
 from ids_pipeline.worker import Worker
 
 
@@ -82,13 +83,24 @@ def main():
                 assert backfill_store.backfill_explanations(models) == 0
             finally:
                 backfill_store.close()
-            service = ExplanationService(models)
-            explainer = ExplanationWorker(store, models, service)
+            historical_id = first['AttackTrafficId']
+            profile = load_reference(replace(config, reference_profile='config/benign-reference.json'), models)
+            assert profile is not None
+
+            class FixtureExplanationService(ExplanationService):
+                def generate(self, stage, context, *, attack_id=None, raw_id=None):
+                    if attack_id == historical_id:
+                        return legacy_service.generate(stage, context, attack_id=attack_id, raw_id=raw_id)
+                    return super().generate(stage, context, attack_id=attack_id, raw_id=raw_id)
+
+            legacy_service = ExplanationService(models)
+            explainer = ExplanationWorker(store, models, FixtureExplanationService(models, profile))
             while explainer.once():
                 pass
             rows = store.fetch('SELECT * FROM dbo.FlowExplanations ORDER BY Id')
             assert len(rows) == queued and all(row['Status'] == 'completed' for row in rows)
-            selected = next(row for row in rows if row['Stage'] == 'multiclass' and json.loads(row['PayloadJson'])['classIndex'] != 0)
+            selected = next(row for row in rows if row['Stage'] == 'multiclass' and row['AttackTrafficId'] != historical_id
+                            and json.loads(row['PayloadJson'])['classIndex'] != 0)
             payload = json.loads(selected['PayloadJson'])
             gate = json.loads(next(row['PayloadJson'] for row in rows if row['Stage'] == 'gatekeeper'
                                   and row['AttackTrafficId'] == selected['AttackTrafficId']))
@@ -97,10 +109,13 @@ def main():
             assert observed['subflow_fwd_bytes'] == 629.5
             assert observed['delta_start'] is None and observed[HANDSHAKE] == 1
             assert len(payload['features']) == 120
-            assert payload['reference'] is None
+            assert payload['reference']['datasetSha256'] == profile['datasetSha256']
+            assert all(feature['reference'] is None for feature in payload['features'])
+            historical = [json.loads(row['PayloadJson']) for row in rows if row['AttackTrafficId'] == historical_id]
+            assert len(historical) == 2 and all(item['reference'] is None and 'pipelineTiming' not in item for item in historical)
             assert payload['additivityError'] < 2e-4
             verify_idle_workers(store, tmp)
-            print(json.dumps(dict(attackId=str(selected['AttackTrafficId']), rawId=str(selected['RawPacketId']),
+            print(json.dumps(dict(attackId=str(selected['AttackTrafficId']), rawId=str(selected['RawPacketId']), historicalAttackId=str(historical_id),
                 selectedClass=payload['explainedClass'], classIndex=payload['classIndex'],
                 probability=payload['probability'], modelRelease=models.release, stagesSaved=len(rows),
                 featureCount=len(payload['features']), additivityError=payload['additivityError'],

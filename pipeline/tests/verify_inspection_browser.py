@@ -20,7 +20,24 @@ def main():
         page.route('https://**/*', lambda route: route.abort())
         page.goto(f'{base_url}/InspectAttack/{attack_id}', wait_until='networkidle')
         page.wait_for_function("document.getElementById('shapBar').data?.[0]?.x.length === 10")
-        assert page.locator('#referenceCaption').inner_text() == 'Reference unavailable'
+        assert '362,127 benign training flows' in page.locator('#referenceCaption').inner_text()
+        page.select_option('#referenceFeature', 'duration')
+        page.get_by_text('5th percentile', exact=True).wait_for()
+        page.wait_for_function("document.getElementById('referenceChart').data?.[0]?.x.length === 2")
+        assert 'Benign median' in page.locator('#referenceMetrics').text_content()
+        assert ' s' in page.locator('#referenceMetrics').text_content()
+        page.select_option('#referenceFeature', 'dst_port')
+        page.get_by_role('heading', name='Observed-value frequencies in benign training').wait_for()
+        assert page.locator('#referenceFrequencyRows tr').count() > 0
+        assert 'Benign median' not in page.locator('#referenceMetrics').text_content()
+        page.select_option('#referenceFeature', 'delta_start_incomplete_handshake')
+        assert '1 · set' in page.locator('#referenceFrequencyRows').inner_text()
+        page.select_option('#referenceFeature', 'fwd_ack_flag_percentage_in_total')
+        page.get_by_text('falls outside the extractor’s documented', exact=False).first.wait_for()
+        page.select_option('#referenceFeature', 'duration')
+        assert 'Completed externally' in page.locator('#pipelineSteps').inner_text()
+        assert 'Total batch inference' in page.locator('#pipelineSteps').inner_text()
+        assert 'CSV receipt to SHAP result' in page.locator('#pipelineSteps').inner_text()
         assert page.locator('#featureEvidence tr').count() == 10
         initial = page.evaluate("JSON.parse(document.getElementById('inspectionData').textContent)")
         gate = next(s for s in initial['stages'] if s['stage'] == 'gatekeeper')['data']
@@ -33,7 +50,9 @@ def main():
         button = page.locator('#featureEvidence button').first
         button.focus()
         assert 'log-odds' in page.locator('#featureDetail').inner_text()
-        assert 'Reference unavailable' in page.locator('#featureDetail').inner_text()
+        assert 'Model feature:' in page.locator('#featureDetail').inner_text()
+        assert 'Benign' in page.locator('#featureDetail').inner_text()
+        assert button.inner_text() != button.get_attribute('data-feature-name')
         page.select_option('#featureCount', '5')
         page.wait_for_function("document.getElementById('shapBar').data[0].x.length === 5")
         page.select_option('#stageSelect', 'multiclass')
@@ -43,21 +62,28 @@ def main():
         assert multi['explainedClass'] in page.locator('#contributionCaption').inner_text()
         assert 'raw class margin' in page.locator('#featureDetail').inner_text()
         assert multi['classIndex'] != 0
-        if os.environ.get('IDS_SHAP_SCREENSHOTS'):
-            target = Path(os.environ['IDS_SHAP_SCREENSHOTS'])
-            target.mkdir(parents=True, exist_ok=True)
-            page.screenshot(path=str(target / 'inspection-desktop.png'), full_page=True)
+        for theme, color in [('light', '#0f172a'), ('dark', '#f1f5f9')]:
+            page.evaluate('theme => window.IDS.ThemeManager.select(theme)', theme)
+            page.wait_for_function("color => document.getElementById('shapBar').layout?.font.color === color", arg=color)
+            if os.environ.get('IDS_SHAP_SCREENSHOTS'):
+                target = Path(os.environ['IDS_SHAP_SCREENSHOTS'])
+                target.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(target / f'inspection-{theme}.png'), full_page=True)
         page.select_option('#featureCount', 'all')
         page.wait_for_function("document.getElementById('shapBar').data[0].x.length === 120")
+        page.locator('#technicalNames').check()
         page.select_option('#featureSort', 'name')
         page.wait_for_function("document.querySelector('#featureEvidence button').textContent === 'ack_flag_counts'")
         missing = page.locator('#featureEvidence tr').filter(has=page.get_by_role('button', name='delta_start', exact=True))
-        assert missing.locator('td').nth(1).inner_text() == 'Unavailable'
+        assert missing.locator('td').nth(1).inner_text() == 'Missing input'
         assert page.locator(f'a[href="/EscalateAttack/{attack_id}"]').count() > 0
         page.set_viewport_size({'width': 390, 'height': 844})
         page.select_option('#featureCount', '5')
         page.wait_for_function("document.getElementById('shapBar').data[0].x.length === 5")
-        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Mobile layout overflows'
+        assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), page.evaluate("""() =>
+            [...document.querySelectorAll('main *')]
+                .filter(node => node.getBoundingClientRect().right > window.innerWidth + 2)
+                .slice(0, 12).map(node => [node.id, node.getAttribute('class'), node.getBoundingClientRect().right])""")
         if os.environ.get('IDS_SHAP_SCREENSHOTS'):
             page.screenshot(path=str(Path(os.environ['IDS_SHAP_SCREENSHOTS']) / 'inspection-mobile.png'), full_page=True)
         # API errors retain evidence and show an actionable state.
@@ -78,6 +104,19 @@ def main():
             expected = 'Explanation processing' if state == 'pending' else 'Explanation unavailable'
             page.wait_for_function('(text) => document.getElementById("shapEmpty").textContent.includes(text)', arg=expected)
             assert not page.locator('#shapContent').is_visible()
+        no_reference = json.loads(json.dumps(initial))
+        for stage in no_reference['stages']:
+            stage['data']['reference'] = None
+            stage['data']['referenceDiagnostic'] = 'The benign reference artifact is missing.'
+            for feature in stage['data']['features']:
+                feature['reference'] = None
+        page.unroute('**/api/detection/*/inspection')
+        page.route('**/api/detection/*/inspection', lambda route: route.fulfill(
+            content_type='application/json', body=json.dumps(no_reference)))
+        page.locator('#refreshInspection').click()
+        page.get_by_text('The benign reference artifact is missing.', exact=True).wait_for()
+        assert page.locator('#referencePanel').is_hidden()
+        assert 'unavailable' not in page.locator('#featureEvidence').inner_text().lower()
         page.unroute('**/api/detection/*/inspection')
         page.route('**/lib/plotly/**', lambda route: route.abort())
         page.reload(wait_until='networkidle')
@@ -208,7 +247,8 @@ def main():
         'binary and nonzero multiclass selection', 'hover', 'keyboard feature detail', 'top 5/10/all',
         'sorting', 'waterfall', 'reference unavailable', 'mobile 390px', 'API error', 'processing', 'failed',
         'existing escalation link', 'missing chart library with numerical fallback',
-        'local charts with external requests blocked', 'traffic charts and empty state', 'bounded linked alerts',
+        'local charts with external requests blocked', 'verified continuous and categorical reference views',
+        'graceful missing training profile', 'measured inference and SHAP timeline', 'traffic charts and empty state', 'bounded linked alerts',
         'worker status', 'short and long page footers', 'MFA login and persistent inbox navigation'], javascriptErrors=errors)))
 
 

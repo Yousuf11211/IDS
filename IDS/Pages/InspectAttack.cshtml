@@ -12,7 +12,6 @@
     <header class="inspection-heading">
         <div>
             <a asp-page="/LiveDashboard" class="inspection-back">← Detection feed</a>
-            <p class="eyebrow">SECURITY OPERATIONS / DECISION INTELLIGENCE</p>
             <h1>Incident <span>#@incident.Id</span></h1>
             <p class="inspection-muted">Recorded network evidence and model decision analysis</p>
         </div>
@@ -27,7 +26,7 @@
     </header>
     <div id="inspectionNotice" class="inspection-notice" role="status" aria-live="polite">Loading decision analysis…</div>
     <section class="inspection-panel" aria-labelledby="summaryTitle">
-        <div class="panel-heading"><h2 id="summaryTitle"><span>01</span> Incident summary</h2><span class="record-tag">STORED DETECTION</span></div>
+        <div class="panel-heading"><h2 id="summaryTitle">Incident summary</h2></div>
         <dl class="incident-facts">
             <div><dt>Predicted category</dt><dd>@incident.AttackType</dd></div>
             <div><dt>Flow timestamp · UTC</dt><dd>@incident.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</dd></div>
@@ -40,15 +39,16 @@
         </dl>
     </section>
     <section aria-labelledby="decisionTitle">
-        <h2 class="section-title" id="decisionTitle"><span>02</span> Model decision analysis</h2>
+        <h2 class="section-title" id="decisionTitle">Model decision analysis</h2>
         <div id="modelCards" class="model-cards"></div>
     </section>
     <section class="inspection-panel" aria-labelledby="shapTitle">
-        <div class="panel-heading"><h2 id="shapTitle"><span>03</span> Decision contributions</h2><span class="record-tag">TREE SHAP</span></div>
+        <div class="panel-heading"><h2 id="shapTitle">Decision contributions</h2></div>
         <div class="chart-controls">
             <label>Model stage<select id="stageSelect"><option value="gatekeeper">Binary XGBoost</option><option value="multiclass">Multiclass XGBoost</option></select></label>
             <label>Features<select id="featureCount"><option value="5">Top 5</option><option value="10" selected>Top 10</option><option value="all">All</option></select></label>
             <label>Sort by<select id="featureSort"><option value="magnitude">Absolute contribution</option><option value="positive">Contribution · high to low</option><option value="name">Feature name</option></select></label>
+            <label class="inspection-toggle"><input type="checkbox" id="technicalNames" /> Show technical names</label>
         </div>
         <p id="contributionCaption" class="inspection-muted"></p>
         <div class="chart-legend"><span class="legend-positive">Increases selected output</span><span class="legend-negative">Decreases selected output</span></div>
@@ -62,24 +62,43 @@
             <p id="additivity" class="metadata-line"></p>
             <div class="feature-detail" id="featureDetail" role="status" aria-live="polite">Select a bar or focus a feature below to examine the evidence.</div>
             <details open><summary>Accessible feature evidence</summary>
-                <div class="table-scroll"><table class="evidence-table"><thead><tr><th>Feature · select for details</th><th>Observed input</th><th>SHAP contribution</th><th>Benign median</th></tr></thead><tbody id="featureEvidence"></tbody></table></div>
+                <div class="table-scroll"><table class="evidence-table"><thead><tr><th>Feature · select for details</th><th>Observed input</th><th>SHAP contribution</th><th>Benign reference</th></tr></thead><tbody id="featureEvidence"></tbody></table></div>
             </details>
         </div>
     </section>
     <section class="inspection-panel" aria-labelledby="referenceTitle">
-        <div class="panel-heading"><h2 id="referenceTitle"><span>04</span> Benign reference comparison</h2></div>
-        <p id="referenceCaption" class="inspection-muted">Reference unavailable</p>
-        <p class="inspection-muted">Each feature has its own numeric axis in its model input units. A benign reference range describes typical traffic; it does not define an attack.</p>
-        <div class="chart-legend"><span class="legend-range">Benign 5th–95th percentile</span><span class="legend-negative">Benign median</span><span class="legend-positive">Observed flow</span></div>
-        <div id="referenceChart" role="img" aria-label="Independent feature ranges, benign medians and observed values"></div>
+        <div class="panel-heading"><h2 id="referenceTitle">Benign reference comparison</h2></div>
+        <p id="referenceCaption" class="inspection-muted" role="status"></p>
+        <div id="referencePanel" hidden>
+            <p class="inspection-muted">These distributions describe the benign training sample. The median and percentile range are separate from the SHAP base value. A value outside the range alone does not establish malicious activity.</p>
+            <div class="chart-controls">
+                <label for="referenceFeature">Reference feature
+                    <select id="referenceFeature" class="reference-selector"></select>
+                </label>
+            </div>
+            <p id="referenceDescription" class="inspection-muted"></p>
+            <dl id="referenceMetrics" class="incident-facts"></dl>
+            <div id="referenceLegend" class="chart-legend" hidden>
+                <span class="legend-range">Benign 5th–95th percentile</span>
+                <span class="legend-median">Benign median</span>
+                <span class="legend-observed">Observed flow</span>
+            </div>
+            <div id="referenceChart" role="img" hidden></div>
+            <div id="referenceFrequencies" hidden>
+                <h3>Observed-value frequencies in benign training</h3>
+                <div class="table-scroll" tabindex="0" aria-label="Benign value frequencies">
+                    <table class="evidence-table"><thead><tr><th scope="col">Value</th><th scope="col">Flows</th><th scope="col">Share of valid samples</th></tr></thead><tbody id="referenceFrequencyRows"></tbody></table>
+                </div>
+            </div>
+        </div>
     </section>
     <section class="inspection-panel" aria-labelledby="pipelineTitle">
-        <div class="panel-heading"><h2 id="pipelineTitle"><span>05</span> Detection pipeline</h2></div>
+        <div class="panel-heading"><h2 id="pipelineTitle">Detection pipeline</h2></div>
         <ol class="inspection-pipeline" id="pipelineSteps"></ol>
-        <p class="inspection-muted">Stage timings are shown only when recorded. The CSV worker consumes extracted features; packet extraction is upstream.</p>
+        <p class="inspection-muted">Inference times apply to the recorded batch. The ingestion timestamp is when IDS registered the CSV. End-to-end elapsed time includes any queue wait inside IDS.</p>
     </section>
     <section class="inspection-panel" aria-labelledby="technicalTitle">
-        <div class="panel-heading"><h2 id="technicalTitle"><span>06</span> Technical evidence</h2></div>
+        <div class="panel-heading"><h2 id="technicalTitle">Technical evidence</h2></div>
         <details><summary>Model versions and explanation metadata</summary><div id="explanationMetadata" class="metadata-grid"></div></details>
         <details><summary>Stored flow fields</summary>
             <p class="inspection-muted">Storage fields can include defaults for optional, non-model columns. Exact values consumed by the model appear in feature evidence above.</p>

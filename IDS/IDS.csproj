@@ -32,6 +32,11 @@
 
   <ItemGroup>
     <None Update="Templates/Email/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../pipeline/config/feature-metadata.json" Link="Explainability/feature-metadata.json"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../pipeline/config/benign-reference.json" Link="Explainability/benign-reference.json"
+             Condition="Exists('../pipeline/config/benign-reference.json')"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

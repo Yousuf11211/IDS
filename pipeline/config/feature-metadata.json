@@ -1,0 +1,976 @@
+{
+  "schemaVersion": 1,
+  "extractorSource": "https://github.com/ahlashkari/NTLFlowLyzer/blob/d99cd5377faaed53b39450ce262652902501188d/NTLFlowLyzer/",
+  "features": {
+    "ack_flag_counts": {
+      "displayName": "ACK flag count",
+      "description": "Number of packets with the TCP ACK flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "ack_flag_percentage_in_total": {
+      "displayName": "ACK flag share",
+      "description": "Count of packets with the TCP ACK flag set divided by all flow packets. The extractor stores this share as a fraction from 0 to 1.",
+      "units": "ratio",
+      "category": "TCP flags",
+      "kind": "continuous",
+      "source": "features/flag_related.py",
+      "expectedMinimum": 0,
+      "expectedMaximum": 1
+    },
+    "avg_bwd_bulk_rate": {
+      "displayName": "Backward bulk rate",
+      "description": "Backward bulk payload bytes divided by accumulated backward bulk duration.",
+      "units": "bytes/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/bulk_related.py"
+    },
+    "bwd_ack_flag_counts": {
+      "displayName": "Backward ACK flag count",
+      "description": "Number of backward packets with the TCP ACK flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "bwd_ack_flag_percentage_in_total": {
+      "displayName": "Backward ACK flag share",
+      "description": "Count of backward packets with the TCP ACK flag set divided by all flow packets. The extractor stores this share as a fraction from 0 to 1.",
+      "units": "ratio",
+      "category": "TCP flags",
+      "kind": "continuous",
+      "source": "features/flag_related.py",
+      "expectedMinimum": 0,
+      "expectedMaximum": 1
+    },
+    "bwd_bulk_duration": {
+      "displayName": "Backward bulk duration",
+      "description": "Accumulated duration of backward payload bursts tracked by the extractor.",
+      "units": "s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/bulk_related.py"
+    },
+    "bwd_bulk_state_count": {
+      "displayName": "Backward bulk count",
+      "description": "Number of backward payload bursts recognized as bulks by the extractor.",
+      "units": "bulks",
+      "category": "Traffic volume",
+      "kind": "discrete",
+      "source": "features/bulk_related.py"
+    },
+    "bwd_bytes_rate": {
+      "displayName": "Backward payload rate",
+      "description": "Backward payload bytes per second over the full flow duration.",
+      "units": "bytes/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "bwd_fin_flag_counts": {
+      "displayName": "Backward FIN flag count",
+      "description": "Number of backward packets with the TCP FIN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "bwd_init_win_bytes": {
+      "displayName": "Backward initial TCP window",
+      "description": "Raw advertised TCP window field of the first backward packet.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "bwd_mean_header_bytes": {
+      "displayName": "Backward packet header size · mean",
+      "description": "Mean of backward packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "bwd_packets_count": {
+      "displayName": "Backward packet count",
+      "description": "Number of backward packets in the flow.",
+      "units": "packets",
+      "category": "Traffic volume",
+      "kind": "discrete",
+      "source": "features/count_related.py"
+    },
+    "bwd_packets_iat_max": {
+      "displayName": "Backward inter-arrival time · maximum",
+      "description": "Maximum of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_mean": {
+      "displayName": "Backward inter-arrival time · mean",
+      "description": "Mean of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_median": {
+      "displayName": "Backward inter-arrival time · median",
+      "description": "Median of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_min": {
+      "displayName": "Backward inter-arrival time · minimum",
+      "description": "Minimum of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_mode": {
+      "displayName": "Backward inter-arrival time · most frequent",
+      "description": "Mode of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_std": {
+      "displayName": "Backward inter-arrival time · standard deviation",
+      "description": "Population standard deviation of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_iat_total": {
+      "displayName": "Backward inter-arrival time · total",
+      "description": "Sum of backward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "bwd_packets_rate": {
+      "displayName": "Backward packet rate",
+      "description": "Backward packets per second over the full flow duration.",
+      "units": "packets/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "bwd_payload_bytes_max": {
+      "displayName": "Backward packet payload size · maximum",
+      "description": "Maximum of backward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "bwd_payload_bytes_std": {
+      "displayName": "Backward packet payload size · standard deviation",
+      "description": "Population standard deviation of backward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "bwd_rst_flag_counts": {
+      "displayName": "Backward RST flag count",
+      "description": "Number of backward packets with the TCP RST flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "bwd_syn_flag_counts": {
+      "displayName": "Backward SYN flag count",
+      "description": "Number of backward packets with the TCP SYN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "bwd_total_header_bytes": {
+      "displayName": "Backward packet header size · total",
+      "description": "Sum of backward packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "bwd_total_payload_bytes": {
+      "displayName": "Backward packet payload size · total",
+      "description": "Sum of backward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "bytes_rate": {
+      "displayName": "Payload rate",
+      "description": "Payload bytes per second over the full flow duration.",
+      "units": "bytes/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "cov_bwd_header_bytes_delta_len": {
+      "displayName": "Backward header size delta · coefficient of variation",
+      "description": "Coefficient of variation of backward signed header-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cov_bwd_packets_delta_len": {
+      "displayName": "Backward packet size delta · coefficient of variation",
+      "description": "Coefficient of variation of backward signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cov_bwd_packets_delta_time": {
+      "displayName": "Backward packet timing delta · coefficient of variation",
+      "description": "Coefficient of variation of backward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "cov_fwd_header_bytes_delta_len": {
+      "displayName": "Forward header size delta · coefficient of variation",
+      "description": "Coefficient of variation of forward signed header-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cov_fwd_packets_delta_len": {
+      "displayName": "Forward packet size delta · coefficient of variation",
+      "description": "Coefficient of variation of forward signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cov_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · coefficient of variation",
+      "description": "Coefficient of variation of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "cov_header_bytes_delta_len": {
+      "displayName": "Header size delta · coefficient of variation",
+      "description": "Coefficient of variation of signed header-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cov_packets_delta_len": {
+      "displayName": "Packet size delta · coefficient of variation",
+      "description": "Coefficient of variation of signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "cwr_flag_counts": {
+      "displayName": "CWR flag count",
+      "description": "Number of packets with the TCP CWR flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "delta_start": {
+      "displayName": "Post-handshake delay",
+      "description": "Time from the final TCP handshake packet to the first following packet. An incomplete handshake marker becomes a missing model input.",
+      "units": "s",
+      "category": "Flow timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "down_up_rate": {
+      "displayName": "Backward-to-forward packet ratio",
+      "description": "Backward packet count divided by forward packet count. The extractor emits zero if there are no forward packets.",
+      "units": "ratio",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "dst_port": {
+      "displayName": "Destination port",
+      "description": "Transport destination port in the original forward direction of the flow.",
+      "units": "port",
+      "category": "Connection characteristics",
+      "kind": "categorical",
+      "source": "network_flow_capturer/flow.py"
+    },
+    "duration": {
+      "displayName": "Flow duration",
+      "description": "Elapsed capture time from the first packet to the last packet.",
+      "units": "s",
+      "category": "Flow timing",
+      "kind": "continuous",
+      "source": "features/utils.py"
+    },
+    "ece_flag_counts": {
+      "displayName": "ECE flag count",
+      "description": "Number of packets with the TCP ECE flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fin_flag_counts": {
+      "displayName": "FIN flag count",
+      "description": "Number of packets with the TCP FIN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_ack_flag_counts": {
+      "displayName": "Forward ACK flag count",
+      "description": "Number of forward packets with the TCP ACK flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_ack_flag_percentage_in_fwd_packets": {
+      "displayName": "Forward ACK flag share",
+      "description": "Count of forward packets with the TCP ACK flag set divided by all forward packets. The extractor stores this share as a fraction from 0 to 1.",
+      "units": "ratio",
+      "category": "TCP flags",
+      "kind": "continuous",
+      "source": "features/flag_related.py",
+      "expectedMinimum": 0,
+      "expectedMaximum": 1
+    },
+    "fwd_ack_flag_percentage_in_total": {
+      "displayName": "Forward ACK flag share",
+      "description": "Count of forward packets with the TCP ACK flag set divided by all flow packets. The extractor stores this share as a fraction from 0 to 1.",
+      "units": "ratio",
+      "category": "TCP flags",
+      "kind": "continuous",
+      "source": "features/flag_related.py",
+      "expectedMinimum": 0,
+      "expectedMaximum": 1
+    },
+    "fwd_bytes_rate": {
+      "displayName": "Forward payload rate",
+      "description": "Forward payload bytes per second over the full flow duration.",
+      "units": "bytes/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "fwd_fin_flag_counts": {
+      "displayName": "Forward FIN flag count",
+      "description": "Number of forward packets with the TCP FIN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_init_win_bytes": {
+      "displayName": "Forward initial TCP window",
+      "description": "Raw advertised TCP window field of the first forward packet.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "fwd_mean_header_bytes": {
+      "displayName": "Forward packet header size · mean",
+      "description": "Mean of forward packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "fwd_packets_count": {
+      "displayName": "Forward packet count",
+      "description": "Number of forward packets in the flow.",
+      "units": "packets",
+      "category": "Traffic volume",
+      "kind": "discrete",
+      "source": "features/count_related.py"
+    },
+    "fwd_packets_iat_cov": {
+      "displayName": "Forward inter-arrival time · coefficient of variation",
+      "description": "Coefficient of variation of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_max": {
+      "displayName": "Forward inter-arrival time · maximum",
+      "description": "Maximum of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_mean": {
+      "displayName": "Forward inter-arrival time · mean",
+      "description": "Mean of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_median": {
+      "displayName": "Forward inter-arrival time · median",
+      "description": "Median of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_min": {
+      "displayName": "Forward inter-arrival time · minimum",
+      "description": "Minimum of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_mode": {
+      "displayName": "Forward inter-arrival time · most frequent",
+      "description": "Mode of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_skewness": {
+      "displayName": "Forward inter-arrival time · skewness",
+      "description": "Skewness of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_std": {
+      "displayName": "Forward inter-arrival time · standard deviation",
+      "description": "Population standard deviation of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_iat_total": {
+      "displayName": "Forward inter-arrival time · total",
+      "description": "Sum of forward packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "fwd_packets_rate": {
+      "displayName": "Forward packet rate",
+      "description": "Forward packets per second over the full flow duration.",
+      "units": "packets/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "fwd_payload_bytes_max": {
+      "displayName": "Forward packet payload size · maximum",
+      "description": "Maximum of forward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "fwd_payload_bytes_std": {
+      "displayName": "Forward packet payload size · standard deviation",
+      "description": "Population standard deviation of forward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "fwd_psh_flag_counts": {
+      "displayName": "Forward PSH flag count",
+      "description": "Number of forward packets with the TCP PSH flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_rst_flag_counts": {
+      "displayName": "Forward RST flag count",
+      "description": "Number of forward packets with the TCP RST flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_syn_flag_counts": {
+      "displayName": "Forward SYN flag count",
+      "description": "Number of forward packets with the TCP SYN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "fwd_total_header_bytes": {
+      "displayName": "Forward packet header size · total",
+      "description": "Sum of forward packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "fwd_total_payload_bytes": {
+      "displayName": "Forward packet payload size · total",
+      "description": "Sum of forward packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "max_bwd_packets_delta_len": {
+      "displayName": "Backward packet size delta · maximum",
+      "description": "Maximum of backward signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "max_bwd_packets_delta_time": {
+      "displayName": "Backward packet timing delta · maximum",
+      "description": "Maximum of backward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "max_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · maximum",
+      "description": "Maximum of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "max_payload_bytes_delta_len": {
+      "displayName": "Payload size delta · maximum",
+      "description": "Maximum of signed payload-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_bwd_header_bytes_delta_len": {
+      "displayName": "Backward header size delta · mean",
+      "description": "Mean of backward signed header-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_bwd_packets_delta_len": {
+      "displayName": "Backward packet size delta · mean",
+      "description": "Mean of backward signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_bwd_packets_delta_time": {
+      "displayName": "Backward packet timing delta · mean",
+      "description": "Mean of backward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "mean_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · mean",
+      "description": "Mean of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "mean_header_bytes": {
+      "displayName": "Packet header size · mean",
+      "description": "Mean of packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_header_bytes_delta_len": {
+      "displayName": "Header size delta · mean",
+      "description": "Mean of signed header-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_packets_delta_len": {
+      "displayName": "Packet size delta · mean",
+      "description": "Mean of signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mean_packets_delta_time": {
+      "displayName": "Packet timing delta · mean",
+      "description": "Mean of elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "median_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · median",
+      "description": "Median of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "min_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · minimum",
+      "description": "Minimum of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "min_payload_bytes_delta_len": {
+      "displayName": "Payload size delta · minimum",
+      "description": "Minimum of signed payload-length changes between consecutive packets ordered by timestamp.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "mode_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · most frequent",
+      "description": "Mode of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "mode_packets_delta_time": {
+      "displayName": "Packet timing delta · most frequent",
+      "description": "Mode of elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "packet_iat_max": {
+      "displayName": "Inter-arrival time · maximum",
+      "description": "Maximum of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packet_iat_min": {
+      "displayName": "Inter-arrival time · minimum",
+      "description": "Minimum of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packet_iat_std": {
+      "displayName": "Inter-arrival time · standard deviation",
+      "description": "Population standard deviation of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packet_iat_total": {
+      "displayName": "Inter-arrival time · total",
+      "description": "Sum of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packets_count": {
+      "displayName": "Packet count",
+      "description": "Number of packets in the flow.",
+      "units": "packets",
+      "category": "Traffic volume",
+      "kind": "discrete",
+      "source": "features/count_related.py"
+    },
+    "packets_iat_cov": {
+      "displayName": "Inter-arrival time · coefficient of variation",
+      "description": "Coefficient of variation of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packets_iat_mean": {
+      "displayName": "Inter-arrival time · mean",
+      "description": "Mean of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packets_iat_median": {
+      "displayName": "Inter-arrival time · median",
+      "description": "Median of packet arrival intervals in capture order. For a one-packet series the extractor passes the capture timestamp to the statistic instead of an inter-arrival interval.",
+      "units": "s",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/IAT_related.py"
+    },
+    "packets_rate": {
+      "displayName": "Packet rate",
+      "description": "Packets per second over the full flow duration.",
+      "units": "packets/s",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/rate_related.py"
+    },
+    "payload_bytes_cov": {
+      "displayName": "Packet payload size · coefficient of variation",
+      "description": "Coefficient of variation of packet payload lengths.",
+      "units": "unitless",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "payload_bytes_max": {
+      "displayName": "Packet payload size · maximum",
+      "description": "Maximum of packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "payload_bytes_mean": {
+      "displayName": "Packet payload size · mean",
+      "description": "Mean of packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "payload_bytes_skewness": {
+      "displayName": "Packet payload size · skewness",
+      "description": "Skewness of packet payload lengths.",
+      "units": "unitless",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "payload_bytes_std": {
+      "displayName": "Packet payload size · standard deviation",
+      "description": "Population standard deviation of packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "payload_bytes_variance": {
+      "displayName": "Packet payload size · variance",
+      "description": "Population variance of packet payload lengths.",
+      "units": "bytes²",
+      "category": "Payload statistics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "psh_flag_counts": {
+      "displayName": "PSH flag count",
+      "description": "Number of packets with the TCP PSH flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "rst_flag_counts": {
+      "displayName": "RST flag count",
+      "description": "Number of packets with the TCP RST flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "skewness_bwd_packets_delta_time": {
+      "displayName": "Backward packet timing delta · skewness",
+      "description": "Skewness of backward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "skewness_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · skewness",
+      "description": "Skewness of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "skewness_header_bytes": {
+      "displayName": "Packet header size · skewness",
+      "description": "Skewness of packet header lengths.",
+      "units": "unitless",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "skewness_packets_delta_len": {
+      "displayName": "Packet size delta · skewness",
+      "description": "Skewness of signed packet-length changes between consecutive packets ordered by timestamp.",
+      "units": "unitless",
+      "category": "Packet size",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "skewness_packets_delta_time": {
+      "displayName": "Packet timing delta · skewness",
+      "description": "Skewness of elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "unitless",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "std_fwd_packets_delta_time": {
+      "displayName": "Forward packet timing delta · standard deviation",
+      "description": "Population standard deviation of forward elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "std_header_bytes": {
+      "displayName": "Packet header size · standard deviation",
+      "description": "Population standard deviation of packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "std_packets_delta_time": {
+      "displayName": "Packet timing delta · standard deviation",
+      "description": "Population standard deviation of elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "subflow_bwd_bytes": {
+      "displayName": "Backward subflow bytes",
+      "description": "Forward payload byte count divided by the extractor’s subflow counter. The verified upstream implementation uses the forward byte total for this backward-named field.",
+      "units": "bytes/subflow",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/subflow_related.py"
+    },
+    "subflow_bwd_packets": {
+      "displayName": "Backward subflow packets",
+      "description": "Backward packet count divided by the extractor’s subflow counter.",
+      "units": "packets/subflow",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/subflow_related.py"
+    },
+    "subflow_fwd_bytes": {
+      "displayName": "Forward subflow bytes",
+      "description": "Forward payload byte count divided by the extractor’s subflow counter.",
+      "units": "bytes/subflow",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/subflow_related.py"
+    },
+    "subflow_fwd_packets": {
+      "displayName": "Forward subflow packets",
+      "description": "Forward packet count divided by the extractor’s subflow counter.",
+      "units": "packets/subflow",
+      "category": "Traffic volume",
+      "kind": "continuous",
+      "source": "features/subflow_related.py"
+    },
+    "syn_flag_counts": {
+      "displayName": "SYN flag count",
+      "description": "Number of packets with the TCP SYN flag set.",
+      "units": "packets",
+      "category": "TCP flags",
+      "kind": "discrete",
+      "source": "features/flag_related.py"
+    },
+    "syn_flag_percentage_in_total": {
+      "displayName": "SYN flag share",
+      "description": "Count of packets with the TCP SYN flag set divided by all flow packets. The extractor stores this share as a fraction from 0 to 1.",
+      "units": "ratio",
+      "category": "TCP flags",
+      "kind": "continuous",
+      "source": "features/flag_related.py",
+      "expectedMinimum": 0,
+      "expectedMaximum": 1
+    },
+    "total_header_bytes": {
+      "displayName": "Packet header size · total",
+      "description": "Sum of packet header lengths.",
+      "units": "bytes",
+      "category": "Header characteristics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "total_payload_bytes": {
+      "displayName": "Packet payload size · total",
+      "description": "Sum of packet payload lengths.",
+      "units": "bytes",
+      "category": "Payload statistics",
+      "kind": "discrete",
+      "source": "features/len_related.py"
+    },
+    "variance_header_bytes": {
+      "displayName": "Packet header size · variance",
+      "description": "Population variance of packet header lengths.",
+      "units": "bytes²",
+      "category": "Header characteristics",
+      "kind": "continuous",
+      "source": "features/len_related.py"
+    },
+    "variance_packets_delta_time": {
+      "displayName": "Packet timing delta · variance",
+      "description": "Population variance of elapsed time components between consecutive packets ordered by timestamp. The verified extractor uses the fractional-second component of each interval.",
+      "units": "ms²",
+      "category": "Packet timing",
+      "kind": "continuous",
+      "source": "features/time_related.py"
+    },
+    "delta_start_incomplete_handshake": {
+      "displayName": "Incomplete handshake flag",
+      "description": "Training-derived indicator. A value of 1 marks the extractor’s incomplete handshake text; historical source files with an explicit flag retain their recorded 0 or 1.",
+      "units": null,
+      "category": "Flow timing",
+      "kind": "binary",
+      "source": "training/run_four_experiments.py"
+    }
+  }
+}

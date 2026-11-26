@@ -3,9 +3,12 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+import time
 
 from .features import load_features, numeric
 from .schema import CSV_TO_SQL, prepare_row
+
+MODEL_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -50,7 +53,7 @@ class XGBoostModels:
         if missing := set(self.feature_names) - CSV_TO_SQL.keys():
             raise ValueError(f"SQL storage contract lacks model features: {sorted(missing)}")
         self.policy = json.loads((config.root / config.attack_policy).read_text(encoding="utf-8-sig"))
-        contract = {"schema_version": 3, "features": self.feature_names, "policy": self.policy,
+        contract = {"schema_version": MODEL_SCHEMA_VERSION, "features": self.feature_names, "policy": self.policy,
                     "gate_threshold": config.gatekeeper_threshold,
                     "type_threshold": config.multiclass_threshold}
         versions = {}
@@ -128,14 +131,21 @@ class XGBoostModels:
             scores = 1 - scores
         return scores
 
-    def predict(self, rows):
+    def predict(self, rows, *, timings=None):
         if not rows:
             return []
+        started = time.perf_counter()
         gate_scores = [float(scores[0]) for scores in self.probabilities("gatekeeper", rows)]
+        if timings is not None:
+            timings.update(binaryMs=(time.perf_counter() - started) * 1000, binaryBatchSize=len(rows))
         predictions = [Prediction(False, score) for score in gate_scores]
         indices = [i for i, score in enumerate(gate_scores) if score >= self.config.gatekeeper_threshold]
         if indices:
+            multiclass_started = time.perf_counter()
             scores = self.probabilities("multiclass", [rows[i] for i in indices])
+            if timings is not None:
+                timings.update(multiclassMs=(time.perf_counter() - multiclass_started) * 1000,
+                               multiclassBatchSize=len(indices))
             for i, probabilities in zip(indices, scores, strict=True):
                 best = max(range(len(probabilities)), key=lambda j: probabilities[j])
                 confidence = float(probabilities[best])
@@ -148,6 +158,8 @@ class XGBoostModels:
                                             tuple((self.labels["multiclass"][j], float(probabilities[j]))
                                                   for j in sorted(range(len(probabilities)),
                                                                   key=lambda j: -probabilities[j])[:3]))
+        if timings is not None:
+            timings["inferenceMs"] = (time.perf_counter() - started) * 1000
         return predictions
 
     def explanation_context(self, stage, row, prediction):

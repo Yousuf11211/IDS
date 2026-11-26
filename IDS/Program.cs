@@ -147,6 +147,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IDashboardNotificationService, DashboardNotificationService>();
 builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
 builder.Services.AddScoped<AttackInspectionService>();
+builder.Services.AddSingleton<ExplanationReferenceCatalog>();
 builder.Services.AddScoped<WorkerHealthService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 

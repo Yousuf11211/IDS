@@ -81,7 +81,7 @@ def main(argv=None):
                 return 0
             from .explanations import ExplanationService, ExplanationWorker
             from .reference import load_reference
-            explanation_worker = ExplanationWorker(store, models, ExplanationService(models, load_reference(config)))
+            explanation_worker = ExplanationWorker(store, models, ExplanationService(models, load_reference(config, models)))
             logging.info("SHAP worker ready for %s; waiting for queued explanations", models.release)
             logging.info("Restart the detection worker after installing code updates so it queues SHAP jobs")
             stopped = threading.Event()

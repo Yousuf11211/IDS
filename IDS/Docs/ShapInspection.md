@@ -23,10 +23,9 @@ dashboard polling, or SignalR delivery.
   validated handshake flag, and explanation snapshots encode missing inputs as JSON null.
   The worker reproduces the prediction and orients binary contributions toward Attack
   according to the binary mapping.
-- Original training preprocessing code and labeled training/reference datasets
-  are absent. This implementation explains the **deployed** adapter exactly; it
-  cannot independently certify how the training data were originally transformed.
-  Archived synthetic detections are never used as a benign reference.
+- Both deployed UBJ hashes match Experiment D in the separate training project.
+  The benign reference replays only its recorded training members and verifies
+  each selected float32 feature fingerprint.
 - Attack rows have no user/tenant ownership field. Detailed evidence is restricted
   to existing **Admin/Support** roles, with the same check inside the service.
   Employees and suspended/anonymous principals cannot inspect guessed IDs.
@@ -77,7 +76,7 @@ altered or dropped. Rollback of this migration would remove explanation data.
 | `RawPacketId bigint null` | FK → `RawPackets.Id`, restricted deletion |
 | `Stage`, `ModelVersion`, `Fingerprint` | Stage, artifact version, complete inference contract fingerprint |
 | `ContextJson nvarchar(max)` | Immutable original values, labels, probabilities, thresholds and class selection |
-| `PayloadJson nvarchar(max) null` | Full numerical explanation, base, units, all 120 contributions, versions, timestamp, timing, additivity and optional reference statistics |
+| `PayloadJson nvarchar(max) null` | Full numerical explanation, base, units, all 120 contributions, versions, timestamp, timing, additivity and optional reference identity |
 | `Status`, `Attempts`, `NextAttempt`, `LastError` | Durable work and bounded retries |
 | `CreatedAt`, `UpdatedAt datetime2` | UTC queue/persistence timestamps |
 | Unique `(AttackTrafficId, Stage, ModelVersion)` | Safe retries/backfill without duplicates |
@@ -165,49 +164,95 @@ idempotent work through a separate connection and does not interrupt explanation
 
 ## Benign reference profile
 
-No verified reference dataset was available, so **Reference unavailable** is the
-correct initial state. A versioned JSON artifact is appropriate here: small,
-auditable, deployment-controlled, and no new database lifecycle. Completed payloads
-embed the exact statistics/version used so changing a future profile cannot
-silently change old reports.
+The reference setting was commented out and the JSON artifact was absent.
+The explanation worker therefore produced valid SHAP contributions with empty
+references. The web reader only displayed statistics embedded in the stored
+payload. Consequently, compatible historical reports were also missing the
+comparison. Feature lookups were not the cause.
 
-Prepare a manifest outside detection `data/`, for a genuine labeled training or
-independent reference CSV with the complete model feature contract and `label`:
+The bundled profile covers **362,127** benign Experiment D training rows across
+**120** features. There are 357,736 historical rows from `IDS2018` and 4,391 lab
+rows from `Created_Data/benign_2hour_baseline_with_handshake.csv`. The required
+source filenames, file SHA-256 digests and counts are listed in the artifact.
+The independent evaluation data and other training experiments were excluded.
+Both deployed model binaries match the Experiment D binaries byte for byte.
+[Bundled profile](../../pipeline/config/benign-reference.json)
 
-```json
-{
-  "file": "your-verified-training.csv",
-  "sha256": "REPLACE_WITH_THE_ACTUAL_64_CHARACTER_FILE_SHA256",
-  "datasetVersion": "YOUR_IDENTIFIABLE_DATASET_AND_TRAINING_SPLIT_VERSION",
-  "split": "training",
-  "benignLabel": "Benign",
-  "provenance": "DOCUMENT_THE_SOURCE_GROUND_TRUTH_AND_SPLIT_PROCEDURE"
-}
-```
+The replay reads the exact Experiment D training row manifest. It filters
+ground-truth Benign entries, checks the source CSV digests against the training
+audit and reproduces the float32 feature conversion, infinity handling, native
+missing values and handshake marker preprocessing. Every selected row's
+transformed feature hash must match the training manifest. An input mismatch
+stops profile generation before the destination is replaced.
 
-Use `Get-FileHash your-verified-training.csv -Algorithm SHA256` to obtain the hash
-(lowercase it in the manifest). Then, from `pipeline/`:
+Each feature records valid and missing counts, min, max, mean, median,
+population standard deviation and the 5th, 25th, 75th and 95th percentiles.
+Categorical ports and the binary handshake indicator also include full
+frequencies. Discrete counts include their 20 most frequent values and a
+remaining count. The API displays the top eight and the observed value when
+present. If a discrete value falls outside the retained counts, its exact
+frequency is unavailable. Constant ranges and missing observed values remain
+visible with the recorded statistics.
+
+The ASP.NET Core service loads and validates the profile once. It joins it to a
+completed historical or current explanation only when the model fingerprint
+and ordered feature names match. A current worker records the profile identity
+in the payload without embedding a repeated copy of all distributions. Older
+payloads with embedded references continue to use those snapshots. Compatible
+historical reports receive the reference on read without regenerating SHAP or
+writing the explanation back to SQL. A missing or incompatible profile produces
+one explanation in the comparison panel.
+
+### Generate and deploy
+
+From `C:\Projects\IDS\pipeline` in PowerShell, with the existing Windows
+Python environment:
 
 ```powershell
-python -m ids_pipeline.reference path/to/manifest.json config/benign-reference.json
+.\.venv\Scripts\python.exe -m ids_pipeline.training_reference --training-root C:/Projects/Raw_script_DPT
 ```
 
-Uncomment `reference_profile = "config/benign-reference.json"` under `[models]`
-in `config/pipeline.toml`, then restart the explanation process. The builder
-requires a matching supplied file hash, documented provenance, explicit
-training/reference split and actual benign labels. Test/evaluation splits and
-files inside detection `data/` are rejected. The dataset custodian must still
-verify truthful provenance; a manifest cannot independently prove a split.
+The input tree must include `Experiments/Experiment D/training_row_manifest.csv.gz`,
+the corresponding `training_composition.json` and `features_used.json`, the two
+Experiment D model binaries, `Experiments/input_file_audit.json`,
+`run_four_experiments.py`, and the 16 source CSVs enumerated in the bundled
+profile. The replay scans the full audited CSVs and uses the existing pandas,
+NumPy and XGBoost dependencies. Its output records the preprocessing script
+hash, library versions, ordered feature schema hash, model fingerprint and
+generation timestamp.
 
-Statistics are mean, population standard deviation, median, 5th/25th/75th/95th
-percentiles and benign sample count, computed on the float32 model values. The profile excludes
-port identifiers, the categorical handshake flag and missing observations per feature.
-Missing or invalid profiles and fingerprint mismatches omit reference statistics and allow
-SHAP processing. A zero median never yields an infinite percentage. The schema
-has no protocol identity, so the available profile group is all benign reference
-traffic; protocol-specific grouping is not claimed. Physical measurement units
-are not documented in the source contract; the report labels model input units
-instead of guessing seconds/bytes for ambiguous features.
+The default detector configuration already points the explanation worker at
+`config/benign-reference.json`. The app builds and publishes that file plus
+`feature-metadata.json` under `Explainability/`. Deploy both with the web build.
+For an external profile, configure `Explainability:BenignReferencePath` or
+`Explainability__BenignReferencePath` for ASP.NET Core and update the pipeline
+`reference_profile` setting consistently. Restart the web app and both Python
+workers after deployment. No additional database migration or SHAP backfill is
+required to display the training lookup.
+
+### Feature metadata and timing
+
+The 120 names use a central map of friendly labels, descriptions, categories
+and units. Users can turn on technical model names in the report. The map cites
+the inspected upstream extractor revision and identifies the training-derived
+handshake flag. It describes representation quirks where verified. In the
+inspected upstream IAT helper, a one-packet series can return its capture
+timestamp. The replay preserves such training inputs, so very large IAT
+reference values can reflect extractor behavior. The flag-share fields in the
+training profile use fractions from 0 to 1. Existing synthetic flow fixtures
+can supply 0–100 values. The report preserves the exact model input and flags
+observations outside the documented fraction scale. Historical capture files
+do not identify an upstream extractor commit for every row. [Verified NTLFlowLyzer source](https://github.com/ahlashkari/NTLFlowLyzer/tree/d99cd5377faaed53b39450ce262652902501188d/NTLFlowLyzer)
+
+The pipeline table already records when IDS registered a CSV and when the flow's
+classification was saved. The report retrieves those timestamps for linked
+historical and current flows. New explanation snapshots store measured binary,
+multiclass, and total inference batch times. Queue wait measures the first SHAP
+claim from the original queue timestamp. Processing measures the explanation
+function and legacy results retain their recorded generation duration. The
+elapsed CSV-to-SHAP figure is displayed for a fully measured flow. These times
+exclude upstream extraction. IDS receives a CSV with features already supplied,
+so external extraction duration remains unrecorded.
 
 ## Interactive report
 
@@ -221,7 +266,8 @@ Signed horizontal bars and a floating-bar waterfall expose top 5/top 10/all
 features, sorting and binary/multiclass switching. The waterfall retains the sum
 of omitted features and both baseline/final output. Hover and keyboard-selectable
 evidence show actual input, contribution, direction, units and available benign
-statistics/differences. Each reference feature uses an independent numeric axis.
+statistics. The reference selector displays an independent horizontal percentile
+range for numerical features and a frequency comparison for discrete inputs.
 The page includes current acknowledgement/escalation status, stored-flow search,
 versions, additivity residuals and generation timing. Missing IP/port/protocol
 fields are explicitly unavailable; records are not described as active attacks.
@@ -306,9 +352,9 @@ One fully verified deterministic demonstration flow in the retained database
    The test host uses the real role authorization middleware with a test-only
    authentication scheme; production cookie/MFA sign-in was not exercised.
 
-Unverified limits: no genuine benign reference dataset/profile was supplied, so
-no live benign-comparison findings are claimed; the range-chart branch awaits
-such a profile. The complete historical migration chain cannot bootstrap a blank
+At the time of this previous-release verification the project had no verified
+reference profile. That release was tested without reference comparisons. The
+complete historical migration chain cannot bootstrap a blank
 database as described above. Python 3.11 and large sustained traffic loads were
 not tested. Neither the existing `IDS` database nor its historical rows were
 migrated/backfilled during this implementation; apply the migration and run the
@@ -368,3 +414,49 @@ The original-prediction fixture was executed from the unmodified inference adapt
 at commit `d5f7d89c67d10423527741bcab18f20bb3ecc5b2`, using the saved artifacts and
 existing deterministic test inputs. It preserves all original prediction fields
 for 30 rows; it is not an evaluation dataset or research performance metric.
+
+## Benign reference and timing update validation
+
+- The application and test projects built successfully. The standard .NET run
+  passed 75 tests. The opt-in SQL Server and Edge integration passed separately.
+- The Python suite passed 37 tests and the Node inspection suite passed.
+- The isolated integration exercised both deployed models, both SHAP outputs,
+  historical and current reference lookups, measured pipeline timings, numerical
+  and categorical comparisons, the missing-profile fallback, theme switching,
+  and a 390 px viewport. EF found no model changes requiring a migration.
+- The existing application database and training sources were read-only for the
+  update. SQL write and browser tests ran against a dedicated verification database.
+
+## Benign reference and timing update file inventory
+
+### Modified
+
+- `IDS.Tests/AttackInspectionTests.cs`
+- `IDS.Tests/SqlServerExplanationIntegrationTests.cs`
+- `IDS/Core/Services/AttackInspectionService.cs`
+- `IDS/Data/Models/InspectionModels.cs`
+- `IDS/Docs/ShapInspection.md`
+- `IDS/IDS.csproj`
+- `IDS/Pages/InspectAttack.cshtml`
+- `IDS/Program.cs`
+- `IDS/wwwroot/css/attack-inspection.css`
+- `IDS/wwwroot/js/attack-inspection.js`
+- `pipeline/README.md`
+- `pipeline/config/pipeline.toml`
+- `pipeline/ids_pipeline/__main__.py`
+- `pipeline/ids_pipeline/database.py`
+- `pipeline/ids_pipeline/explanations.py`
+- `pipeline/ids_pipeline/models.py`
+- `pipeline/ids_pipeline/reference.py`
+- `pipeline/ids_pipeline/worker.py`
+- `pipeline/tests/sql_explanation_fixture.py`
+- `pipeline/tests/test_explanations.py`
+- `pipeline/tests/test_pipeline.py`
+- `pipeline/tests/verify_inspection_browser.py`
+
+### Added
+
+- `IDS/Core/Services/ExplanationReferenceCatalog.cs`
+- `pipeline/config/benign-reference.json`
+- `pipeline/config/feature-metadata.json`
+- `pipeline/ids_pipeline/training_reference.py`

@@ -304,7 +304,7 @@ class MemoryStore:
     def pending(self, digest, size):
         return [{**row['features'], 'RowNumber': n, 'RawId': n} for (d, n), row in self.rows.items()
                 if d == digest and row['state'] == 'pending'][:size]
-    def complete_batch(self, digest, rows, predictions, release, models=None):
+    def complete_batch(self, digest, rows, predictions, release, models=None, timings=None):
         for row, prediction in zip(rows, predictions, strict=True):
             self.results.append(prediction)
             self.rows[digest, row['RowNumber']]['state'] = 'completed'

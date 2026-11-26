@@ -8,7 +8,8 @@
         return count === 'all' ? result : result.slice(0, Number(count));
     };
     const difference = (feature) => {
-        if (!feature.reference || feature.value == null || feature.name === 'dst_port') return null;
+        if (feature.reference?.median == null || feature.value == null || feature.name === 'dst_port' ||
+            ['categorical', 'binary'].includes(feature.reference.kind)) return null;
         const delta = feature.value - feature.reference.median;
         return { delta, percent: feature.reference.median === 0 ? null : delta / Math.abs(feature.reference.median) * 100 };
     };
@@ -29,7 +30,7 @@
     const root = document.getElementById('inspection');
     if (!root) return;
     const byId = id => document.getElementById(id);
-    const number = value => value == null ? 'Unavailable' : Number(value).toLocaleString(undefined, { maximumSignificantDigits: 7 });
+    const number = value => value == null ? 'Unavailable' : Number(value).toLocaleString(undefined, { maximumSignificantDigits: 9 });
     const percent = value => value == null ? 'Unavailable' : `${(value * 100).toFixed(2)}%`;
     const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const node = (tag, text, className) => {
@@ -38,19 +39,38 @@
         if (className) result.className = className;
         return result;
     };
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const colors = { positive: '#ef8391', negative: '#5bd5ef', neutral: '#75a9de' };
     const chartConfig = { responsive: true, displaylogo: false, scrollZoom: false,
         modeBarButtonsToRemove: ['toImage', 'select2d', 'lasso2d'], showTips: false };
+    const css = name => getComputedStyle(root).getPropertyValue(name).trim();
+    const colors = () => ({ positive: css('--chart-malicious'), negative: css('--chart-benign'),
+        neutral: css('--chart-total'), range: css('--ref-band'), median: css('--ref-median'), observed: css('--ref-observed') });
     const layout = (height, axis) => ({
         height, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-        font: { family: 'Inter, system-ui, sans-serif', color: '#b6c9dc', size: 11 },
-        margin: { l: window.innerWidth < 650 ? 155 : 250, r: 35, t: 20, b: 65 },
-        xaxis: { title: { text: axis }, gridcolor: '#49617e30', zerolinecolor: '#91b1d570', automargin: true },
+        font: { family: 'Inter, system-ui, sans-serif', color: css('--text-primary'), size: 11 },
+        margin: { l: window.innerWidth < 650 ? 155 : 250, r: 35, t: 20, b: 60 },
+        xaxis: { title: { text: axis }, gridcolor: css('--border-color'), zerolinecolor: css('--text-muted'), automargin: true },
         yaxis: { autorange: 'reversed', automargin: true },
-        hoverlabel: { bgcolor: '#14263b', bordercolor: '#5782a6', font: { color: '#edf4fb', size: 12 } },
-        transition: { duration: reducedMotion ? 0 : 250 }, showlegend: false
+        hoverlabel: { bgcolor: css('--bg-card'), bordercolor: css('--border-color'), font: { color: css('--text-primary'), size: 12 } },
+        showlegend: false
     });
+    const featureName = feature => byId('technicalNames').checked ? feature.name : feature.metadata?.displayName ?? feature.name;
+    const valueWithUnit = (value, feature) => value == null ? 'Missing input' : [number(value), feature.units].filter(Boolean).join(' ');
+    const outsideInputScale = feature => feature.value != null &&
+        ((feature.metadata?.expectedMinimum != null && feature.value < feature.metadata.expectedMinimum) ||
+         (feature.metadata?.expectedMaximum != null && feature.value > feature.metadata.expectedMaximum));
+    const observedValue = feature => outsideInputScale(feature) ? number(feature.value) + ' (recorded input)' :
+        valueWithUnit(feature.value, feature);
+    const scaleWarning = feature => outsideInputScale(feature)
+        ? 'The recorded input falls outside the extractor’s documented ' + feature.units + ' scale.' : '';
+    const frequencyLabel = (value, feature) => feature.reference?.kind === 'binary'
+        ? (value === 0 ? '0 · clear' : '1 · set') : number(value);
+    const referenceTableValue = feature => {
+        const reference = feature.reference;
+        if (!reference?.sampleCount) return '—';
+        if (reference.frequencies?.length)
+            return reference.observedCount != null ? percent(reference.observedCount / reference.sampleCount) + ' of benign flows' : 'See frequencies';
+        return reference.median == null ? '—' : valueWithUnit(reference.median, feature);
+    };
     let report, pollTimer, pollCount = 0, rendering = Promise.resolve(), disposed = false;
     const selectedStage = () => report.stages.find(s => s.stage === byId('stageSelect').value);
     const notice = (message, isError = false) => {
@@ -60,13 +80,23 @@
     const direction = (feature, data) => feature.contribution === 0 ? 'No contribution to this output' :
         `${feature.contribution > 0 ? 'Increases' : 'Decreases'} ${data.explainedClass} ${data.outputUnits}`;
     const details = (feature, data) => {
-        const change = difference(feature);
+        const info = feature.metadata;
         const reference = feature.reference;
-        return `${feature.name}\nObserved: ${number(feature.value)} ${feature.units}\n` +
-            `SHAP: ${number(feature.contribution)} ${data.outputUnits} · ${direction(feature, data)}\n` +
-            (reference ? `Benign median: ${number(reference.median)} · 5th–95th: ${number(reference.p05)} to ${number(reference.p95)}\n` +
-                `Difference: ${number(change?.delta)} · ${change?.percent == null ? 'Percentage unavailable (zero denominator or categorical value)' : `${number(change.percent)}%`}\n` +
-                `Reference samples: ${reference.sampleCount}` : 'Reference unavailable');
+        const change = outsideInputScale(feature) ? null : difference(feature);
+        const lines = [info ? featureName(feature) + ' · ' + info.category : feature.name];
+        if (info) {
+            lines.push('Model feature: ' + feature.name, info.description);
+        }
+        lines.push('Observed: ' + observedValue(feature),
+            'SHAP: ' + number(feature.contribution) + ' ' + data.outputUnits + ' · ' + direction(feature, data));
+        if (outsideInputScale(feature)) lines.push(scaleWarning(feature));
+        if (reference?.sampleCount && !reference.frequencies?.length) {
+            lines.push('Benign median: ' + valueWithUnit(reference.median, feature));
+            if (change != null) lines.push('Difference from benign median: ' + valueWithUnit(change.delta, feature));
+        } else if (reference?.observedCount != null) {
+            lines.push('Observed value frequency in benign training: ' + referenceTableValue(feature));
+        }
+        return lines.join('\n');
     };
     function modelCards() {
         const cards = byId('modelCards');
@@ -104,17 +134,43 @@
         byId('summaryBinary').textContent = percent(report.stages.find(s => s.stage === 'gatekeeper')?.data?.probability);
         byId('summaryMulticlass').textContent = percent(report.categoryProbability);
     }
+    const milliseconds = value => Number.isFinite(value) && value >= 0
+        ? value.toLocaleString(undefined, { maximumFractionDigits: 3 }) + ' ms' : null;
+    const utc = value => value ? new Date(value).toISOString().replace('T', ' ').replace('Z', ' UTC') : null;
     function pipeline() {
-        const stages = report.stages, active = stages.some(s => ['pending', 'processing'].includes(s.status));
-        const shapStatus = stages.length === 2 && stages.every(s => s.status === 'completed') ? 'Stored · additivity verified' :
-            active ? 'Explanation processing' : 'Explanation unavailable';
-        const values = [['Flow data', 'Stored'], ['Feature extraction', 'Upstream · timing unavailable'],
-            ['Binary XGBoost', stages.some(s => s.stage === 'gatekeeper') ? 'Attack classification stored' : 'Stage metadata unavailable'],
-            ['Multiclass XGBoost', stages.some(s => s.stage === 'multiclass') ? report.attackType : 'Stage metadata unavailable'],
-            ['SHAP explanation', shapStatus], ['Incident report', 'Stored evidence loaded']];
-        byId('pipelineSteps').replaceChildren(...values.map(([label, state], index) => {
-            const li = node('li', label, active && index === 4 ? 'processing' : '');
-            li.append(node('small', state)); return li;
+        const stages = report.stages;
+        const binary = stages.find(stage => stage.stage === 'gatekeeper');
+        const multiclass = stages.find(stage => stage.stage === 'multiclass');
+        const timing = binary?.data?.pipelineTiming ?? multiclass?.data?.pipelineTiming;
+        const batch = (value, count) => milliseconds(value) && count > 0
+            ? milliseconds(value) + ' for ' + number(count) + (count === 1 ? ' flow' : ' flows') : 'Timing not recorded';
+        const queue = [binary, multiclass].flatMap((stage, index) => {
+            const time = milliseconds(stage?.data?.queueWaitMs);
+            return time ? [(index === 0 ? 'Binary ' : 'Multiclass ') + time] : [];
+        });
+        const shap = [binary, multiclass].flatMap((stage, index) => {
+            const time = milliseconds(stage?.data?.processingMs ?? stage?.data?.generationMs);
+            return time ? [(index === 0 ? 'Binary ' : 'Multiclass ') + time] : [];
+        });
+        const values = [
+            ['CSV ingestion', utc(report.csvReceivedAt) ?? 'Registration timestamp not recorded'],
+            ['Feature extraction', 'Completed externally · duration was not recorded'],
+            ['Binary classification', batch(timing?.binaryMs, timing?.binaryBatchSize)],
+            ['Multiclass classification', batch(timing?.multiclassMs, timing?.multiclassBatchSize)],
+            ['SHAP queue wait', queue.join(' · ') || 'First-attempt wait not recorded'],
+            ['SHAP processing', shap.join(' · ') || (stages.some(stage => ['pending', 'processing'].includes(stage.status))
+                ? 'Explanation processing' : 'Timing not recorded')]
+        ];
+        if (milliseconds(timing?.inferenceMs)) values.push(['Total batch inference', milliseconds(timing.inferenceMs)]);
+        if (report.classificationRecordedAt) values.push(['Classification recorded', utc(report.classificationRecordedAt)]);
+        const end = Math.max(...stages.map(stage => Date.parse(stage.data?.generatedAt)).filter(Number.isFinite));
+        const elapsed = end - Date.parse(report.csvReceivedAt);
+        if (timing && stages.length === 2 && stages.every(stage => stage.status === 'completed') && milliseconds(elapsed))
+            values.push(['CSV receipt to SHAP result', milliseconds(elapsed)]);
+        byId('pipelineSteps').replaceChildren(...values.map(([label, state]) => {
+            const li = node('li', label);
+            li.append(node('small', state));
+            return li;
         }));
     }
     function technical() {
@@ -140,70 +196,182 @@
         byId('shapContent').hidden = !complete;
         byId('shapEmpty').hidden = !!complete;
         byId('contributionCaption').textContent = complete ?
-            `Explained output: ${data.explainedClass} · ${data.outputUnits}. Contributions are not probability percentages. Correlated features may share attribution.` : '';
-        byId('referenceCaption').textContent = 'Reference unavailable';
-        const referenceNode = byId('referenceChart');
-        if (window.Plotly && referenceNode.data) Plotly.purge(referenceNode);
-        referenceNode.replaceChildren();
+            (stage.stage === 'gatekeeper' ? 'Binary XGBoost · ' : 'Multiclass XGBoost · ') +
+            data.explainedClass + ' · ' + data.outputUnits + '. Each contribution shifts this raw score. Correlated features may share attribution.' : '';
+        await prepareReference(complete ? data : null).catch(() =>
+            notice('The reference chart could not be drawn. The recorded numerical evidence is available.', true));
         if (!complete) {
-            byId('shapEmpty').textContent = !stage ? 'Explanation unavailable. Historical records require a verified backfill using their original model release.' :
-                stage.status === 'failed' ? 'Explanation unavailable. The detection is preserved; an operator can retry after resolving the recorded error.' : 'Explanation processing';
+            byId('shapEmpty').textContent = !stage ? 'Explanation unavailable. Historical records require verified backfill with the original model release.' :
+                stage.status === 'failed' ? 'Explanation unavailable. Review the recorded error before retrying.' : 'Explanation processing';
             return;
         }
-        const selected = selectFeatures(data.features, byId('featureCount').value, byId('featureSort').value);
-        byId('featureDetail').textContent = selected.length ? details(selected[0], data) : 'No explained features available.';
-        const evidence = byId('featureEvidence');
-        evidence.replaceChildren(...selected.map(feature => {
-            const tr = node('tr'), td = node('td'), button = node('button', feature.name, 'feature-button');
+
+        const sort = byId('featureSort').value;
+        const features = sort === 'name' && !byId('technicalNames').checked
+            ? [...data.features].sort((a, b) => featureName(a).localeCompare(featureName(b)))
+            : data.features;
+        const count = byId('featureCount').value;
+        const selected = sort === 'name' && !byId('technicalNames').checked
+            ? features.slice(0, count === 'all' ? undefined : Number(count))
+            : selectFeatures(features, count, sort);
+        const show = feature => { byId('featureDetail').textContent = details(feature, data); };
+        if (selected.length) show(selected[0]);
+        byId('featureEvidence').replaceChildren(...selected.map(feature => {
+            const tr = node('tr'), td = node('td'), button = node('button', featureName(feature), 'feature-button');
             button.type = 'button';
-            const show = () => { byId('featureDetail').textContent = details(feature, data); };
-            button.addEventListener('focus', show); button.addEventListener('click', show);
-            td.append(button); tr.append(td, node('td', number(feature.value)), node('td', `${number(feature.contribution)} ${data.outputUnits}`),
-                node('td', feature.reference ? number(feature.reference.median) : 'Reference unavailable')); return tr;
+            button.dataset.featureName = feature.name;
+            button.title = feature.name;
+            button.addEventListener('focus', () => show(feature));
+            button.addEventListener('click', () => {
+                show(feature);
+                if (feature.reference?.sampleCount) {
+                    byId('referenceFeature').value = feature.name;
+                    queueReferenceRender();
+                }
+            });
+            td.append(button);
+            tr.append(td, node('td', observedValue(feature)),
+                node('td', number(feature.contribution) + ' ' + data.outputUnits),
+                node('td', referenceTableValue(feature)));
+            return tr;
         }));
+        byId('additivity').textContent = 'Base ' + number(data.baseValue) + ' + Σ contributions = ' +
+            number(data.reconstructedMargin) + ' · model margin ' + number(data.rawMargin) +
+            ' · absolute residual ' + number(data.additivityError);
         if (!window.Plotly) throw new Error('The local chart library could not be loaded. Numerical feature evidence is available below.');
+        const palette = colors();
         const height = Math.max(340, selected.length * 29 + 100);
+        const barLayout = layout(height, 'SHAP contribution · ' + data.outputUnits);
+        barLayout.yaxis = { ...barLayout.yaxis, tickmode: 'array', tickvals: selected.map(f => f.name),
+            ticktext: selected.map(f => escape(featureName(f))) };
         await Plotly.react(byId('shapBar'), [{ type: 'bar', orientation: 'h',
             x: selected.map(f => f.contribution), y: selected.map(f => f.name),
-            marker: { color: selected.map(f => f.contribution >= 0 ? colors.positive : colors.negative) },
+            marker: { color: selected.map(f => f.contribution >= 0 ? palette.positive : palette.negative) },
             customdata: selected.map(f => details(f, data).split('\n').map(escape).join('<br>')),
-            hovertemplate: '%{customdata}<extra></extra>' }], layout(height, `SHAP contribution · ${data.outputUnits}`), chartConfig);
+            hovertemplate: '%{customdata}<extra></extra>' }], barLayout, chartConfig);
         byId('shapBar').removeAllListeners('plotly_click');
         byId('shapBar').on('plotly_click', event => {
             const feature = selected[event.points[0].pointIndex];
-            if (feature) byId('featureDetail').textContent = details(feature, data);
+            if (feature) show(feature);
         });
         const parts = waterfallParts(data, selected);
+        const waterfall = layout(height + 90, 'Raw output · ' + data.outputUnits);
+        waterfall.yaxis = { ...waterfall.yaxis, tickmode: 'array', tickvals: parts.map(p => p.name),
+            ticktext: parts.map(p => escape(p.metadata ? featureName(p) : p.name)) };
         await Plotly.react(byId('shapWaterfall'), [{ type: 'bar', orientation: 'h',
             y: parts.map(p => p.name), x: parts.map(p => Math.abs(p.end - p.start)), base: parts.map(p => Math.min(p.start, p.end)),
-            marker: { color: parts.map(p => p.total ? colors.neutral : p.contribution >= 0 ? colors.positive : colors.negative) },
-            customdata: parts.map(p => `${escape(p.name)}<br>${p.total ? 'Value' : 'Contribution'}: ${number(p.contribution)} ${escape(data.outputUnits)}<br>Running output: ${number(p.end)}`),
-            hovertemplate: '%{customdata}<extra></extra>' }], layout(height + 90, `Raw output · ${data.outputUnits}`), chartConfig);
-        byId('additivity').textContent = `Base ${number(data.baseValue)} + Σ contributions = ${number(data.reconstructedMargin)} · model margin ${number(data.rawMargin)} · absolute residual ${number(data.additivityError)}`;
-        await referenceChart(selected, data);
+            marker: { color: parts.map(p => p.total ? palette.neutral : p.contribution >= 0 ? palette.positive : palette.negative) },
+            customdata: parts.map(p => escape(p.metadata ? featureName(p) : p.name) + '<br>' +
+                (p.total ? 'Value' : 'Contribution') + ': ' + number(p.contribution) + ' ' + escape(data.outputUnits) +
+                '<br>Running output: ' + number(p.end)),
+            hovertemplate: '%{customdata}<extra></extra>' }], waterfall, chartConfig);
     }
-    async function referenceChart(selected, data) {
-        const features = selected.filter(f => f.reference && f.value != null && f.name !== 'dst_port');
-        if (!features.length) return;
-        byId('referenceCaption').textContent = `${data.reference?.datasetVersion ?? 'Version unavailable'} · ${data.reference?.group ?? ''} · ${data.reference?.split ?? ''}. Statistics use verified labeled benign reference inputs.`;
-        const traces = [], axes = {}, annotations = [], shapes = [], count = features.length;
-        features.forEach((feature, i) => {
-            const suffix = i ? String(i + 1) : '', xaxis = `x${suffix}`, yaxis = `y${suffix}`, r = feature.reference;
-            axes[`xaxis${suffix}`] = { domain: [0, 1], anchor: yaxis, gridcolor: '#49617e30', zeroline: false, tickfont: { size: 10 } };
-            axes[`yaxis${suffix}`] = { domain: [(count-i-1)/count + 0.28/count, (count-i)/count - 0.17/count],
-                anchor: xaxis, range: [-1, 1], visible: false };
-            // A separate independent x axis for every feature avoids comparing incompatible units.
-            traces.push({ type: 'scatter', mode: 'lines', x: [r.p05, r.p95], y: [0, 0], xaxis, yaxis,
-                line: { color: '#75a9de55', width: 18 }, hovertemplate: `Benign 5th–95th: ${number(r.p05)} to ${number(r.p95)}<extra></extra>` },
-                { type: 'scatter', mode: 'markers', x: [r.median, feature.value], y: [0, 0], xaxis, yaxis,
-                    marker: { size: [12, 10], color: [colors.negative, colors.positive], symbol: ['line-ns', 'diamond'], line: { width: 2 } },
-                    customdata: [`Benign median: ${number(r.median)} · n=${r.sampleCount}`, details(feature, data).split('\n').map(escape).join('<br>')],
-                    hovertemplate: '%{customdata}<extra></extra>' });
-            annotations.push({ xref: 'paper', yref: `${yaxis} domain`, x: 0, y: 1.4, text: escape(feature.name),
-                xanchor: 'left', showarrow: false, font: { color: '#b6c9dc', size: 11 } });
-        });
-        await Plotly.react(byId('referenceChart'), traces, { ...layout(Math.max(180, count * 100), ''),
-            margin: { l: 25, r: 35, t: 45, b: 30 }, ...axes, annotations, shapes }, chartConfig);
+
+    async function prepareReference(data) {
+        const select = byId('referenceFeature');
+        const previous = select.value;
+        const available = data?.features?.filter(feature => feature.reference?.sampleCount > 0) ?? [];
+        byId('referencePanel').hidden = available.length === 0;
+        const caption = byId('referenceCaption');
+        if (!available.length) {
+            caption.textContent = data?.referenceDiagnostic ?? (data ?
+                'Benign reference unavailable for this explanation.' : 'A completed explanation is required for benign comparison.');
+            return;
+        }
+        const sample = data.reference?.benignSampleCount;
+        caption.textContent = (data.reference?.datasetVersion ?? 'Stored benign reference') +
+            (sample > 0 ? ' · ' + number(sample) + ' benign training flows' : '');
+        const categories = new Map();
+        for (const feature of available) {
+            const name = feature.metadata?.category ?? 'Model inputs';
+            if (!categories.has(name)) {
+                const group = node('optgroup');
+                group.label = name;
+                categories.set(name, group);
+            }
+            const option = node('option', featureName(feature));
+            option.value = feature.name;
+            categories.get(name).append(option);
+        }
+        select.replaceChildren(...categories.values());
+        select.value = available.some(feature => feature.name === previous) ? previous :
+            selectFeatures(available, '1', 'magnitude')[0].name;
+        await showReference(data);
+    }
+
+    async function showReference(data) {
+        const feature = data?.features?.find(item => item.name === byId('referenceFeature').value);
+        if (!feature?.reference?.sampleCount) return;
+        const stats = feature.reference;
+        byId('referenceDescription').textContent = (feature.metadata?.description ?? feature.name) +
+            ' ' + number(stats.sampleCount) + ' valid samples' +
+            (stats.missingCount == null ? '.' : ' · ' + number(stats.missingCount) + ' missing.') +
+            (outsideInputScale(feature) ? ' ' + scaleWarning(feature) : '');
+        const frequencyMode = !!stats.frequencies?.length;
+        const chart = byId('referenceChart');
+        byId('referenceFrequencies').hidden = !frequencyMode;
+        byId('referenceLegend').hidden = frequencyMode || !window.Plotly;
+        chart.hidden = frequencyMode || !window.Plotly;
+        const metrics = [['Observed value', observedValue(feature)]];
+        if (frequencyMode) {
+            const freq = stats.observedCount != null ? referenceTableValue(feature) :
+                (feature.value == null ? '—' : 'Outside the listed values');
+            metrics.push(['Observed value frequency', freq]);
+            const entries = [...stats.frequencies];
+            if (stats.observedCount === 0 && !entries.some(item => item.value === feature.value))
+                entries.push({ value: feature.value, count: 0 });
+            if (stats.otherCount > 0) entries.push({ value: null, count: stats.otherCount });
+            byId('referenceFrequencyRows').replaceChildren(...entries.map(item => {
+                const row = node('tr');
+                const observed = item.value != null && item.value === feature.value;
+                if (observed) row.classList.add('frequency-observed');
+                const share = node('td', null, 'frequency-share');
+                const bar = node('progress');
+                bar.max = stats.sampleCount;
+                bar.value = item.count;
+                bar.setAttribute('aria-hidden', 'true');
+                share.append(bar, node('span', percent(item.count / stats.sampleCount)));
+                row.append(node('td', item.value == null ? 'Other values' :
+                    frequencyLabel(item.value, feature) + (observed ? ' · Observed' : '')),
+                    node('td', number(item.count)), share);
+                return row;
+            }));
+        } else {
+            const position = feature.value == null ? 'Missing input' : feature.value < stats.p05 ? 'Below the benign range' :
+                feature.value > stats.p95 ? 'Above the benign range' : 'Within the benign range';
+            metrics.push(['Benign median', valueWithUnit(stats.median, feature)],
+                ['5th percentile', valueWithUnit(stats.p05, feature)], ['95th percentile', valueWithUnit(stats.p95, feature)],
+                ['Range position', position]);
+        }
+        byId('referenceMetrics').replaceChildren(...metrics.map(([label, value]) => {
+            const group = node('div');
+            group.append(node('dt', label), node('dd', value));
+            return group;
+        }));
+        if (frequencyMode || !window.Plotly) return;
+
+        const palette = colors();
+        const traces = [{ type: 'scatter', mode: 'lines', x: [stats.p05, stats.p95], y: [0, 0],
+            line: { color: palette.range, width: 13 },
+            hovertemplate: 'Benign 5th–95th: ' + escape(valueWithUnit(stats.p05, feature)) + ' to ' +
+                escape(valueWithUnit(stats.p95, feature)) + '<extra></extra>' },
+        { type: 'scatter', mode: 'markers', x: [stats.median], y: [0],
+            marker: { size: 15, color: palette.median, symbol: 'line-ns', line: { width: 3 } },
+            hovertemplate: 'Benign median: ' + escape(valueWithUnit(stats.median, feature)) + '<extra></extra>' }];
+        if (feature.value != null) traces.push({ type: 'scatter', mode: 'markers', x: [feature.value], y: [0.15],
+            marker: { size: 11, color: palette.observed, symbol: 'diamond' },
+            hovertemplate: 'Observed: ' + escape(observedValue(feature)) + '<extra></extra>' });
+        const referenceLayout = layout(142, outsideInputScale(feature) ? 'Recorded model value' : feature.units ?? featureName(feature));
+        referenceLayout.margin = { l: 16, r: 21, t: 12, b: 56 };
+        referenceLayout.yaxis = { visible: false, range: [-0.45, 0.55], fixedrange: true };
+        referenceLayout.xaxis.nticks = window.innerWidth < 650 ? 4 : 8;
+        chart.setAttribute('aria-label', featureName(feature) + ' benign reference range and observed value. Values are listed above.');
+        await Plotly.react(chart, traces, referenceLayout, chartConfig);
+    }
+
+    function queueReferenceRender() {
+        rendering = rendering.then(() => showReference(selectedStage()?.data))
+            .catch(() => notice('The reference chart could not be drawn. Numerical comparison is shown above.', true));
     }
     function render() {
         modelCards(); pipeline(); technical();
@@ -231,7 +399,11 @@
         } catch (error) { notice(error.message || 'The report could not be loaded.', true); }
         finally { byId('refreshInspection').disabled = false; }
     }
-    for (const id of ['stageSelect', 'featureCount', 'featureSort']) byId(id).addEventListener('change', () => render());
+    for (const id of ['stageSelect', 'featureCount', 'featureSort', 'technicalNames'])
+        byId(id).addEventListener('change', () => render());
+    byId('referenceFeature').addEventListener('change', queueReferenceRender);
+    new MutationObserver(() => { if (report) render(); })
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     byId('flowSearch').addEventListener('input', technical);
     byId('refreshInspection').addEventListener('click', () => refresh(true));
     window.addEventListener('pagehide', () => { disposed = true; clearTimeout(pollTimer); });

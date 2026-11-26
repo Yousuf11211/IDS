@@ -150,6 +150,7 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         builder.Services.AddScoped<ILiveDetectionService, LiveDetectionService>();
         builder.Services.AddSingleton<DashboardNotificationService>();
         builder.Services.AddScoped<AttackInspectionService>();
+        builder.Services.AddSingleton<ExplanationReferenceCatalog>();
         builder.Services.AddScoped<SecurityPolicyService>();
         await using var app = builder.Build();
         app.UseStaticFiles(); app.UseRouting(); app.UseAuthentication(); app.UseAuthorization();
@@ -178,6 +179,25 @@ public sealed class SqlServerExplanationIntegrationTests(ITestOutputHelper outpu
         var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(attackId, json.RootElement.GetProperty("id").GetString());
         Assert.Equal(2, json.RootElement.GetProperty("stages").GetArrayLength());
+        Assert.Equal(JsonValueKind.String, json.RootElement.GetProperty("csvReceivedAt").ValueKind);
+        Assert.Equal(JsonValueKind.String, json.RootElement.GetProperty("classificationRecordedAt").ValueKind);
+        foreach (var stage in json.RootElement.GetProperty("stages").EnumerateArray())
+        {
+            var explanation = stage.GetProperty("data");
+            Assert.Equal(362127, explanation.GetProperty("reference").GetProperty("benignSampleCount").GetInt64());
+            Assert.True(explanation.GetProperty("pipelineTiming").GetProperty("inferenceMs").GetDouble() >= 0);
+            Assert.True(explanation.GetProperty("processingMs").GetDouble() >= 0);
+            Assert.True(explanation.GetProperty("queueWaitMs").GetDouble() >= 0);
+        }
+        var historicalId = trace.RootElement.GetProperty("historicalAttackId").GetString();
+        using var historical = JsonDocument.Parse(await http.GetStringAsync($"/api/detection/{historicalId}/inspection"));
+        var historicalStages = historical.RootElement.GetProperty("stages").EnumerateArray();
+        Assert.All(historicalStages, stage =>
+        {
+            var explanation = stage.GetProperty("data");
+            Assert.Equal(362127, explanation.GetProperty("reference").GetProperty("benignSampleCount").GetInt64());
+            Assert.Equal(JsonValueKind.Null, explanation.GetProperty("pipelineTiming").ValueKind);
+        });
         var page = await http.GetAsync($"/InspectAttack/{attackId}");
         var html = await page.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);

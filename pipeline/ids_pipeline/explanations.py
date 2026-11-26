@@ -92,7 +92,9 @@ class ExplanationService:
             profile = None
         features = []
         for name, value, contribution in zip(context["featureNames"], context["featureValues"], contributions, strict=True):
-            reference = profile["features"].get(name) if profile else None
+            # Older external profiles embedded statistics directly. The v2
+            # reference is joined by fingerprint when the report is read.
+            reference = profile["features"].get(name) if profile and profile["schemaVersion"] == 1 else None
             features.append(dict(name=name, value=value, contribution=float(contribution),
                                  units="model input units", reference=reference))
         return {**context, "attackId": str(attack_id) if attack_id is not None else None,
@@ -102,7 +104,8 @@ class ExplanationService:
                 "outputUnits": "log-odds" if binary else "raw class margin",
                 "baseValue": base, "rawMargin": margin, "reconstructedMargin": reconstructed,
                 "additivityError": abs(margin-reconstructed), "features": features,
-                "reference": {k: v for k, v in profile.items() if k != "features"} if profile else None,
+                "reference": {k: profile[k] for k in ("schemaVersion", "datasetVersion", "datasetSha256",
+                    "split", "provenance", "group", "modelFingerprint", "benignSampleCount") if k in profile} if profile else None,
                 "generatedAt": datetime.now(timezone.utc).isoformat(),
                 "generationMs": (time.perf_counter()-started)*1000,
                 "shapVersion": shap.__version__, "xgboostVersion": xgboost.__version__}
@@ -123,8 +126,17 @@ class ExplanationWorker:
                     context["attackId"] != str(job["AttackTrafficId"]) or
                     context["rawId"] != str(job["RawPacketId"])):
                 raise ValueError("Queued model or detection identifiers differ from the prediction snapshot")
+            started = time.perf_counter()
             payload = self.service.generate(job["Stage"], context, attack_id=job["AttackTrafficId"],
                                             raw_id=job["RawPacketId"])
+            payload["processingMs"] = (time.perf_counter() - started) * 1000
+            # UpdatedAt is the claim time in OUTPUT INSERTED. On retries this
+            # interval would include earlier attempts and backoff.
+            queued = job.get("CreatedAt")
+            claimed = job.get("UpdatedAt")
+            if (job.get("Attempts") == 1 and isinstance(queued, datetime) and isinstance(claimed, datetime)
+                    and claimed >= queued):
+                payload["queueWaitMs"] = (claimed - queued).total_seconds() * 1000
             self.store.finish_explanation(job["Id"], payload)
             logging.getLogger(__name__).info("SHAP completed for attack %s, stage %s (%.1f ms)",
                 job["AttackTrafficId"], job["Stage"], payload["generationMs"])

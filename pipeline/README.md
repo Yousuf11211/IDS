@@ -205,6 +205,13 @@ and have the producer create the empty marker. Always keep the data in the CSV.
 Restart the detector after updating code or configuration.
 Keep the data folders on the same filesystem and leave worker-owned files alone.
 
+## Benign training reference
+
+The explanation worker uses the bundled, versioned Experiment D profile. It
+contains aggregates for 362,127 recorded benign training flows and 120 model
+features. The web app also reads it for compatible historical reports. Follow the
+reproduction and deployment instructions in the [SHAP inspection guide](../IDS/Docs/ShapInspection.md#benign-reference-profile).
+
 ## Status, recovery and checks
 
 ```powershell

@@ -163,7 +163,7 @@ class Store:
             FROM {self.table('PipelineRows')} p JOIN {self.table('RawPackets')} r ON r.Id=p.RawId
             WHERE p.FileHash=? AND p.State='pending' ORDER BY p.RowNumber""", (digest,))
 
-    def complete_batch(self, digest, rows, predictions, release, models=None):
+    def complete_batch(self, digest, rows, predictions, release, models=None, timings=None):
         if len(rows) != len(predictions):
             raise ValueError("Prediction count does not match batch")
         with self.transaction():
@@ -186,7 +186,7 @@ class Store:
                     WHERE FileHash=? AND RowNumber=? AND State='pending'""",
                     (prediction.gate_score, prediction.type_score, result_id, utcnow(), digest, row["RowNumber"]))
                 if prediction.attack and enqueue:
-                    self.enqueue_explanations(result_id, row["RawId"], row, prediction, models)
+                    self.enqueue_explanations(result_id, row["RawId"], row, prediction, models, timings=timings)
 
     def shap_generation_enabled(self):
         setting = self.conn.execute(
@@ -194,11 +194,13 @@ class Store:
         ).fetchone()
         return setting is None or setting[0].strip().lower() == "true"
 
-    def enqueue_explanations(self, attack_id, raw_id, row, prediction, models):
+    def enqueue_explanations(self, attack_id, raw_id, row, prediction, models, timings=None):
         """Called in detection/backfill transaction; only freezes inputs, never runs SHAP."""
         for stage, version in (("gatekeeper", models.gate_version), ("multiclass", models.type_version)):
             context = models.explanation_context(stage, row, prediction)
             context.update(attackId=str(attack_id), rawId=str(raw_id))
+            if timings:
+                context["pipelineTiming"] = timings
             self.conn.execute("""INSERT INTO dbo.FlowExplanations
                 (AttackTrafficId,RawPacketId,Stage,ModelVersion,Fingerprint,ContextJson,Status,
                  Attempts,NextAttempt,CreatedAt,UpdatedAt)

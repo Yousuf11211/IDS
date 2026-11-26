@@ -113,6 +113,33 @@ class RealExplanationTests(unittest.TestCase):
         self.assertEqual(result['predictedLabel'], 'UnknownAttack')
         self.assertEqual(result['explainedClass'], prediction.selected_label)
 
+    def test_training_profile_aligns_with_both_models_and_keeps_payload_small(self):
+        config = replace(Config(), reference_profile='config/benign-reference.json')
+        profile = load_reference(config, self.models)
+        self.assertEqual(profile['featureNames'], self.models.feature_names)
+        self.assertEqual(profile['benignSampleCount'], 362127)
+        self.assertEqual(sum(source['benignRows'] for source in profile['sources']), 362127)
+        self.assertTrue(all(source['file'].split('/')[0] in ('IDS2018', 'Created_Data') for source in profile['sources']))
+        for stats in profile['features'].values():
+            self.assertGreater(stats['sampleCount'], 0)
+            self.assertEqual(stats['sampleCount'] + stats['missingCount'], 362127)
+        port = profile['features']['dst_port']
+        self.assertEqual(port['kind'], 'categorical')
+        self.assertEqual(sum(entry['count'] for entry in port['frequencies']), port['sampleCount'])
+        self.assertGreater(profile['features']['delta_start']['missingCount'], 0)
+
+        row, prediction = next((r, p) for r, p in zip(self.rows, self.predictions) if p.attack)
+        timed = {}
+        self.assertEqual(self.models.predict([row], timings=timed), [prediction])
+        self.assertEqual(timed['binaryBatchSize'], 1)
+        self.assertEqual(timed['multiclassBatchSize'], 1)
+        self.assertGreaterEqual(timed['inferenceMs'], timed['binaryMs'] + timed['multiclassMs'])
+        context = self.models.explanation_context('multiclass', row, prediction)
+        result = ExplanationService(self.models, profile).generate('multiclass', context)
+        self.assertEqual(result['reference']['datasetSha256'], profile['datasetSha256'])
+        self.assertTrue(all(feature['reference'] is None for feature in result['features']))
+        self.assertLess(result['additivityError'], 2e-4)
+
     def test_queue_snapshot_parameterization_and_unique_guard(self):
         store = Store.__new__(Store)
         store.conn = Mock()
